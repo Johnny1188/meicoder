@@ -162,7 +162,9 @@ class RunningStats:
         """
         if self.count < 2:
             return np.zeros(self.num_components) if self.lib == "numpy" else torch.zeros(self.num_components).to(self.device)
-        return np.sqrt(self.M2 / (self.count - 1)) if self.lib == "numpy" else torch.sqrt(self.M2 / (self.count - 1))
+        return \
+            np.sqrt(np.clip(self.M2 / (self.count - 1), 1e-6, None)) if self.lib == "numpy" else \
+            torch.sqrt(torch.clip(self.M2 / (self.count - 1), 1e-6, None))
 
     def get_mean(self):
         """
