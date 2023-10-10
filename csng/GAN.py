@@ -9,7 +9,7 @@ from torch import nn
 class Generator(nn.Module):
     def __init__(
         self,
-        img_shape=(1, 51, 51),
+        in_shape=(1, 51, 51),
         layers=[("deconv", 8, 60, 1, 0), ("conv", 16, 5, 1, "same"), ("conv", 1, 3, 1, 0)],
         act_fn=nn.ReLU,
         out_act_fn=nn.Identity,
@@ -17,7 +17,7 @@ class Generator(nn.Module):
         batch_norm=False,
     ):
         super().__init__()
-        self.img_shape = img_shape
+        self.in_shape = in_shape
         self.layers = layers
         self.act_fn = act_fn
         self.out_act_fn = out_act_fn
@@ -28,11 +28,28 @@ class Generator(nn.Module):
 
     def _build_layers(self):
         layers = []
-        in_channels = self.img_shape[0]
+        in_channels = self.in_shape[0]
         
         ### build cnn layers
         for l_i, layer_config in enumerate(self.layers):
-            if layer_config[0] == "deconv":
+            if layer_config[0] == "fc":
+                layer_type, out_channels = layer_config
+                layers.append(nn.Linear(in_channels, out_channels))
+            elif layer_config[0] == "unflatten":
+                layer_type, in_dim, unflattened_size = layer_config
+                layers.append(nn.Unflatten(in_dim, unflattened_size))
+                out_channels = unflattened_size[0]
+            elif layer_config[0] == "maxpool":
+                layer_type, kernel_size, stride, padding = layer_config
+                layers.append(
+                    nn.MaxPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+                )
+                out_channels = in_channels
+            elif layer_config[0] == "upsample":
+                layer_type, scale_factor = layer_config
+                layers.append(nn.Upsample(scale_factor=scale_factor))
+                out_channels = in_channels
+            elif layer_config[0] == "deconv":
                 layer_type, out_channels, kernel_size, stride, padding = layer_config
                 layers.append(
                     nn.ConvTranspose2d(
@@ -57,14 +74,17 @@ class Generator(nn.Module):
             else:
                 raise ValueError(f"layer_type {layer_type} not recognized")
 
-            if l_i < len(self.layers) - 1:
+            if l_i < len(self.layers) - 1 and layer_type in ["fc", "conv", "deconv"]:
                 ### add batch norm, activation, dropout
                 if self.batch_norm:
-                    layers.append(nn.BatchNorm2d(out_channels))
+                    if layer_type == "fc":
+                        layers.append(nn.BatchNorm1d(out_channels))
+                    else:
+                        layers.append(nn.BatchNorm2d(out_channels))
                 layers.append(self.act_fn())
                 if self.dropout > 0.0:
                     layers.append(nn.Dropout(self.dropout))
-            else:
+            elif l_i == len(self.layers) - 1:
                 ### add output activation
                 layers.append(self.out_act_fn())
 
@@ -105,7 +125,7 @@ class Discriminator(nn.Module):
     def _build_layers(self):
         layers = []
         in_channels = self.in_shape[0]
-        
+
         ### build cnn layers
         for l_i, layer_config in enumerate(self.layers):
             if layer_config[0] == "conv":
@@ -119,6 +139,12 @@ class Discriminator(nn.Module):
                         padding=padding,
                     )
                 )
+            elif layer_config[0] == "maxpool":
+                layer_type, kernel_size, stride, padding = layer_config
+                layers.append(
+                    nn.MaxPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+                )
+                out_channels = in_channels
             elif layer_config[0] == "fc":
                 layer_type, out_channels = layer_config
                 layers.append(nn.Flatten())
@@ -126,14 +152,17 @@ class Discriminator(nn.Module):
             else:
                 raise ValueError(f"layer_type {layer_type} not recognized")
 
-            if l_i < len(self.layers) - 1:
+            if l_i < len(self.layers) - 1 and layer_type in ["fc", "conv"]:
                 ### add batch norm, activation, dropout
                 if self.batch_norm:
-                    layers.append(nn.BatchNorm2d(out_channels))
+                    if layer_type == "fc":
+                        layers.append(nn.BatchNorm1d(out_channels))
+                    else:
+                        layers.append(nn.BatchNorm2d(out_channels))
                 layers.append(self.act_fn())
                 if self.dropout > 0.0:
                     layers.append(nn.Dropout(self.dropout))
-            else:
+            elif l_i == len(self.layers) - 1:
                 ### add output activation
                 layers.append(self.out_act_fn())
 
@@ -148,27 +177,41 @@ class Discriminator(nn.Module):
 class GAN(nn.Module):
     def __init__(
         self,
-        gen_kwargs,
-        disc_kwargs,
-        gen_optim_kwargs={"lr": 1e-4, "betas": (0.5, 0.999)},
-        disc_optim_kwargs={"lr": 1e-4, "betas": (0.5, 0.999)},
+        G_kwargs,
+        D_kwargs,
+        G_optim_kwargs={"lr": 1e-4, "betas": (0.5, 0.999)},
+        D_optim_kwargs={"lr": 1e-4, "betas": (0.5, 0.999)},
     ):
         super().__init__()
-        self.gen_kwargs = gen_kwargs
-        self.disc_kwargs = disc_kwargs
-        self.gen_optim_kwargs = gen_optim_kwargs
-        self.disc_optim_kwargs = disc_optim_kwargs
+        self.G_kwargs = G_kwargs
+        self.D_kwargs = D_kwargs
+        self.G_optim_kwargs = G_optim_kwargs
+        self.D_optim_kwargs = D_optim_kwargs
 
         self._build_models()
         self._build_optimizers()
 
     def _build_models(self):
-        self.gen = Generator(**self.gen_kwargs)
-        self.disc = Discriminator(**self.disc_kwargs)
+        self.G = Generator(**self.G_kwargs)
+        self.D = Discriminator(**self.D_kwargs)
 
     def _build_optimizers(self):
-        self.gen_optim = torch.optim.Adam(self.gen.parameters(), **self.gen_optim_kwargs)
-        self.disc_optim = torch.optim.Adam(self.disc.parameters(), **self.disc_optim_kwargs)
+        self.G_optim = torch.optim.Adam(self.G.parameters(), **self.G_optim_kwargs)
+        self.D_optim = torch.optim.Adam(self.D.parameters(), **self.D_optim_kwargs)
+
+    def state_dict(self):
+        return {
+            "G": self.G.state_dict(),
+            "D": self.D.state_dict(),
+            "G_optim": self.G_optim.state_dict(),
+            "D_optim": self.D_optim.state_dict(),
+        }
+
+    def load_state_dict(self, state_dict):
+        self.G.load_state_dict(state_dict["G"])
+        self.D.load_state_dict(state_dict["D"])
+        self.G_optim.load_state_dict(state_dict["G_optim"])
+        self.D_optim.load_state_dict(state_dict["D_optim"])
 
     def forward(self, x):
-        return self.gen(x)
+        return self.G(x)
