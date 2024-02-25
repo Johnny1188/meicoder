@@ -1,5 +1,8 @@
 */__pycache__/
 __archive__
+*/wandb/
+*/.ipynb_checkpoints/
+*/.vscode/
 .env
 lgn
 csng.egg-info
