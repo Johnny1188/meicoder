@@ -1,9 +1,12 @@
 */__pycache__/
 __archive__
-*/wandb/
-*/.ipynb_checkpoints/
-*/.vscode/
+.archive
+wandb
+.ipynb_checkpoints
+.vscode
 .env
+tmp*
+
 lgn
 csng.egg-info
 Lurz_2020_code
