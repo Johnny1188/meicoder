@@ -199,13 +199,21 @@ class GAN(nn.Module):
         self.G_optim = torch.optim.Adam(self.G.parameters(), **self.G_optim_kwargs)
         self.D_optim = torch.optim.Adam(self.D.parameters(), **self.D_optim_kwargs)
 
-    def state_dict(self):
-        return {
+    def state_dict(self, destination=None, prefix=None, keep_vars=True):
+        state_dict = {
             "G": self.G.state_dict(),
             "D": self.D.state_dict(),
             "G_optim": self.G_optim.state_dict(),
             "D_optim": self.D_optim.state_dict(),
         }
+
+        if destination is not None:
+            for k, v in state_dict.items():
+                prefix = prefix if prefix is not None else ""
+                destination[prefix + k] = v
+            return destination
+
+        return state_dict
 
     def load_state_dict(self, state_dict):
         self.G.load_state_dict(state_dict["G"])

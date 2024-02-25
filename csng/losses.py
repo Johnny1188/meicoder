@@ -304,6 +304,9 @@ class SSIMLoss(torch.nn.Module):
         self.channel = channel
         self.spatial_dims = spatial_dims
         self.K = K
+        if not nonnegative_ssim and log_loss:
+            warnings.warn("Setting nonnegative_ssim to True as log_loss is set to True.")
+            nonnegative_ssim = True
         self.nonnegative_ssim = nonnegative_ssim
 
         self.ssim = SSIM(
