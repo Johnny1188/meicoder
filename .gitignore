@@ -6,6 +6,8 @@ wandb
 .vscode
 .env
 tmp*
+*.pickle
+*.log
 
 lgn
 csng.egg-info
