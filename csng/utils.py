@@ -9,14 +9,18 @@ def get_corr(x, y):
 
 
 def crop(x, win):
-    ### win: (x1, x2, y1, y2) or (slice(x1, x2), slice(y1, y2)
+    ### win: (x1, x2, y1, y2) or (slice(x1, x2), slice(y1, y2) or (height, width) of middle patch
     if win == None:
         return x
-    if isinstance(win[0], int):
+    if isinstance(win[0], int) and len(win) == 4: # (x1, x2, y1, y2)
         if x.shape[-2] == win[1] - win[0] and x.shape[-1] == win[3] - win[2]:
             return x
         return x[..., win[0]:win[1], win[2]:win[3]]
-    else:
+    elif isinstance(win[0], int) and len(win) == 2: # (height, width) of middle patch
+        if x.shape[-2] == win[0] and x.shape[-1] == win[1]:
+            return x
+        return x[..., (x.shape[-2] - win[0])//2:(x.shape[-2] + win[0])//2, (x.shape[-1] - win[1])//2:(x.shape[-1] + win[1])//2]
+    else: # (slice(x1, x2), slice(y1, y2))
         if x.shape[-2] == win[0].stop - win[0].start and x.shape[-1] == win[1].stop - win[1].start:
             return x
         return x[..., win[0], win[1]]
