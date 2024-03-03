@@ -9,13 +9,14 @@ from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+import torchvision
 
 
 from csng.utils import standardize, crop
 
 
 class Loss:
-    def __init__(self, model, config):
+    def __init__(self, config, model=None):
         self.model = model
         self.loss_fn = config["loss_fn"]() if type(config["loss_fn"]) == type else config["loss_fn"]
         self.l1_reg_mul = config["l1_reg_mul"]
@@ -58,14 +59,19 @@ class Loss:
 
 
 class MSELossWithCrop(torch.nn.Module):
-    def __init__(self, window=None):
+    def __init__(self, window=None, standardize=False):
         super().__init__()
         self.window = window # (x1, x2, y1, y2) or (slice, slice)
+        self.standardize = standardize
 
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
         if self.window is not None:
             pred = crop(pred, win=self.window)
             target = crop(target, win=self.window)
+
+        if self.standardize:
+            pred = standardize(pred)
+            target = standardize(target)
 
         return F.mse_loss(pred, target)
 
@@ -391,18 +397,87 @@ class SSIMLoss(torch.nn.Module):
         return loss
 
 
-class SSIMLossWithCrop(torch.nn.Module):
-    def __init__(self, window=None, **kwargs):
+class MS_SSIMLoss(torch.nn.Module):
+    r""" class for ms-ssim loss
+    Args:
+        data_range (float or int, optional): value range of input images. (usually 1.0 or 255)
+        size_average (bool, optional): if size_average=True, ssim of all images will be averaged as a scalar
+        win_size: (int, optional): the size of gauss kernel
+        win_sigma: (float, optional): sigma of normal distribution
+        channel: (int, optional): input channels (default: 3)
+        spatial_dims: (int, optional): spatial dims (default: 2)
+        weights (list, optional): weights for different levels
+        K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
+    """
+
+    def __init__(
+        self,
+        inp_normalized: bool = True,
+        inp_standardized: bool = False,
+        log_loss: bool = False,
+        window=None, # (x1, x2, y1, y2)
+        size_average: bool = True,
+        win_size: int = 11,
+        win_sigma: float = 1.5,
+        channel: int = 1,
+        spatial_dims: int = 2,
+        weights: Optional[List[float]] = None,
+        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
+    ) -> None:
+        assert (inp_normalized and not inp_standardized) or (
+            not inp_normalized and inp_standardized
+        ), "Input should be either normalized or standardized."
+
         super().__init__()
+        self.inp_normalized = inp_normalized
+        self.inp_standardized = inp_standardized
+        self.log_loss = log_loss
         self.window = window
-        self.ssim_loss = SSIMLoss(**kwargs)
+        self.size_average = size_average
+        self.win_size = win_size
+        self.win_sigma = win_sigma
+        self.channel = channel
+        self.spatial_dims = spatial_dims
+        self.weights = weights
+        self.K = K
+
+        self.ms_ssim = MS_SSIM(
+            data_range=1.0,
+            size_average=size_average,
+            win_size=win_size,
+            win_sigma=win_sigma,
+            channel=channel,
+            spatial_dims=spatial_dims,
+            weights=weights,
+            K=K,
+        )
 
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+        r""" function for computing ms-ssim loss
+        Args:
+            X (torch.Tensor): a batch of images, (N,C,[T,]H,W)
+            Y (torch.Tensor): a batch of images, (N,C,[T,]H,W)
+        Returns:
+            torch.Tensor: ms-ssim results
+        """
+
+        ### loss wrt window
         if self.window is not None:
             pred = crop(pred, win=self.window)
             target = crop(target, win=self.window)
 
-        return self.ssim_loss(pred, target)
+        if self.inp_normalized:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        ms_ssim_val = self.ms_ssim(pred, target)
+
+        if self.log_loss:
+            loss = -torch.log(ms_ssim_val + 1e-6)
+        else:
+            loss = 1 - ms_ssim_val
+
+        return loss
 
 
 class SSIM(torch.nn.Module):
@@ -489,3 +564,74 @@ class MS_SSIM(torch.nn.Module):
             weights=self.weights,
             K=self.K,
         )
+
+
+class PerceptualLoss(torch.nn.Module):
+    def __init__(
+        self,
+        inp_standardized: bool = False,
+        window=None, # (x1, x2, y1, y2)
+        resize: bool = True,
+        device: str = "cuda",
+    ):
+        super().__init__()
+        self.inp_standardized = inp_standardized
+        self.window = window
+        self.vgg_loss = VGGPerceptualLoss(resize=resize).to(device)
+
+    def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+        if self.window is not None:
+            pred = crop(pred, win=self.window)
+            target = crop(target, win=self.window)
+
+        if not self.inp_standardized:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        return self.vgg_loss(pred, target)
+
+
+class VGGPerceptualLoss(torch.nn.Module):
+    """ Source: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
+    def __init__(self, resize=True):
+        super(VGGPerceptualLoss, self).__init__()
+        blocks = []
+        blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[:4].eval())
+        blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[4:9].eval())
+        blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[9:16].eval())
+        blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[16:23].eval())
+        for bl in blocks:
+            for p in bl.parameters():
+                p.requires_grad = False
+        self.blocks = torch.nn.ModuleList(blocks)
+        self.transform = torch.nn.functional.interpolate
+        self.resize = resize
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+
+    def forward(self, inp, target, feature_layers=[0, 1, 2, 3], style_layers=[]):
+        assert inp.min() >= 0.0 and inp.max() <= 1.0, "Input should be normalized to [0, 1] range."
+        
+        if inp.shape[1] != 3:
+            inp = inp.repeat(1, 3, 1, 1)
+            target = target.repeat(1, 3, 1, 1)
+        inp = (inp - self.mean) / self.std
+        target = (target - self.mean) / self.std
+        if self.resize:
+            inp = self.transform(inp, mode="bilinear", size=(224, 224), align_corners=False)
+            target = self.transform(target, mode="bilinear", size=(224, 224), align_corners=False)
+        loss = 0.0
+        x = inp
+        y = target
+        for i, block in enumerate(self.blocks):
+            x = block(x)
+            y = block(y)
+            if i in feature_layers:
+                loss += torch.nn.functional.l1_loss(x, y)
+            if i in style_layers:
+                act_x = x.reshape(x.shape[0], x.shape[1], -1)
+                act_y = y.reshape(y.shape[0], y.shape[1], -1)
+                gram_x = act_x @ act_x.permute(0, 2, 1)
+                gram_y = act_y @ act_y.permute(0, 2, 1)
+                loss += torch.nn.functional.l1_loss(gram_x, gram_y)
+        return loss

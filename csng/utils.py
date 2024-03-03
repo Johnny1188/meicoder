@@ -207,8 +207,10 @@ class Normalize:
 def plot_losses(history, save_to=None, epoch=None):
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
-    ax.plot(history["train_loss"], label="train")
-    ax.plot(history["val_loss"], label="val")
+    if "train_loss" in history:
+        ax.plot(history["train_loss"], label="train")
+    if "val_loss" in history:
+        ax.plot(history["val_loss"], label="val")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
     ax.legend()
