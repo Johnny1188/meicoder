@@ -1,5 +1,6 @@
 import os
 import pickle
+from copy import deepcopy
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -7,6 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 import torchvision
 from nnfabrik.builder import get_data
 from collections import namedtuple
+import csng
 
 # from csng.data import MixedBatchLoader
 
@@ -76,6 +78,7 @@ def get_mouse_v1_data(config):
 
 
 def append_syn_dataloaders(dataloaders, config):
+    DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
     for data_key in config["data_keys"]:
         ### divide by the per neuron std if the std is greater than 1% of the mean std (to avoid division by 0)
         resp_std = torch.from_numpy(np.load(os.path.join(DATA_PATH, "synthetic_data_mouse_v1_encoder", data_key, f"responses_std_original.npy"))).float()
@@ -115,6 +118,60 @@ def append_syn_dataloaders(dataloaders, config):
             )
     
     return dataloaders
+
+
+def append_data_aug_dataloaders(dataloaders, config):
+    for data_transform in config["data_transforms"]:
+        for data_part in config["append_data_parts"]:
+            ### copy all base dataloaders
+            curr_dl = dataloaders["mouse_v1"][data_part]
+            new_dls = deepcopy(curr_dl.dataloaders)
+            new_neuron_coords = deepcopy(curr_dl.neuron_coords)
+            new_data_keys = deepcopy(curr_dl.data_keys)
+            assert len(new_dls) == len(new_data_keys)
+
+            ### wrap base dataloaders with dataloaders applying the transforms
+            for dl, data_key in zip(new_dls, new_data_keys):
+                new_dl = DataloaderWrapper(
+                    dataloader=dl,
+                    transform=data_transform,
+                )
+                curr_dl.add_dataloader(
+                    new_dl,
+                    neuron_coords={data_key: new_neuron_coords[data_key]},
+                    data_key=data_key,
+                )
+
+    return dataloaders
+
+
+class DataloaderWrapper:
+    def __init__(self, dataloader, transform):
+        self.dataloader = dataloader
+        self.transform = transform
+
+    @property
+    def dataset(self):
+        return self.dataloader.dataset
+
+    def __iter__(self):
+        for data in self.dataloader:
+            yield self.transform(data)
+
+    def __len__(self):
+        return len(self.dataloader)
+
+
+class RespGaussianNoise:
+    def __init__(self, noise_std):
+        self.noise_std = noise_std
+
+    def __call__(self, data):
+        return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
+            data.images,
+            data.responses + torch.randn_like(data.responses) * self.noise_std,
+            data.pupil_center,
+        )
 
 
 class MixedBatchLoader:
@@ -231,19 +288,22 @@ class MixedBatchLoader:
         Returns:
             tuple: A tuple of tensors containing the stimulus and response data for the next batch.
         """
-        to_return = dict()
+        to_return = []
         while True:
             dl_idx = self.dataloaders_left[self.batch_idx % self.n_dataloaders]
             try:
                 datapoint = next(self.dataloader_iters[dl_idx]["dl"])
                 stim, resp = datapoint.images, datapoint.responses
-                to_return[self.dataloader_iters[dl_idx]["data_key"]] = [stim.to(self.device), resp.to(self.device)]
+                # to_return[self.dataloader_iters[dl_idx]["data_key"]] = [stim.to(self.device), resp.to(self.device)]
+                to_return.append([self.dataloader_iters[dl_idx]["data_key"], stim.to(self.device), resp.to(self.device)])
                 if self.return_neuron_coords:
                     _neuron_coords = self.neuron_coords[self.dataloader_iters[dl_idx]["data_key"]]
-                    to_return[self.dataloader_iters[dl_idx]["data_key"]].append(_neuron_coords.to(self.device))
+                    # to_return[self.dataloader_iters[dl_idx]["data_key"]].append(_neuron_coords.to(self.device))
+                    to_return[-1].append(_neuron_coords.to(self.device))
                 if self.return_pupil_center:
                     _pupil_center = datapoint.pupil_center
-                    to_return[self.dataloader_iters[dl_idx]["data_key"]].append(_pupil_center.to(self.device))
+                    # to_return[self.dataloader_iters[dl_idx]["data_key"]].append(_pupil_center.to(self.device))
+                    to_return[-1].append(_pupil_center.to(self.device))
                 break
             except StopIteration:
                 ### no more data in this dataloader
@@ -265,18 +325,17 @@ class MixedBatchLoader:
             tuple: A tuple of tensors containing the stimulus and response data for the next batch.
         """
         empty_dataloader_idxs = set()
-        to_return = dict()
+        to_return = []
         for dl_idx, dataloader_iter in self.dataloader_iters.items():
             try:
                 datapoint = next(dataloader_iter["dl"])
-                _stim, _resp = datapoint.images, datapoint.responses
-                to_return[dataloader_iter["data_key"]] = [_stim.to(self.device), _resp.to(self.device)]
+                to_return.append([dataloader_iter["data_key"], datapoint.images.to(self.device), datapoint.responses.to(self.device)])
                 if self.return_neuron_coords:
-                    _neuron_coords = self.neuron_coords[dataloader_iter["data_key"]]
-                    to_return[dataloader_iter["data_key"]].append(_neuron_coords.to(self.device))
+                    # to_return[dataloader_iter["data_key"]].append(_neuron_coords.to(self.device))
+                    to_return[-1].append(self.neuron_coords[dataloader_iter["data_key"]].to(self.device))
                 if self.return_pupil_center:
-                    _pupil_center = datapoint.pupil_center
-                    to_return[dataloader_iter["data_key"]].append(_pupil_center.to(self.device))
+                    # to_return[dataloader_iter["data_key"]].append(_pupil_center.to(self.device))
+                    to_return[-1].append(datapoint.pupil_center.to(self.device))
             except StopIteration:
                 ### no more data in this dataloader
                 if self.mixing_strategy == "parallel_min":
