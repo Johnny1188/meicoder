@@ -87,7 +87,9 @@ def append_syn_dataloaders(dataloaders, config):
         idx = resp_std <= thres
         div_by[idx] = thres
 
-        data_key_to_add = data_key if config["data_key_prefix"] is None else f"{config['data_key_prefix']}_{data_key}"
+        data_key_to_add = data_key \
+            if (config["data_key_prefix"] is None or config["data_key_prefix"] == "") \
+            else f"{config['data_key_prefix']}_{data_key}"
         neuron_coords = {
             data_key_to_add: torch.from_numpy(np.load(
                 os.path.join(DATA_PATH, "synthetic_data_mouse_v1_encoder", data_key, f"neuron_coords.npy")
@@ -99,10 +101,6 @@ def append_syn_dataloaders(dataloaders, config):
                 PerSampleStoredDataset(
                     dataset_dir=os.path.join(DATA_PATH, "synthetic_data_mouse_v1_encoder", data_key, data_part),
                     stim_transform=lambda x: x,
-                    # resp_transform=csng.utils.Normalize(
-                    #     mean=torch.from_numpy(np.load(os.path.join(DATA_PATH, "synthetic_data_mouse_v1_encoder", target_data_key, f"responses_mean_original.npy"))).float(),
-                    #     std=torch.from_numpy(np.load(os.path.join(DATA_PATH, "synthetic_data_mouse_v1_encoder", target_data_key, f"responses_std_original.npy"))).float()
-                    # ),
                     resp_transform=csng.utils.Normalize(
                         mean=0,
                         std=div_by,
@@ -129,6 +127,12 @@ def append_data_aug_dataloaders(dataloaders, config):
             new_neuron_coords = deepcopy(curr_dl.neuron_coords)
             new_data_keys = deepcopy(curr_dl.data_keys)
             assert len(new_dls) == len(new_data_keys)
+
+            if config["force_same_order"]:
+                ### set the same generator state for samplers in the old and new dataloaders
+                for old_dl, new_dl in zip(curr_dl.dataloaders, new_dls):
+                    old_dl.sampler.generator = torch.Generator().manual_seed(config["seed"])
+                    new_dl.sampler.generator = torch.Generator().set_state(old_dl.sampler.generator.get_state())
 
             ### wrap base dataloaders with dataloaders applying the transforms
             for dl, data_key in zip(new_dls, new_data_keys):
@@ -213,7 +217,7 @@ class MixedBatchLoader:
         return_data_key=True,
         return_pupil_center=True,
         return_neuron_coords=True,
-        device="cpu"
+        device="cpu",
     ):
         assert mixing_strategy in ["sequential", "parallel_min", "parallel_max"], \
             f"mixing_strategy must be one of ['sequential', 'parallel_min', 'parallel_max'], but got {mixing_strategy}"
@@ -268,7 +272,12 @@ class MixedBatchLoader:
                 self.data_keys.append(data_key)
         self.dataloaders_left.append(dl_idx)
         self.n_dataloaders += 1
-        self.n_batches += len(dataloader)
+        if self.mixing_strategy == "sequential":
+            self.n_batches += len(dataloader)
+        elif self.mixing_strategy == "parallel_max":
+            self.n_batches = max(self.n_batches, len(dataloader))
+        elif self.mixing_strategy == "parallel_min":
+            self.n_batches = min(self.n_batches, len(dataloader))
         if hasattr(dataloader, "dataset"):
             self.datasets.append(dataloader.dataset)
         else:
