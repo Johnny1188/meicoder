@@ -471,7 +471,7 @@ class L2O_Decoder(nn.Module):
 
             ### compute current reconstruction loss
             if stim is not None:
-                curr_loss = self.stim_loss_fn(x_hat, stim, data_key=data_key)
+                curr_loss = self.stim_loss_fn(x_hat, stim, data_key=data_key, phase="train" if train else "test")
                 unroll_loss += curr_loss
             else:
                 curr_loss = None
