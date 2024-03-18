@@ -66,9 +66,15 @@ class MultiReadIn(nn.Module):
         for readin_data_key, readin in self.readins.items():
             if "data_key" in inp and inp["data_key"] != readin_data_key:
                 continue
+            encoded = inp["resp"]
             for l in readin:
-                out["encoded"] = l(inp["resp"], neuron_coords=inp["neuron_coords"] if "neuron_coords" in inp else None,
-                                   pupil_center=inp["pupil_center"] if "pupil_center" in inp else None)
+                if isinstance(l, ReadIn):
+                    encoded = l(encoded, neuron_coords=inp["neuron_coords"] if "neuron_coords" in inp else None,
+                                pupil_center=inp["pupil_center"] if "pupil_center" in inp else None)
+                else:
+                    encoded = l(encoded)
+            out["encoded"] = encoded
+            for l in readin:
                 if hasattr(l, "set_additional_loss"):
                     l.set_additional_loss(inp, out)
 
@@ -82,16 +88,21 @@ class MultiReadIn(nn.Module):
                     loss += l.get_additional_loss()
         return loss
 
-    def forward(self, x, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None):
+    def forward(self, x, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, additional_core_channels=None):
         assert data_key is not None or len(self.readins) == 0, \
             "data_key must be provided if there are multiple readin layers"
 
         ### run readin layer
         if data_key is not None:
             for l in self.readins[data_key]:
-                x = l(x, neuron_coords=neuron_coords, pupil_center=pupil_center)
+                if isinstance(l, ReadIn):
+                    x = l(x, neuron_coords=neuron_coords, pupil_center=pupil_center)
+                else:
+                    x = l(x)
 
         ### run core decoder
+        if additional_core_channels is not None:
+            x = torch.cat([x, additional_core_channels], dim=1)
         x = self.core(x) if additional_core_inp is None else self.core(x, **additional_core_inp)
         if self.crop_stim_fn:
             x = self.crop_stim_fn(x)
@@ -217,7 +228,7 @@ class AutoEncoderReadIn(ReadIn):
         return acts
 
 
-class LocalizedFCReadIn(ReadIn): # TODO: test
+class LocalizedFCReadIn(ReadIn):
     """ Bins the responses (optionally by their coordinates) and applies a FC layer to each bin. """
     def __init__(
         self,
@@ -525,7 +536,7 @@ class ConvReadIn(ReadIn):
         learn_grid=False,
         grid_l1_reg=0.0,
         grid_net_config={
-            "in_channels": 4, # x, y, z, resp
+            "in_channels": 3, # x, y, resp
             "layers_config": [("fc", 32), ("fc", 64), ("fc", 16*9)],
             "act_fn": nn.LeakyReLU,
             "out_act_fn": nn.Identity,
@@ -537,6 +548,7 @@ class ConvReadIn(ReadIn):
         gauss_blur_sigma="fixed",
         gauss_blur_sigma_init=1.5,
         neuron_emb_dim=None, # dim of learned neuron embeddings (None if not used)
+        out_channels=None, # set manually
     ):
         super().__init__()
         
@@ -574,7 +586,7 @@ class ConvReadIn(ReadIn):
                 nn.BatchNorm2d(pointwise_conv_config["out_channels"]) if pointwise_conv_config.get("batch_norm", False) else nn.Identity(),
                 pointwise_conv_config.get("act_fn", nn.ReLU)(),
             )
-        self.out_channels = pointwise_conv_config["out_channels"]
+        self.out_channels = pointwise_conv_config["out_channels"] if out_channels is None else out_channels
 
         ### grid net
         self.learn_grid = learn_grid
@@ -593,12 +605,13 @@ class ConvReadIn(ReadIn):
         self.gauss_blur_kernel_size = gauss_blur_kernel_size
         self.gauss_blur_sigma_type = gauss_blur_sigma
         self.gauss_blur_sigma_init = gauss_blur_sigma_init
-        if gauss_blur_sigma == "single":
-            self.gauss_blur_sigma = nn.Parameter(torch.tensor(float(gauss_blur_sigma_init)))
-        elif gauss_blur_sigma == "per_neuron":
-            self.gauss_blur_sigma = nn.Parameter(torch.ones(pointwise_conv_config["in_channels"]) * gauss_blur_sigma_init)
-        else:
-            self.gauss_blur_sigma = gauss_blur_sigma_init
+        if gauss_blur:
+            if gauss_blur_sigma == "single":
+                self.gauss_blur_sigma = nn.Parameter(torch.tensor(float(gauss_blur_sigma_init)))
+            elif gauss_blur_sigma == "per_neuron":
+                self.gauss_blur_sigma = nn.Parameter(torch.ones(pointwise_conv_config["in_channels"]) * gauss_blur_sigma_init)
+            else:
+                self.gauss_blur_sigma = gauss_blur_sigma_init
 
         ### learned neuron embeddings
         assert not neuron_emb_dim or learn_grid, "neuron_emb_dim can be used only if learn_grid=True"
@@ -715,7 +728,6 @@ class ConvReadIn(ReadIn):
         B, n_neurons = x.shape
 
         ### prepare neuron_coords
-        n_coords = neuron_coords.size(-1)
         if neuron_coords.ndim == 2:
             neuron_coords = neuron_coords.unsqueeze(0).repeat(B, 1, 1) # (B, n_neurons, n_coords)
         if self.shift_coords:
@@ -723,8 +735,14 @@ class ConvReadIn(ReadIn):
             delta = self.shifter_net(pupil_center) # (B, 2)
             neuron_coords[:, torch.arange(n_neurons), :2] += delta.unsqueeze(1)
 
+
         ### construct positioned responses tensor (B, n_neurons, H, W) based on neuron coords
         if self.learn_grid:
+            ### drop the z-coordinate if it's not used
+            if self.grid_net_config["in_channels"] < 4:
+                neuron_coords = neuron_coords[..., :2]
+            
+            ### construct grid net input
             if self.neuron_emb_dim:
                 neuron_embeds = self.neuron_embed(torch.arange(n_neurons, device=x.device))
                 neuron_embeds = neuron_embeds.unsqueeze(0).repeat(B, 1, 1)
@@ -733,15 +751,15 @@ class ConvReadIn(ReadIn):
                     neuron_embeds,
                     torch.log10(x.clamp_min(1e-3)).unsqueeze(-1)
                 ], dim=-1) # (B, n_neurons, n_coords + n_neuron_embed_dim + 1)
-                # grid_net_inp = grid_net_inp.view(B * n_neurons, n_coords + self.neuron_emb_dim + 1)              
                 grid_net_inp = grid_net_inp.flatten(0, 1) # (B * n_neurons, n_coords + self.neuron_emb_dim + 1)
             else:
                 grid_net_inp = torch.cat([
                     neuron_coords,
                     torch.log10(x.clamp_min(1e-3)).unsqueeze(-1)
                 ], dim=-1) # (B, n_neurons, n_coords + 1)
-                # grid_net_inp = grid_net_inp.view(B * n_neurons, n_coords + 1)
                 grid_net_inp = grid_net_inp.flatten(0, 1) # (B * n_neurons, n_coords + 1)
+
+            ### run grid net
             pos_x = self.grid_net(grid_net_inp) # (B * n_neurons, H * W)
             pos_x = pos_x.view(B, n_neurons, -1).view(B, n_neurons, self.H, self.W)
             self.pos_x = pos_x if self.grid_l1_reg > 0 else None

@@ -7,6 +7,7 @@ import warnings
 from typing import List, Optional, Tuple, Union
 
 import torch
+from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 import torchvision
@@ -19,9 +20,9 @@ class Loss:
     def __init__(self, config, model=None):
         self.model = model
         self.loss_fn = config["loss_fn"]() if type(config["loss_fn"]) == type else config["loss_fn"]
-        self.l1_reg_mul = config["l1_reg_mul"]
-        self.l2_reg_mul = config["l2_reg_mul"]
-        self.con_reg_mul = config["con_reg_mul"]
+        self.l1_reg_mul = config.get("l1_reg_mul", 0.)
+        self.l2_reg_mul = config.get("l2_reg_mul", 0.)
+        self.con_reg_mul = config.get("con_reg_mul", 0.)
         if self.con_reg_mul > 0.:
             assert "encoder" in config, "Encoder model is needed for contrastive regularization"
             assert "con_reg_loss_fn" in config, "Contrastive regularization loss function is needed"
@@ -31,12 +32,24 @@ class Loss:
             self.con_reg_stim_loss_fn = config["con_reg_loss_fn"]() if type(config["con_reg_loss_fn"]) == type else config["con_reg_loss_fn"]
 
     def _con_reg_loss_fn(self, stim_pred, stim, data_key, neuron_coords=None, pupil_center=None, additional_core_inp=None):
-        enc_resp = self.encoder(stim, data_key=data_key).detach()
+        if hasattr(self.encoder, "shifter") and self.encoder.shifter is not None:
+            enc_resp = self.encoder(stim, data_key=data_key, pupil_center=pupil_center).detach()
+        else:
+            enc_resp = self.encoder(stim, data_key=data_key).detach()
         stim_pred_from_enc_resp = self.model(enc_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
         return self.con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
 
     def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
-        loss = self.loss_fn(stim_pred, stim)
+        if phase == "val":
+            if hasattr(self.loss_fn, "reduction"):
+                before_red = self.loss_fn.reduction
+                self.loss_fn.reduction = "none"
+                loss = self.loss_fn(stim_pred, stim).sum(0).mean()
+                self.loss_fn.reduction = before_red
+            else:
+                loss = sum(self.loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:]) for i in range(stim_pred.shape[0]))
+        else:
+            loss = self.loss_fn(stim_pred, stim)
 
         ### L1 regularization
         if self.l1_reg_mul != 0 and phase == "train":
@@ -56,6 +69,30 @@ class Loss:
             loss += self.con_reg_mul * con_reg_loss
 
         return loss
+
+
+class CroppedLoss(torch.nn.Module):
+    def __init__(self, loss_fn, window=None, normalize=False, standardize=False):
+        super().__init__()
+        self.loss_fn = loss_fn
+        self.window = window
+        self.normalize = normalize
+        self.standardize = standardize
+
+    def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+        if self.window is not None:
+            pred = crop(pred, win=self.window)
+            target = crop(target, win=self.window)
+
+        if self.normalize:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        if self.standardize:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        return self.loss_fn(pred, target)
 
 
 class MSELossWithCrop(torch.nn.Module):
@@ -330,13 +367,14 @@ class SSIMLoss(torch.nn.Module):
         inp_standardized: bool = False,
         log_loss: bool = False,
         window=None, # (x1, x2, y1, y2)
-        size_average: bool = True,
+        size_average: bool = False,
         win_size: int = 11,
         win_sigma: float = 1.5,
         channel: int = 1,
         spatial_dims: int = 2,
         K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
         nonnegative_ssim: bool = False,
+        reduction: str = "mean",
     ) -> None:
         assert (inp_normalized and not inp_standardized) or (
             not inp_normalized and inp_standardized
@@ -353,9 +391,10 @@ class SSIMLoss(torch.nn.Module):
         self.channel = channel
         self.spatial_dims = spatial_dims
         self.K = K
-        if not nonnegative_ssim and log_loss:
-            print("[WARNING] Setting nonnegative_ssim to True as log_loss is set to True.")
-            nonnegative_ssim = True
+        self.reduction = reduction
+        # if not nonnegative_ssim and log_loss:
+        #     print("[WARNING] Setting nonnegative_ssim to True as log_loss is set to True.")
+        #     nonnegative_ssim = True
         self.nonnegative_ssim = nonnegative_ssim
 
         self.ssim = SSIM(
@@ -387,12 +426,121 @@ class SSIMLoss(torch.nn.Module):
             pred = standardize(pred)
             target = standardize(target)
 
-        ssim_val = self.ssim(pred, target)
+        ssim_val = self.ssim(pred, target) # (B,)
+
+        if not self.nonnegative_ssim:
+            # ssim value is in range [-1, 1] - shift to [0, 1]
+            ssim_val = (ssim_val + 1) / 2
 
         if self.log_loss:
             loss = -torch.log(ssim_val + 1e-6)
         else:
-            loss = 1 - ssim_val
+            loss = (1 - ssim_val)
+
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        elif self.reduction == "none":
+            pass
+
+        return loss
+
+
+class MultiSSIMLoss(torch.nn.Module):
+    """ Multi-SSIM Loss: combines SSIM losses with different hyperparameters. """
+    def __init__(
+        self,
+        inp_normalized: bool = True,
+        inp_standardized: bool = False,
+        log_loss: bool = False,
+        window=None, # (x1, x2, y1, y2)
+        size_average: bool = False,
+        win_sizes: List[int] = [5, 7, 9, 11, 13],
+        win_sigmas: List[float] = [0.8, 1.2, 1.5, 1.8, 2.0],
+        channel: int = 1,
+        spatial_dims: int = 2,
+        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
+        nonnegative_ssim: bool = False,
+        reduction: str = "mean",
+        weights: Optional[List[float]] = None,
+    ) -> None:
+        assert (inp_normalized and not inp_standardized) or (
+            not inp_normalized and inp_standardized
+        ), "Input should be either normalized or standardized."
+
+        super().__init__()
+        self.inp_normalized = inp_normalized
+        self.inp_standardized = inp_standardized
+        self.log_loss = log_loss
+        self.window = window
+        self.size_average = size_average
+        self.win_sizes = win_sizes
+        self.win_sigmas = win_sigmas
+        self.channel = channel
+        self.spatial_dims = spatial_dims
+        self.K = K
+        self.reduction = reduction
+        self.weights = weights
+        self.nonnegative_ssim = nonnegative_ssim
+
+        ### create all combinations of ssim losses
+        ssim_combinations = [(ws, sig) for ws in win_sizes for sig in win_sigmas]
+        self.ssim_losses = dict()
+        for w_cfg in ssim_combinations:
+            self.ssim_losses[w_cfg] = SSIM(
+                data_range=1.0,
+                size_average=size_average,
+                win_size=w_cfg[0],
+                win_sigma=w_cfg[1],
+                channel=channel,
+                spatial_dims=spatial_dims,
+                K=K,
+                nonnegative_ssim=nonnegative_ssim,
+            )
+
+
+    def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+        r""" function for computing ssim loss
+        Args:
+            X (torch.Tensor): a batch of images, (N,C,[T,]H,W)
+            Y (torch.Tensor): a batch of images, (N,C,[T,]H,W)
+        Returns:
+            torch.Tensor: ssim results
+        """
+
+        ### loss wrt window
+        if self.window is not None:
+            pred = crop(pred, win=self.window)
+            target = crop(target, win=self.window)
+
+        if self.inp_normalized:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        ### compute ssim losses
+        ssim_vals = []
+        for ssim_loss in self.ssim_losses.values():
+            ssim_vals.append(ssim_loss(pred, target))
+
+        ### combine ssim losses
+        ssim_vals = torch.stack(ssim_vals, dim=1) # (B, N)
+        ssim_val = ssim_vals.mean(dim=1) # (B,)
+        
+        if not self.nonnegative_ssim:
+            # ssim value is in range [-1, 1] - shift to [0, 1]
+            ssim_val = (ssim_val + 1) / 2
+        if self.log_loss:
+            loss = -torch.log(ssim_val + 1e-6)
+        else:
+            loss = (1 - ssim_val)
+
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        elif self.reduction == "none":
+            pass
 
         return loss
 
@@ -483,11 +631,11 @@ class MS_SSIMLoss(torch.nn.Module):
 class SSIM(torch.nn.Module):
     def __init__(
         self,
-        data_range: float = 255,
+        data_range: float = 1,
         size_average: bool = True,
         win_size: int = 11,
         win_sigma: float = 1.5,
-        channel: int = 3,
+        channel: int = 1,
         spatial_dims: int = 2,
         K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
         nonnegative_ssim: bool = False,
@@ -566,6 +714,7 @@ class MS_SSIM(torch.nn.Module):
         )
 
 
+### Perceptual Loss
 class PerceptualLoss(torch.nn.Module):
     def __init__(
         self,
@@ -635,3 +784,49 @@ class VGGPerceptualLoss(torch.nn.Module):
                 gram_y = act_y @ act_y.permute(0, 2, 1)
                 loss += torch.nn.functional.l1_loss(gram_x, gram_y)
         return loss
+
+
+class EncoderPerceptualLoss(torch.nn.Module):
+    def __init__(
+        self,
+        encoder,
+        feature_loss_fn=nn.L1Loss(),
+        average_over_layers=True,
+        device="cuda",
+    ):
+        super().__init__()
+        self.encoder = encoder.to(device)
+        self.feature_loss_fn = feature_loss_fn
+        self.average_over_layers = average_over_layers
+
+    def forward(self, pred, target):
+        ### from neuralpredictors.layers.cores.Stacked2dCore.forward
+
+        ### collect features for pred
+        pred_ret = []
+        for l, feat in enumerate(self.encoder.core.features):
+            do_skip = l >= 1 and self.encoder.core.skip > 1
+            pred = feat(pred if not do_skip else torch.cat(pred_ret[-min(self.encoder.core.skip, l) :], dim=1))
+            pred_ret.append(pred)
+
+        ### collect features for target
+        target_ret = []
+        for l, feat in enumerate(self.encoder.core.features):
+            do_skip = l >= 1 and self.encoder.core.skip > 1
+            target = feat(target if not do_skip else torch.cat(target_ret[-min(self.encoder.core.skip, l) :], dim=1))
+            target_ret.append(target)
+        
+        ### compute feature loss
+        loss = 0.0
+        for l in range(len(pred_ret)):
+            loss += self.feature_loss_fn(pred_ret[l], target_ret[l])
+
+        if self.average_over_layers:
+            loss = loss / len(pred_ret)
+
+        return loss
+
+
+### class FocalFrequencyLoss(torch.nn.Module):
+### from focal_frequency_loss import FocalFrequencyLoss as FFL
+### https://github.com/EndlessSora/focal-frequency-loss

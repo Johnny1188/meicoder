@@ -46,10 +46,10 @@ def normalize(x, dim=(1,2,3), mean=None, std=None, inplace=False):
 
     if inplace:
         x -= x_mean
-        x /= x_std
+        x /= (x_std + 1e-8)
         return x
     else:
-        return (x - x_mean) / x_std
+        return (x - x_mean) / (x_std + 1e-8)
 
 def get_mean_and_std(dataset=None, dataloader=None, verbose=False):
     """ Compute the mean and std value of dataset. """
@@ -196,12 +196,23 @@ class RunningStats:
 class Normalize:
     """ Class to normalize data. """
 
-    def __init__(self, mean, std):
+    def __init__(self, mean, std, center_data=True, clip_min=None, clip_max=None):
         self.mean = mean
         self.std = std
+        self.center_data = center_data
+        self.clip_min = clip_min
+        self.clip_max = clip_max
 
     def __call__(self, values):
-        return (values - self.mean) / self.std
+        if self.center_data:
+            out = (values - self.mean) / (self.std + 1e-8)
+        else:
+            out = ((values - self.mean) / (self.std + 1e-8)) + self.mean
+
+        if self.clip_min is not None or self.clip_max is not None:
+            out = np.clip(out, self.clip_min, self.clip_max)
+
+        return out
 
 
 def plot_losses(history, save_to=None, epoch=None):
