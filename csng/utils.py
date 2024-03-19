@@ -216,7 +216,7 @@ class Normalize:
         return out
 
 
-def plot_losses(history, save_to=None, epoch=None):
+def plot_losses(history, show=True, save_to=None, epoch=None):
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
     if "train_loss" in history:
@@ -229,8 +229,9 @@ def plot_losses(history, save_to=None, epoch=None):
 
     if save_to:
         fig.savefig(save_to)
-    
-    plt.show()
+
+    if show:
+        plt.show()
 
 
 def build_layers(
