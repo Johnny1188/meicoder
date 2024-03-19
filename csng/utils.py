@@ -90,7 +90,7 @@ def get_mean_and_std(dataset=None, dataloader=None, verbose=False):
         }
     }
 
-def plot_comparison(target, pred, target_title="Target", pred_title="Reconstructed", n_cols=8, save_to=None):
+def plot_comparison(target, pred, target_title="Target", pred_title="Reconstructed", n_cols=8, show=True, save_to=None):
     n_imgs = (target.shape[0], pred.shape[0])
     n_rows_per_group = (1 + (n_imgs[0]-1)//n_cols, 1 + (n_imgs[1]-1)//n_cols)
 
@@ -113,7 +113,8 @@ def plot_comparison(target, pred, target_title="Target", pred_title="Reconstruct
             ax.axis("off")
             if i == 0:
                 ax.set_title(pred_title, fontsize=16, fontweight="bold", loc="left")
-    plt.show()
+    if show:
+        plt.show()
 
     if save_to is not None:
         fig.savefig(save_to, bbox_inches="tight", pad_inches=0.1)
