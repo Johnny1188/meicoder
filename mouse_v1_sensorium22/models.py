@@ -13,49 +13,6 @@ from csng.CNN_Decoder import CNN_Decoder
 from csng.utils import build_layers
 
 
-class Loss:
-    def __init__(self, model, config):
-        self.model = model
-        self.loss_fn = config["loss_fn"]() if type(config["loss_fn"]) == type else config["loss_fn"]
-        self.l1_reg_mul = config["l1_reg_mul"]
-        self.l2_reg_mul = config["l2_reg_mul"]
-        self.con_reg_mul = config["con_reg_mul"]
-        if self.con_reg_mul > 0.:
-            assert "encoder" in config, "Encoder model is needed for contrastive regularization"
-            assert "con_reg_loss_fn" in config, "Contrastive regularization loss function is needed"
-            self.encoder = config["encoder"].eval()
-            self.encoder.training = False
-            self.encoder.requires_grad_(False)
-            self.con_reg_stim_loss_fn = config["con_reg_loss_fn"]() if type(config["con_reg_loss_fn"]) == type else config["con_reg_loss_fn"]
-
-    def _con_reg_loss_fn(self, stim_pred, stim, data_key, neuron_coords=None, pupil_center=None, additional_core_inp=None):
-        enc_resp = self.encoder(stim, data_key=data_key).detach()
-        stim_pred_from_enc_resp = self.model(enc_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
-        return self.con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
-
-    def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
-        loss = self.loss_fn(stim_pred, stim)
-
-        ### L1 regularization
-        if self.l1_reg_mul != 0 and phase == "train":
-            l1_reg = sum(p.abs().sum() for n, p in self.model.named_parameters() 
-                         if p.requires_grad and "weight" in n and (data_key is None or data_key in n))
-            loss += self.l1_reg_mul * l1_reg
-
-        ### L2 regularization
-        if self.l2_reg_mul != 0 and phase == "train":
-            l2_reg = sum(p.pow(2.0).sum() for n, p in self.model.named_parameters() 
-                         if p.requires_grad and "weight" in n and (data_key is None or data_key in n))
-            loss += self.l2_reg_mul * l2_reg
-
-        ### contrastive regularization
-        if self.con_reg_mul > 0. and phase == "train":
-            con_reg_loss = self._con_reg_loss_fn(stim_pred, stim, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
-            loss += self.con_reg_mul * con_reg_loss
-
-        return loss
-
-
 class MultiReadIn(nn.Module):
     def __init__(self, readins_config, core_cls, core_config, crop_stim_fn=None):
         super().__init__()
@@ -896,6 +853,50 @@ class AttentionReadIn(ReadIn):
         return x
 
 
+
+
+
+class Loss:
+    def __init__(self, model, config):
+        self.model = model
+        self.loss_fn = config["loss_fn"]() if type(config["loss_fn"]) == type else config["loss_fn"]
+        self.l1_reg_mul = config["l1_reg_mul"]
+        self.l2_reg_mul = config["l2_reg_mul"]
+        self.con_reg_mul = config["con_reg_mul"]
+        if self.con_reg_mul > 0.:
+            assert "encoder" in config, "Encoder model is needed for contrastive regularization"
+            assert "con_reg_loss_fn" in config, "Contrastive regularization loss function is needed"
+            self.encoder = config["encoder"].eval()
+            self.encoder.training = False
+            self.encoder.requires_grad_(False)
+            self.con_reg_stim_loss_fn = config["con_reg_loss_fn"]() if type(config["con_reg_loss_fn"]) == type else config["con_reg_loss_fn"]
+
+    def _con_reg_loss_fn(self, stim_pred, stim, data_key, neuron_coords=None, pupil_center=None, additional_core_inp=None):
+        enc_resp = self.encoder(stim, data_key=data_key).detach()
+        stim_pred_from_enc_resp = self.model(enc_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
+        return self.con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
+
+    def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
+        loss = self.loss_fn(stim_pred, stim)
+
+        ### L1 regularization
+        if self.l1_reg_mul != 0 and phase == "train":
+            l1_reg = sum(p.abs().sum() for n, p in self.model.named_parameters() 
+                         if p.requires_grad and "weight" in n and (data_key is None or data_key in n))
+            loss += self.l1_reg_mul * l1_reg
+
+        ### L2 regularization
+        if self.l2_reg_mul != 0 and phase == "train":
+            l2_reg = sum(p.pow(2.0).sum() for n, p in self.model.named_parameters() 
+                         if p.requires_grad and "weight" in n and (data_key is None or data_key in n))
+            loss += self.l2_reg_mul * l2_reg
+
+        ### contrastive regularization
+        if self.con_reg_mul > 0. and phase == "train":
+            con_reg_loss = self._con_reg_loss_fn(stim_pred, stim, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
+            loss += self.con_reg_mul * con_reg_loss
+
+        return loss
 
 # class MultiReadInGAN(nn.Module):
 #     def __init__(self, readins_config, gan_config, crop_stim_fn=None):
