@@ -1,0 +1,628 @@
+# %%
+import os
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+import json
+import pandas as pd
+from datetime import datetime
+from copy import deepcopy
+import dill
+import torch
+from torch import nn
+from torch.utils.data import Dataset, DataLoader
+import torch.nn.functional as F
+from torchvision import transforms
+import lovely_tensors as lt
+import wandb
+from nnfabrik.builder import get_data
+
+import csng
+from csng.CNN_Decoder import CNN_Decoder
+from csng.utils import crop, plot_comparison, standardize, normalize, get_mean_and_std, count_parameters, plot_losses
+from csng.losses import SSIMLoss, MultiSSIMLoss, Loss, CroppedLoss
+from csng.data import MixedBatchLoader
+from csng.readins import (
+    MultiReadIn,
+    HypernetReadIn,
+    ConvReadIn,
+    AttentionReadIn,
+    FCReadIn,
+    AutoEncoderReadIn,
+    Conv1dReadIn,
+    LocalizedFCReadIn,
+)
+
+from encoder import get_encoder
+from data_utils import (
+    get_mouse_v1_data,
+    append_syn_dataloaders,
+    append_data_aug_dataloaders,
+    RespGaussianNoise,
+)
+
+lt.monkey_patch()
+
+DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
+print(f"{DATA_PATH=}")
+
+# %env "WANDB_NOTEBOOK_NAME" "cnn_decoder.ipynb"
+wandb.login()
+
+# %%
+config = {
+    "data": {
+        "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
+    },
+    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "seed": 0,
+    # "crop_win": None,
+    # "crop_win": (slice(7, 29), slice(15, 51)),
+    "crop_win": (22, 36),
+    "wandb": None,
+    "wandb": {
+        "project": "CSNG",
+        "group": "sensorium_2022",
+    },
+}
+print(f"... Running on {config['device']} ...")
+
+# %%
+np.random.seed(config["seed"])
+torch.manual_seed(config["seed"])
+random.seed(config["seed"])
+
+# %% [markdown]
+# ## Data
+
+# %%
+dataloaders = dict()
+config["data"]["mouse_v1"] = None
+config["data"]["syn_dataset_config"] = None
+config["data"]["data_augmentation"] = None
+
+# %% [markdown]
+# ### Mouse V1 dataset (Sensorium 2022)
+
+# %%
+### prep data config
+filenames = [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+    # "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # mouse 1
+    # "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # sensorium+ (mouse 2)
+    "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # pretraining (mouse 3)
+    # "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # pretraining (mouse 4)
+    # "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # pretraining (mouse 5)
+    # "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # pretraining (mouse 6)
+    # "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip", # pretraining (mouse 7)
+]
+for f_idx, f_name in enumerate(filenames):
+    filenames[f_idx] = os.path.join(DATA_PATH, f_name)
+
+config["data"]["mouse_v1"] = {
+    "paths": filenames,
+    "dataset_fn": "sensorium.datasets.static_loaders",
+    "dataset_config": {
+        "paths": filenames,
+        "normalize": True,
+        "scale": 0.25, # 256x144 -> 64x36
+        "include_behavior": False,
+        "add_behavior_as_channels": False,
+        "include_eye_position": True,
+        "exclude": None,
+        "file_tree": True,
+        "cuda": False,
+        "batch_size": 7,
+        "seed": config["seed"],
+        "use_cache": False,
+    },
+    "normalize_neuron_coords": True,
+    "average_test_multitrial": True,
+    "save_test_multitrial": True,
+    "test_batch_size": 7,
+    "device": config["device"],
+}
+
+# %%
+### get dataloaders and cell coordinates
+dataloaders, neuron_coords = get_mouse_v1_data(config["data"])
+
+# %%
+### show data
+sample_data_key = dataloaders["mouse_v1"]["test"].data_keys[0]
+datapoint = next(iter(dataloaders["mouse_v1"]["test"].dataloaders[0]))
+stim, resp = datapoint.images, datapoint.responses
+pupil_center = datapoint.pupil_center
+print(
+    f"Training dataset:\t {sum(len(dl) * dl.batch_size for dl in dataloaders['mouse_v1']['train'].dataloaders)} samples"
+    f"\nValidation dataset:\t {sum(len(dl) * dl.batch_size for dl in dataloaders['mouse_v1']['val'].dataloaders)} samples"
+    f"\nTest dataset:\t\t {sum(len(dl) * dl.batch_size for dl in dataloaders['mouse_v1']['test'].dataloaders)} samples"
+    f"\nTest (no resp) dataset:\t {sum(len(dl) * dl.batch_size for dl in dataloaders['mouse_v1']['test_no_resp'].dataloaders)} samples"
+
+    "\n\nstimuli:"
+    f"\n  {stim.shape}"
+    f"\n  min={stim.min().item():.3f}  max={stim.max().item():.3f}"
+    f"\n  mean={stim.mean().item():.3f}  std={stim.std().item():.3f}"
+    "\nresponses:"
+    f"\n  {resp.shape}"
+    f"\n  min={resp.min().item():.3f}  max={resp.max().item():.3f}"
+    f"\n  mean={resp.mean().item():.3f}  std={resp.std().item():.3f}"
+    "\nneuronal coordinates:"
+    f"\n  {neuron_coords[sample_data_key].shape}"
+    f"\n  min={neuron_coords[sample_data_key].min():.3f}  max={neuron_coords[sample_data_key].max():.3f}"
+    f"\n  mean={neuron_coords[sample_data_key].mean():.3f}  std={neuron_coords[sample_data_key].std():.3f}"
+)
+
+# %% [markdown]
+# ## Encoder
+
+# %%
+# encoder = get_encoder(
+#     device=config["device"],
+#     eval_mode=True,
+#     use_shifter=False,
+#     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+# )
+
+# %% [markdown]
+# ## Decoder
+
+# %%
+def train(model, dataloader, opter, loss_fn, config, verbose=True):
+    model.train()
+    train_loss = 0
+    n_batches = len(dataloader)
+
+    ### run
+    for batch_idx, b in enumerate(dataloader):
+        opter.zero_grad()
+        loss = 0
+
+        ### combine from all data keys
+        for data_key, stim, resp, neuron_coords, pupil_center in b:
+            ### get loss
+            stim_pred = model(
+                resp,
+                data_key=data_key,
+                neuron_coords=neuron_coords,
+                pupil_center=pupil_center
+            )
+            loss += loss_fn(stim_pred, stim, data_key=data_key, phase="train", neuron_coords=neuron_coords, pupil_center=pupil_center)
+            model.set_additional_loss(
+                inp={
+                    "resp": resp,
+                    "stim": stim,
+                    "neuron_coords": neuron_coords,
+                    "pupil_center": pupil_center,
+                    "data_key": data_key,
+                }, out={
+                    "stim_pred": stim_pred,
+                },
+            )
+            loss += model.get_additional_loss(data_key=data_key)
+
+        ### update
+        loss /= len(b)
+        loss.backward()
+        opter.step()
+
+        ### log
+        train_loss += loss.item()
+        if verbose and batch_idx % 100 == 0:
+            print(f"Training progress: [{batch_idx}/{n_batches} ({100. * batch_idx / n_batches:.0f}%)]"
+                  f"  Loss: {loss.item():.6f}")
+
+    train_loss /= n_batches
+    return train_loss
+
+# %%
+def val(model, dataloader, loss_fn, only_data_keys=None):
+    model.eval()
+    val_losses = {"total": 0}
+    n_samples = 0
+    denom_data_keys = {}
+    with torch.no_grad():
+        for b in dataloader:
+            ### combine from all data keys
+            for data_key, stim, resp, neuron_coords, pupil_center in b:
+                if only_data_keys is not None and data_key not in only_data_keys:
+                    continue
+                stim_pred = model(
+                    resp,
+                    data_key=data_key,
+                    neuron_coords=neuron_coords,
+                    pupil_center=pupil_center,
+                )
+                loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
+                val_losses["total"] += loss
+                val_losses[data_key] = loss if data_key not in val_losses else val_losses[data_key] + loss
+                denom_data_keys[data_key] = denom_data_keys[data_key] + resp.shape[0] if data_key in denom_data_keys else resp.shape[0]
+                n_samples += resp.shape[0]
+
+    val_losses["total"] /= n_samples
+    for k in denom_data_keys:
+        val_losses[k] /= denom_data_keys[k]
+    return val_losses
+
+# %%
+def get_all_data(config):
+    dls, neuron_coords = get_mouse_v1_data(config=config["data"])
+    if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:
+        dls = append_syn_dataloaders(dls, config=config["data"]["syn_dataset_config"]) # append synthetic data
+    if "data_augmentation" in config["data"] and config["data"]["data_augmentation"] is not None:
+        dls = append_data_aug_dataloaders(
+            dataloaders=dls,
+            config=config["data"]["data_augmentation"],
+        )
+    return dls, neuron_coords
+
+# %%
+config["decoder"] = {
+    "model": {
+        "readins_config": [
+            {
+                "data_key": data_key,
+                "in_shape": n_coords.shape[-2],
+                "decoding_objective_config": None,
+                "layers": [
+                    (ConvReadIn, {
+                        "shift_coords": False,
+                        "learn_grid": True,
+                        "grid_l1_reg": 8e-3,
+                        "in_channels_group_size": 1,
+                        # "grid_net_config": {
+                        #     "in_channels": 32, # x, y, z, resp
+                        #     "layers_config": [("fc", 64), ("fc", 64), ("fc", 16*9)],
+                        #     "act_fn": nn.LeakyReLU,
+                        #     "out_act_fn": nn.Identity,
+                        #     "dropout": 0.1,
+                        #     "batch_norm": False,
+                        # },
+                        "pointwise_conv_config": {
+                            "in_channels": n_coords.shape[-2],
+                            "out_channels": 256,
+                            "act_fn": nn.LeakyReLU,
+                            "bias": False,
+                            "batch_norm": True,
+                            # "dropout": 0.15,
+                        },
+                        "gauss_blur": False,
+                        "gauss_blur_kernel_size": 7,
+                        "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
+                        # "gauss_blur_sigma": "per_neuron", # "fixed", "single", "per_neuron"
+                        "gauss_blur_sigma_init": 1.5,
+                        "neuron_emb_dim": None,
+                    }),
+                ],
+            } for data_key, n_coords in dataloaders["mouse_v1"]["train"].neuron_coords.items()
+        ],
+        "core_cls": CNN_Decoder,
+        "core_config": {
+            "resp_shape": [256],
+            "stim_shape": list(stim.shape[1:]),
+            "layers": [
+                ### for conv_readin
+                # ("deconv", 256, 5, 2, 2),
+                ("deconv", 256, 7, 2, 2),
+                # ("deconv", 128, 7, 2, 1),
+                # ("deconv", 64, 5, 2, 2),
+                
+                ("deconv", 128, 5, 1, 2),
+                # ("deconv", 64, 5, 1, 1),
+
+                # ("deconv", 64, 4, 1, 1),
+                ("deconv", 64, 5, 1, 2),
+                # ("deconv", 32, 4, 1, 1),
+
+                # ("deconv", 64, 3, 1, 1),
+                ("deconv", 64, 4, 1, 1),
+                # ("deconv", 32, 4, 1, 1),
+
+                # ("deconv", 64, 4, 1, 1),
+                # ("deconv", 64, 3, 1, 1),
+                ("deconv", 32, 3, 1, 1),
+
+                ("deconv", 1, 3, 1, 0),
+            ],
+            "act_fn": nn.ReLU,
+            "out_act_fn": nn.Identity,
+            "dropout": 0.3,
+            "batch_norm": True,
+        },
+    },
+    "opter_cls": torch.optim.Adam,
+    "opter_kwargs": {
+        "lr": 3e-4,
+    },
+    "loss": {
+        # "loss_fn": MSELossWithCrop(window=config["crop_win"], standardize=False),
+        "loss_fn": SSIMLoss(
+        # "loss_fn": MultiSSIMLoss(
+            window=config["crop_win"],
+            log_loss=True,
+            inp_normalized=True,
+            inp_standardized=False,
+        ),
+        # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
+        "l1_reg_mul": 0,
+        "l2_reg_mul": 1e-5,
+        "con_reg_mul": 0,
+        # "con_reg_mul": 1,
+        "con_reg_loss_fn": SSIMLoss(
+        # "con_reg_loss_fn": MultiSSIMLoss(
+            window=config["crop_win"],
+            log_loss=True,
+            inp_normalized=True,
+            inp_standardized=False,
+        ),
+        # "con_reg_loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
+        "encoder": None,
+        # "encoder": encoder,
+    },
+    "n_epochs": 200,
+    "load_ckpt": None,
+    # "load_ckpt": {
+    #     "load_only_core": False,
+    #     # "load_only_core": True,
+    #     "ckpt_path": os.path.join(
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-03-17_00-33-11", "ckpt", "decoder_25.pt"),
+    # },
+    "save_run": False,
+}
+
+# %%
+### initialize (and load ckpt if needed)
+if config["decoder"]["load_ckpt"] != None:
+    print(f"[INFO] Loading checkpoint from {config['decoder']['load_ckpt']['ckpt_path']}...")
+    ckpt = torch.load(config["decoder"]["load_ckpt"]["ckpt_path"], map_location=config["device"], pickle_module=dill)
+
+    if config["decoder"]["load_ckpt"]["load_only_core"]:
+        print("[INFO] Loading only the core of the model (no history, no best ckpt)...")
+
+        ### init decoder (load only the core)
+        config["decoder"]["model"]["core_cls"] = ckpt["config"]["decoder"]["model"]["core_cls"]
+        config["decoder"]["model"]["core_config"] = ckpt["config"]["decoder"]["model"]["core_config"]
+        decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
+        decoder.load_state_dict({k:v for k,v in ckpt["best"]["model"].items() if "readin" not in k}, strict=False)
+
+        ### init the rest
+        opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
+        loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
+        history = {"train_loss": [], "val_loss": []}
+        best = {"val_loss": np.inf, "epoch": 0, "model": None}
+    else:
+        print("[INFO] Loading the whole model (the latest - not the BEST; with history and best ckpt)...")
+        history, config["decoder"]["model"], best = ckpt["history"], ckpt["config"]["decoder"]["model"], ckpt["best"]
+
+        ### overwrite config?
+        if input("[WARNING] Do you want to overwrite the config with the one from the checkpoint? (y/n): ") == "y":
+            config = ckpt["config"]
+
+        decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
+        decoder.load_state_dict(ckpt["decoder"])
+
+        opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
+        opter.load_state_dict(ckpt["opter"])
+        loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
+else:
+    print("[INFO] Initializing the model from scratch...")
+    decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
+    opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
+    loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
+    
+    history = {"train_loss": [], "val_loss": []}
+    best = {"val_loss": np.inf, "epoch": 0, "model": None}
+
+# %%
+### print model and fix sizes of stimuli
+with torch.no_grad():
+    stim_pred = decoder(resp.to(config["device"]), data_key=sample_data_key, neuron_coords=neuron_coords[sample_data_key], pupil_center=pupil_center.to(config["device"]))
+    if stim_pred.shape != crop(stim, config["crop_win"]).shape:
+        print(f"[WARNING] Stimulus prediction shape {stim_pred.shape} does not match stimulus shape {crop(stim, config['crop_win']).shape}.")
+        assert stim_pred.shape[-2] >= crop(stim, config["crop_win"]).shape[-2] \
+            and stim_pred.shape[-1] >= crop(stim, config["crop_win"]).shape[-1]
+        
+        # ### set crop function
+        # decoder.crop_stim_fn = lambda x: x[:, :, :crop(stim, config["crop_win"]).shape[-2], :crop(stim, config["crop_win"]).shape[-1]]
+        # stim_pred = decoder(resp.to(config["device"]), data_key=sample_data_key, neuron_coords=neuron_coords[sample_data_key], pupil_center=pupil_center.to(config["device"]))
+        # print(f"[INFO] Stimulus prediction shape cropped to {stim_pred.shape}.")
+
+    print(stim_pred.shape)
+    del stim_pred
+
+print(
+    f"Number of parameters:"
+    f"\n  whole model: {count_parameters(decoder)}"
+    f"\n  core: {count_parameters(decoder.core)} ({count_parameters(decoder.core) / count_parameters(decoder) * 100:.2f}%)"
+    f"\n  readins: {count_parameters(decoder.readins)} ({count_parameters(decoder.readins) / count_parameters(decoder) * 100:.2f}%)"
+    f"\n    ({', '.join([f'{k}: {count_parameters(v)} [{count_parameters(v) / count_parameters(decoder) * 100:.2f}%]' for k, v in decoder.readins.items()])})"
+)
+
+# %%
+### prepare checkpointing and wandb logging
+config["run_name"] = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+if config["decoder"]["save_run"]:
+    ### save config
+    config["dir"] = os.path.join(DATA_PATH, "models", "cnn", config["run_name"])
+    os.makedirs(config["dir"], exist_ok=True)
+    with open(os.path.join(config["dir"], "config.json"), "w") as f:
+        json.dump(config, f, indent=4, default=str)
+    os.makedirs(os.path.join(config["dir"], "samples"), exist_ok=True)
+    os.makedirs(os.path.join(config["dir"], "ckpt"), exist_ok=True)
+    make_sample_path = lambda epoch, prefix: os.path.join(
+        config["dir"], "samples", f"{prefix}stim_comparison_{epoch}e.png"
+    )
+
+    print(f"Run name: {config['run_name']}\nRun dir: {config['dir']}")
+else:
+    make_sample_path = lambda epoch, prefix: None
+    print("[WARNING] Not saving the run and the config.")
+
+if config["wandb"]:
+    wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config,
+        tags=[
+            config["decoder"]["model"]["core_cls"].__name__,
+            config["decoder"]["model"]["readins_config"][0]["layers"][0][0].__name__,
+            # "contrastive_regularization",
+            # "cat_v1_pretraining"
+        ],
+        notes=None)
+    wdb_run.watch(decoder)
+else:
+    print("[WARNING] Not using wandb.")
+
+# %%
+### train
+s, e = len(history["train_loss"]), config["decoder"]["n_epochs"]
+for epoch in range(s, e):
+    print(f"[{epoch + 1}/{e}]")
+
+    ### train and val
+    dls, neuron_coords = get_all_data(config=config)
+    train_dataloader, val_dataloader = dls["mouse_v1"]["train"], dls["mouse_v1"]["val"]
+    train_loss = train(
+        model=decoder,
+        dataloader=train_dataloader,
+        opter=opter,
+        loss_fn=loss_fn,
+        config=config,
+    )
+    val_losses = val(
+        model=decoder,
+        dataloader=val_dataloader,
+        loss_fn=loss_fn,
+    )
+
+    ### save best model
+    if val_losses["total"] < best["val_loss"]:
+        best["val_loss"] = val_losses["total"]
+        best["epoch"] = epoch
+        best["model"] = deepcopy(decoder.state_dict())
+
+    ### log
+    history["train_loss"].append(train_loss)
+    history["val_loss"].append(val_losses["total"])
+    if config["wandb"]: wdb_run.log({"train_loss": train_loss, "val_loss": val_losses["total"]}, commit=False)
+    print(f"{train_loss=:.4f}, {val_losses['total']=:.4f}", end="")
+    for data_key, loss in val_losses.items():
+        if data_key != "total":
+            print(f", {data_key}: {loss:.4f}", end="")
+    print("")
+
+    ### plot reconstructions
+    stim_pred = decoder(
+        resp[:8].to(config["device"]),
+        data_key=sample_data_key,
+        neuron_coords=neuron_coords[sample_data_key],
+        pupil_center=pupil_center[:8].to(config["device"]),
+    ).detach()
+    fig = plot_comparison(target=crop(stim[:8], config["crop_win"]).cpu(), pred=crop(stim_pred[:8], config["crop_win"]).cpu(), show=False, save_to=make_sample_path(epoch, ""))
+    if config["wandb"]: wdb_run.log({"val_stim_reconstruction": fig})
+
+    ### plot losses
+    if epoch % 5 == 0 and epoch > 0:
+        plot_losses(history=history, epoch=epoch, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["decoder"]["save_run"] else None)
+
+    ### save ckpt
+    if epoch % 5 == 0 and epoch > 0:
+        ### ckpt
+        if config["decoder"]["save_run"]:
+            torch.save({
+                "decoder": decoder.state_dict(),
+                "opter": opter.state_dict(),
+                "history": history,
+                "config": config,
+                "best": best,
+            }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
+
+# %%
+### final evaluation + logging + saving
+print(f"Best val loss: {best['val_loss']:.4f} at epoch {best['epoch']}")
+
+### save final ckpt
+if config["decoder"]["save_run"]:
+    torch.save({
+        "decoder": decoder.state_dict(),
+        "opter": opter.state_dict(),
+        "history": history,
+        "config": config,
+        "best": best,
+    }, os.path.join(config["dir"], f"decoder.pt"), pickle_module=dill)
+
+### eval on test set w/ current params
+print("Evaluating on test set with current model...")
+dls, neuron_coords = get_all_data(config=config)
+test_loss_curr = val(
+    model=decoder,
+    dataloader=dls["mouse_v1"]["test"],
+    loss_fn=loss_fn,
+)
+print(f"  Test loss (current model): {test_loss_curr['total']:.4f}")
+
+### load best model
+decoder.load_state_dict(best["model"])
+
+### eval on test set w/ best params
+print("Evaluating on test set with best model...")
+dls, neuron_coords = get_all_data(config=config)
+test_loss_final = val(
+    model=decoder,
+    dataloader=dls["mouse_v1"]["test"],
+    loss_fn=loss_fn,
+)
+print(f"  Test loss (best model): {test_loss_final['total']:.4f}")
+
+### plot reconstructions of the final model
+stim_pred_best = decoder(
+    resp.to(config["device"]),
+    data_key=sample_data_key,
+    neuron_coords=neuron_coords[sample_data_key],
+    pupil_center=pupil_center.to(config["device"]),
+).detach().cpu()
+fig = plot_comparison(
+    target=crop(stim[:8], config["crop_win"]).cpu(),
+    pred=crop(stim_pred_best[:8], config["crop_win"]).cpu(),
+    save_to=os.path.join(config["dir"], "stim_comparison_best.png") if config["decoder"]["save_run"] else None,
+)
+
+### log
+if config["wandb"]:
+    wandb.run.summary["best_val_loss"] = best["val_loss"]
+    wandb.run.summary["best_epoch"] = best["epoch"]
+    wandb.run.summary["curr_test_loss"] = test_loss_curr["total"]
+    wandb.run.summary["final_test_loss"] = test_loss_final["total"]
+    wandb.run.summary["best_reconstruction"] = fig
+
+### save/delete wandb run
+if config["wandb"]:
+    if input("Delete run with 'd', save with anything else: ") == "d":
+        print("Deleting wandb run...")
+        api = wandb.Api()
+        run = api.run(f"johnny1188/{config['wandb']['project']}/{wdb_run.id}")
+        run.delete()
+    else:
+        wdb_run.finish()
+
+# ### plot losses
+# plot_losses(
+#     history=history,
+#     save_to=None if not config["decoder"]["save_run"] else os.path.join(config["dir"], f"losses.png"),
+# )
+
+# %%
+# ### show training reconstructions
+# datapoint_training = next(iter(dls["mouse_v1"]["train"].dataloaders[0]))
+# stim_training, resp_training, pupil_center_training = datapoint_training.images, datapoint_training.responses, datapoint_training.pupil_center
+# stim_training_pred_best = decoder(
+#     resp_training.to(config["device"]),
+#     data_key=sample_data_key,
+#     neuron_coords=neuron_coords[sample_data_key],
+#     pupil_center=pupil_center_training.to(config["device"]),
+# ).detach().cpu()
+# plot_comparison(
+#     target=crop(stim_training[:8], config["crop_win"]).cpu(),
+#     pred=crop(stim_training_pred_best[:8], config["crop_win"]).cpu(),
+#     save_to=os.path.join(config["dir"], "training_stim_comparison_best.png") if config["decoder"]["save_run"] else None,
+# )
+
+
