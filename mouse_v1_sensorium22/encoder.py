@@ -2,7 +2,7 @@ import os
 import torch
 
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 from nnfabrik.builder import get_data, get_model
 
@@ -22,42 +22,63 @@ def get_encoder(device="cpu", eval_mode=True, use_shifter=True, ckpt_path=None):
     ]
     for f_idx, f_name in enumerate(filenames):
         filenames[f_idx] = os.path.join(DATA_PATH, f_name)
-    dataset_fn = 'sensorium.datasets.static_loaders'
+    dataset_fn = "sensorium.datasets.static_loaders"
     dataset_config = {
-        'paths': filenames,
-        'normalize': True,
-        'include_behavior': False,
-        'include_eye_position': True,
-        'batch_size': 64,
-        'scale':.25,
+        "paths": filenames,
+        "normalize": True,
+        "include_behavior": False,
+        "include_eye_position": True,
+        "batch_size": 64,
+        "scale":.25,
 
         "use_cache": False,
     }
     dataloaders = get_data(dataset_fn, dataset_config)
 
     ### get model
-    model_fn = 'sensorium.models.stacked_core_full_gauss_readout'
+    model_fn = "sensorium.models.stacked_core_full_gauss_readout"
     model_config = {
-        'pad_input': False,
-        'layers': 4,
-        'input_kern': 9,
-        'gamma_input': 6.3831,
-        'gamma_readout': 0.0076,
-        'hidden_kern': 7,
-        'hidden_channels': 64,
-        'depth_separable': True,
-        'grid_mean_predictor': {
-            'type': 'cortex',
-            'input_dimensions': 2,
-            'hidden_layers': 1,
-            'hidden_features': 30,
-            'final_tanh': True
+        "pad_input": False,
+        "layers": 4,
+        "input_kern": 9,
+        "gamma_input": 6.3831,
+        "gamma_readout": 0.0076,
+        "hidden_kern": 7,
+        "hidden_channels": 64,
+        "depth_separable": True,
+        "grid_mean_predictor": {
+            "type": "cortex",
+            "input_dimensions": 2,
+            "hidden_layers": 1,
+            "hidden_features": 30,
+            "final_tanh": True
         },
-        'init_sigma': 0.1,
-        'init_mu_range': 0.3,
-        'gauss_type': 'full',
-        'shifter': use_shifter,
-        'stack': -1,
+        "init_sigma": 0.1,
+        "init_mu_range": 0.3,
+        "gauss_type": "full",
+        "shifter": use_shifter,
+        "stack": -1,
+
+        "skip": 0,
+        "final_nonlinearity": True,
+        "momentum": 0.9,
+        "batch_norm": True,
+        "hidden_dilation": 1,
+        "laplace_padding": None,
+        "input_regularizer": "LaplaceL2norm",
+        "use_avg_reg": False,
+        "readout_bias": True,
+        "elu_offset": 0,
+        "linear": False,
+        "attention_conv": False,
+        "shifter_type": "MLP",
+        "input_channels_shifter": 2,
+        "hidden_channels_shifter": 5,
+        "shift_layers": 3,
+        "gamma_shifter": 0,
+        "shifter_bias": True,
+        "hidden_padding": None,
+        "core_bias": False,
     }
     model = get_model(
         model_fn=model_fn,
