@@ -20,7 +20,6 @@ import csng
 from csng.CNN_Decoder import CNN_Decoder
 from csng.utils import crop, plot_comparison, standardize, normalize, get_mean_and_std, count_parameters, plot_losses
 from csng.losses import SSIMLoss, MultiSSIMLoss, Loss, CroppedLoss
-from csng.data import MixedBatchLoader
 from csng.readins import (
     MultiReadIn,
     HypernetReadIn,
@@ -59,11 +58,11 @@ config = {
     # "crop_win": None,
     # "crop_win": (slice(7, 29), slice(15, 51)),
     "crop_win": (22, 36),
-    "wandb": None,
-    # "wandb": {
-    #     "project": "CSNG",
-    #     "group": "sensorium_2022",
-    # },
+    # "wandb": None,
+    "wandb": {
+        "project": "CSNG",
+        "group": "sensorium_2022",
+    },
 }
 config["data"]["mouse_v1"] = {
     "dataset_fn": "sensorium.datasets.static_loaders",
@@ -84,7 +83,7 @@ config["data"]["mouse_v1"] = {
         "include_eye_position": True,
         "exclude": None,
         "file_tree": True,
-        "cuda": False,
+        "cuda": "cuda" in config["device"],
         "batch_size": 16,
         "seed": config["seed"],
         "use_cache": False,
@@ -121,7 +120,7 @@ config["data"]["data_augmentation"] = {
     # }],
     "data_transforms": [[  # for synthetic data
         RespGaussianNoise(
-            noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float(),
+            noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
             clip_min=0.0,
             # dynamic_mul_factor=0.05,
             # resp_fn="squared",
@@ -236,20 +235,22 @@ config["decoder"] = {
         "encoder": get_encoder(
             device=config["device"],
             eval_mode=True,
-            use_shifter=False,
-            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+            # use_shifter=False,
+            # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         ),
     },
-    "n_epochs": 60,
+    "n_epochs": 80,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-03-17_00-33-11", "ckpt", "decoder_25.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-03-20_12-37-05", "ckpt", "decoder_40.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "gmy8hmbt"
     # },
-    "save_run": False,
+    "save_run": True,
 }
 del _dataloaders
 
@@ -290,12 +291,8 @@ if __name__ == "__main__":
             history = {"train_loss": [], "val_loss": []}
             best = {"val_loss": np.inf, "epoch": 0, "model": None}
         else:
-            print("[INFO] Loading the whole model (the latest - not the BEST; with history and best ckpt)...")
-            history, config["decoder"]["model"], best = ckpt["history"], ckpt["config"]["decoder"]["model"], ckpt["best"]
-
-            ### overwrite config?
-            if input("[WARNING] Do you want to overwrite the config with the one from the checkpoint? (y/n): ") == "y":
-                config = ckpt["config"]
+            print("[INFO] Continuing the training run (loading the current model, history, and overwriting the config)...")
+            history, best, config["decoder"]["model"] = ckpt["history"], ckpt["best"], ckpt["config"]["decoder"]["model"]
 
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
             decoder.load_state_dict(ckpt["decoder"])
@@ -333,33 +330,46 @@ if __name__ == "__main__":
     )
 
     ### prepare checkpointing and wandb logging
-    config["run_name"] = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    if config["decoder"]["save_run"]:
-        ### save config
-        config["dir"] = os.path.join(DATA_PATH, "models", "cnn", config["run_name"])
-        os.makedirs(config["dir"], exist_ok=True)
-        with open(os.path.join(config["dir"], "config.json"), "w") as f:
-            json.dump(config, f, indent=4, default=str)
-        os.makedirs(os.path.join(config["dir"], "samples"), exist_ok=True)
-        os.makedirs(os.path.join(config["dir"], "ckpt"), exist_ok=True)
+    if config["decoder"]["load_ckpt"] == None \
+        or config["decoder"]["load_ckpt"]["resume_checkpointing"] is False:
+        config["run_name"] = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        if config["decoder"]["save_run"]:
+            ### save config
+            config["dir"] = os.path.join(DATA_PATH, "models", "cnn", config["run_name"])
+            os.makedirs(config["dir"], exist_ok=True)
+            with open(os.path.join(config["dir"], "config.json"), "w") as f:
+                json.dump(config, f, indent=4, default=str)
+            os.makedirs(os.path.join(config["dir"], "samples"), exist_ok=True)
+            os.makedirs(os.path.join(config["dir"], "ckpt"), exist_ok=True)
+            make_sample_path = lambda epoch, prefix: os.path.join(
+                config["dir"], "samples", f"{prefix}stim_comparison_{epoch}e.png"
+            )
+            print(f"Run name: {config['run_name']}\nRun dir: {config['dir']}")
+        else:
+            make_sample_path = lambda epoch, prefix: None
+            print("[WARNING] Not saving the run and the config.")
+    else:
+        config["run_name"] = ckpt["config"]["run_name"]
+        config["dir"] = ckpt["config"]["dir"]
         make_sample_path = lambda epoch, prefix: os.path.join(
             config["dir"], "samples", f"{prefix}stim_comparison_{epoch}e.png"
         )
+        print(f"Checkpointing resumed - Run name: {config['run_name']}\nRun dir: {config['dir']}")
 
-        print(f"Run name: {config['run_name']}\nRun dir: {config['dir']}")
+    if config["decoder"]["load_ckpt"] == None \
+        or config["decoder"]["load_ckpt"]["resume_wandb_id"] == None:
+        if config["wandb"]:
+            wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config,
+                tags=[
+                    config["decoder"]["model"]["core_cls"].__name__,
+                    config["decoder"]["model"]["readins_config"][0]["layers"][0][0].__name__,
+                ],
+                notes=None)
+            wdb_run.watch(decoder)
+        else:
+            print("[WARNING] Not using wandb.")
     else:
-        make_sample_path = lambda epoch, prefix: None
-        print("[WARNING] Not saving the run and the config.")
-    if config["wandb"]:
-        wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config,
-            tags=[
-                config["decoder"]["model"]["core_cls"].__name__,
-                config["decoder"]["model"]["readins_config"][0]["layers"][0][0].__name__,
-            ],
-            notes=None)
-        wdb_run.watch(decoder)
-    else:
-        print("[WARNING] Not using wandb.")
+        wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config, id=config["decoder"]["load_ckpt"]["resume_wandb_id"], resume="must")
 
     ### train
     s, e = len(history["train_loss"]), config["decoder"]["n_epochs"]
