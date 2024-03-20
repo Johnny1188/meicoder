@@ -236,8 +236,8 @@ config["decoder"] = {
         "encoder": get_encoder(
             device=config["device"],
             eval_mode=True,
-            # use_shifter=False,
-            # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+            use_shifter=False,
+            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         ),
     },
     "n_epochs": 60,
