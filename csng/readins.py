@@ -161,6 +161,8 @@ class FCReadIn(ReadIn):
         dropout=0.0,
         batch_norm=False,
         out_channels=None,
+        l2_reg_mul=0.0,
+        l1_reg_mul=0.0,
     ):
         super().__init__()
         self.requires_neuron_coords = False
@@ -179,6 +181,16 @@ class FCReadIn(ReadIn):
             self.out_channels = out_channels
         else:
             self.out_channels = layers_config[-1][-1]
+        
+        self.l2_reg_mul = l2_reg_mul
+        self.l1_reg_mul = l1_reg_mul
+
+    def set_additional_loss(self, inp, out):
+        self._last_loss = 0.
+        if self.l2_reg_mul > 0:
+            self._last_loss += self.l2_reg_mul * sum(p.pow(2).sum() for p in self.parameters())
+        if self.l1_reg_mul > 0:
+            self._last_loss += self.l1_reg_mul * sum(p.abs().sum() for p in self.parameters())
 
     def forward(self, x, neuron_coords=None, pupil_center=None):
         return self.layers(x)
