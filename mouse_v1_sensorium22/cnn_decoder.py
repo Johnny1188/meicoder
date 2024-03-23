@@ -210,45 +210,44 @@ config["decoder"] = {
         "lr": 3e-4,
     },
     "loss": {
-        # "loss_fn": MSELossWithCrop(window=config["crop_win"], standardize=False),
-        "loss_fn": SSIMLoss(
+        # "loss_fn": SSIMLoss(
         # "loss_fn": MultiSSIMLoss(
-            window=config["crop_win"],
-            log_loss=True,
-            inp_normalized=True,
-            inp_standardized=False,
-        ),
-        # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
+        #     window=config["crop_win"],
+        #     log_loss=True,
+        #     inp_normalized=True,
+        #     inp_standardized=False,
+        # ),
+        "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
         "l1_reg_mul": 0,
         "l2_reg_mul": 3e-4,
-        # "con_reg_mul": 0,
-        "con_reg_mul": 1,
-        "con_reg_loss_fn": SSIMLoss(
-        # "con_reg_loss_fn": MultiSSIMLoss(
-            window=config["crop_win"],
-            log_loss=True,
-            inp_normalized=True,
-            inp_standardized=False,
-        ),
+        "con_reg_mul": 0,
+        # "con_reg_mul": 1,
+        # "con_reg_loss_fn": SSIMLoss(
+        # # "con_reg_loss_fn": MultiSSIMLoss(
+        #     window=config["crop_win"],
+        #     log_loss=True,
+        #     inp_normalized=True,
+        #     inp_standardized=False,
+        # ),
         # "con_reg_loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
-        # "encoder": None,
-        "encoder": get_encoder(
-            device=config["device"],
-            eval_mode=True,
-            # use_shifter=False,
-            # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
-        ),
+        "encoder": None,
+        # "encoder": get_encoder(
+        #     device=config["device"],
+        #     eval_mode=True,
+        #     # use_shifter=False,
+        #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+        # ),
     },
-    "n_epochs": 80,
+    "n_epochs": 100,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-03-20_12-37-05", "ckpt", "decoder_40.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-03-20_17-51-50", "ckpt", "decoder_55.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "gmy8hmbt"
+    #     "resume_wandb_id": "ufhjka2b"
     # },
     "save_run": True,
 }
