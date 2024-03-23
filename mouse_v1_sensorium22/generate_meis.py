@@ -12,14 +12,20 @@ from encoder import get_encoder
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 
 
-class SingleCellModel(nn.Module):
-    def __init__(self, model, idx):
+class BatchedEncoder(nn.Module):
+    def __init__(self, model, cell_idx_start=None, cell_idx_end=None):
         super().__init__()
         self.model = model
-        self.idx = idx
+        self.cell_idx_start = cell_idx_start
+        self.cell_idx_end = cell_idx_end
     
     def forward(self, x, **kwargs):
-        return self.model(x, **kwargs)[:, self.idx]
+        start = 0 if self.cell_idx_start is None else self.cell_idx_start
+        end = x.shape[0] if self.cell_idx_end is None else self.cell_idx_end
+        return self.model(x, **kwargs)[
+            torch.arange(x.shape[0]),
+            torch.arange(start, end),
+        ].sum()
 
 
 def generate_meis():
@@ -34,6 +40,7 @@ def generate_meis():
         # "data_key": "23656-14-22",
         # "data_key": "23964-4-22",
         "save_path": os.path.join(DATA_PATH, "meis"),
+        "chunk_size": 100, # number of cells to process at once
         "mei": {
             "mean": 0, # (here people often uses 0. I think that the midgreyscale value is a better choice though (pixel_min + pixel_max)/2 )
             "std": 0.15, # (everything from 0.10 to 0.25 works here)
@@ -47,15 +54,31 @@ def generate_meis():
         }
     }
 
+    ### prepare save dir
+    save_dir = os.path.join(config["save_path"], config["data_key"])
+    print(f"[INFO] Saving MEIs to {save_dir}")
+    os.makedirs(save_dir, exist_ok=True)
+    os.makedirs(os.path.join(save_dir, "chunked"), exist_ok=True)
+    with open(os.path.join(save_dir, "config.json"), "w") as f:
+        json.dump(config, f, indent=4, default=str)
+
+    ### load encoder
     encoder = get_encoder(
         device=config["device"],
         eval_mode=True,
         use_shifter=False,
         ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
     )
-    all_meis, all_vals, all_reg_vals = [], [], []
-    for cell_idx in tqdm(range(encoder.readout[config["data_key"]].outdims), ncols=50, position=0, leave=True):
-        single_cell_encoder = SingleCellModel(model=encoder, idx=cell_idx) # featurevis requires the model to return response for only one neuron.
+    config["n_cells"] = encoder.readout[config["data_key"]].outdims
+    with open(os.path.join(save_dir, "config.json"), "w") as f:
+        json.dump(config, f, indent=4, default=str)
+
+    ### generate MEIs
+    for cell_idx_start, cell_idx_end in zip(
+        range(0, config["n_cells"], config["chunk_size"]),
+        range(config["chunk_size"], config["n_cells"] + config["chunk_size"], config["chunk_size"]),
+    ):
+        batched_encoder = BatchedEncoder(model=encoder, cell_idx_start=cell_idx_start, cell_idx_end=cell_idx_end) # featurevis requires the model to return response for only one neuron.
 
         # operation to perform on the image before passing it to the model
         transforms = featurevis.utils.Compose([
@@ -64,10 +87,10 @@ def generate_meis():
         ])
 
         # set random initial image to optimise with correct amount of std and mean around midgrey
-        initial_image = torch.randn(1, 1, *config["mei"]["img_res"], dtype=torch.float32) * config["mei"]["std"] + config["mei"]["mean"]
+        initial_image = torch.randn(config["chunk_size"], 1, *config["mei"]["img_res"], dtype=torch.float32) * config["mei"]["std"] + config["mei"]["mean"]
         initial_image = transforms(initial_image).to(config["device"])
         single_mei, vals, reg_vals = featurevis.gradient_ascent(
-            single_cell_encoder,
+            batched_encoder,
             initial_image, 
             step_size=config["mei"]["step_size"],
             num_iterations=config["mei"]["num_iterations"],
@@ -77,20 +100,33 @@ def generate_meis():
             additional_f_kwargs={"data_key": config["data_key"]}, # additional input for the base encoder
         )
 
-        all_meis.append(single_mei.cpu())
-        all_vals.append(vals)
-        all_reg_vals.append(reg_vals)
+        ### save the results
+        file_name = f"{cell_idx_start}-{cell_idx_end}.pt"
+        torch.save({
+            "mei": single_mei.cpu(),
+            "vals": vals,
+            "reg_vals": reg_vals,
+        }, os.path.join(save_dir, "chunked", file_name), pickle_module=dill)
+        if cell_idx_start > 5:
+            break
+    print("[INFO] Chunked MEIs generated.")
 
-    ### save the results
-    save_dir = os.path.join(config["save_path"], config["data_key"])
-    print(f"[INFO] Saving MEIs to {save_dir} [meis.pt, vals.pt, reg_vals.pt]")
-    os.makedirs(save_dir, exist_ok=True)
-    with open(os.path.join(save_dir, "config.json"), "w") as f:
-        json.dump(config, f, indent=4, default=str)
-    torch.save(torch.cat(all_meis, dim=0), os.path.join(save_dir, "meis.pt"), pickle_module=dill)
-    torch.save(all_vals, os.path.join(save_dir, "vals.pt"))
-    torch.save(all_reg_vals, os.path.join(save_dir, "reg_vals.pt"))
-    print("[INFO] Done.")
+    ### combine chunked MEIs
+    meis = []
+    vals = []
+    reg_vals = []
+    for file_name in tqdm(os.listdir(os.path.join(save_dir, "chunked"))):
+        data = torch.load(os.path.join(save_dir, "chunked", file_name), pickle_module=dill)
+        meis.append(data["mei"].cpu())
+        vals.append(data["vals"])
+        reg_vals.append(data["reg_vals"])
+
+    torch.save({
+        "meis": torch.cat(meis, dim=0),
+        "vals": vals,
+        "reg_vals": reg_vals,
+    }, os.path.join(save_dir, "meis.pt"), pickle_module=dill)
+    print("[INFO] MEIs generated.")
 
 
 if __name__ == "__main__":
