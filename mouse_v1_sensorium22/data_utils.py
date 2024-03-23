@@ -205,6 +205,7 @@ def append_syn_dataloaders(dataloaders, config):
                         clip_min=None,
                         clip_max=None,
                     ),
+                    device=config.get("device", "cpu"),
                 ),
                 batch_size=config["batch_size"],
                 shuffle=False,
@@ -564,7 +565,7 @@ class SamplesDataset(Dataset):
 
 
 class PerSampleStoredDataset(Dataset):
-    def __init__(self, dataset_dir, stim_transform=None, resp_transform=None):
+    def __init__(self, dataset_dir, stim_transform=None, resp_transform=None, device="cpu"):
         self.dirname = dataset_dir
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
         self.resp_transform = resp_transform if resp_transform is not None else NumpyToTensor()
@@ -572,6 +573,7 @@ class PerSampleStoredDataset(Dataset):
             f_name for f_name in os.listdir(self.dirname)
             if f_name.endswith(".pkl") or f_name.endswith(".pickle")
         ]
+        self.device = device
 
     @property
     def n_neurons(self):
@@ -592,9 +594,16 @@ class PerSampleStoredDataset(Dataset):
                 responses = self.resp_transform(responses)
 
             if "pupil_center" in data:
-                return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(stimuli, responses, data["pupil_center"])
+                return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
+                    stimuli.to(self.device),
+                    responses.to(self.device),
+                    data["pupil_center"].to(self.device)
+                )
             else:
-                return namedtuple("Datapoint", ["images", "responses"])(stimuli, responses)
+                return namedtuple("Datapoint", ["images", "responses"])(
+                    stimuli.to(self.device),
+                    responses.to(self.device)
+                )
 
 
 class NumpyToTensor:
