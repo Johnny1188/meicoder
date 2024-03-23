@@ -40,7 +40,7 @@ def generate_meis():
         # "data_key": "23656-14-22",
         # "data_key": "23964-4-22",
         "save_path": os.path.join(DATA_PATH, "meis"),
-        "chunk_size": 100, # number of cells to process at once
+        "chunk_size": 500, # number of cells to process at once
         "mei": {
             "mean": 0, # (here people often uses 0. I think that the midgreyscale value is a better choice though (pixel_min + pixel_max)/2 )
             "std": 0.15, # (everything from 0.10 to 0.25 works here)
@@ -78,7 +78,8 @@ def generate_meis():
         range(0, config["n_cells"], config["chunk_size"]),
         range(config["chunk_size"], config["n_cells"] + config["chunk_size"], config["chunk_size"]),
     ):
-        batched_encoder = BatchedEncoder(model=encoder, cell_idx_start=cell_idx_start, cell_idx_end=cell_idx_end) # featurevis requires the model to return response for only one neuron.
+        # featurevis requires the model to return response for only one neuron
+        batched_encoder = BatchedEncoder(model=encoder, cell_idx_start=cell_idx_start, cell_idx_end=min(cell_idx_end, config["n_cells"]))
 
         # operation to perform on the image before passing it to the model
         transforms = featurevis.utils.Compose([
@@ -87,7 +88,7 @@ def generate_meis():
         ])
 
         # set random initial image to optimise with correct amount of std and mean around midgrey
-        initial_image = torch.randn(config["chunk_size"], 1, *config["mei"]["img_res"], dtype=torch.float32) * config["mei"]["std"] + config["mei"]["mean"]
+        initial_image = torch.randn(min(cell_idx_end, config["n_cells"]) - cell_idx_start, 1, *config["mei"]["img_res"], dtype=torch.float32) * config["mei"]["std"] + config["mei"]["mean"]
         initial_image = transforms(initial_image).to(config["device"])
         single_mei, vals, reg_vals = featurevis.gradient_ascent(
             batched_encoder,
@@ -107,6 +108,7 @@ def generate_meis():
             "vals": vals,
             "reg_vals": reg_vals,
         }, os.path.join(save_dir, "chunked", file_name), pickle_module=dill)
+        print(f"[INFO] chunk {cell_idx_start}-{cell_idx_end} processed.")
     print("[INFO] Chunked MEIs generated.")
 
     ### combine chunked MEIs
