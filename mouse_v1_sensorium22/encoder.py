@@ -88,7 +88,7 @@ def get_encoder(device="cpu", eval_mode=True, use_shifter=True, ckpt_path=None):
     ).to(device)
     if ckpt_path is None:
         ckpt_path = os.path.join(DATA_PATH, "models", "encoder_sens22.pth")
-    print(f"Loading encoder checkpoint from {ckpt_path}")
+    print(f"[INFO] Loading encoder checkpoint from {ckpt_path}")
     model.load_state_dict(torch.load(ckpt_path, map_location=device))
 
     if eval_mode:
