@@ -241,7 +241,9 @@ def build_layers(
         out_act_fn=nn.Identity,
         dropout=0.0,
         batch_norm=False,
+        layer_norm=False,
     ):
+        assert not (batch_norm and layer_norm), "Only one of batch_norm and layer_norm can be True."
         ### build layers from tuple configs
         layers = []
         for l_i, layer_config in enumerate(layers_config):
@@ -308,6 +310,11 @@ def build_layers(
                         layers.append(nn.BatchNorm1d(out_channels))
                     else:
                         layers.append(nn.BatchNorm2d(out_channels))
+                elif layer_norm:
+                    if layer_type in ["fc", "conv1d"]:
+                        layers.append(nn.LayerNorm(out_channels))
+                    else:
+                        layers.append(nn.GroupNorm(1, out_channels))
                 layers.append(act_fn())
                 if dropout > 0.0:
                     layers.append(nn.Dropout(dropout))
