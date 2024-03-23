@@ -84,7 +84,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 16,
+        "batch_size": 8,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -97,17 +97,18 @@ config["data"]["mouse_v1"] = {
 
 config["data"]["syn_dataset_config"] = {
     "data_keys": [
-        # "21067-10-18",
+        "21067-10-18",
         # "22846-10-16",
         # "23343-5-17",
         # "23656-14-22",
         # "23964-4-22",
     ],
-    "batch_size": 16,
+    "batch_size": 8,
     "append_data_parts": ["train"],
     # "data_key_prefix": "syn",
     "data_key_prefix": None, # the same data key as the original (real) data
     "dir_name": "synthetic_data_mouse_v1_encoder_new_stimuli",
+    "device": config["device"],
 }
 _dataloaders, _ = get_all_data(config=config)
 
@@ -210,14 +211,14 @@ config["decoder"] = {
         "lr": 3e-4,
     },
     "loss": {
-        # "loss_fn": SSIMLoss(
+        "loss_fn": SSIMLoss(
         # "loss_fn": MultiSSIMLoss(
-        #     window=config["crop_win"],
-        #     log_loss=True,
-        #     inp_normalized=True,
-        #     inp_standardized=False,
-        # ),
-        "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
+            window=config["crop_win"],
+            log_loss=True,
+            inp_normalized=True,
+            inp_standardized=False,
+        ),
+        # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
         "l1_reg_mul": 0,
         "l2_reg_mul": 3e-4,
         "con_reg_mul": 0,
@@ -238,7 +239,7 @@ config["decoder"] = {
         #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         # ),
     },
-    "n_epochs": 100,
+    "n_epochs": 150,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
