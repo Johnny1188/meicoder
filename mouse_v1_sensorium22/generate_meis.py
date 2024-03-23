@@ -107,8 +107,6 @@ def generate_meis():
             "vals": vals,
             "reg_vals": reg_vals,
         }, os.path.join(save_dir, "chunked", file_name), pickle_module=dill)
-        if cell_idx_start > 5:
-            break
     print("[INFO] Chunked MEIs generated.")
 
     ### combine chunked MEIs
