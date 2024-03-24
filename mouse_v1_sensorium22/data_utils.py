@@ -197,6 +197,7 @@ def append_syn_dataloaders(dataloaders, config):
                 PerSampleStoredDataset(
                     dataset_dir=os.path.join(DATA_PATH, config["dir_name"], data_key, data_part),
                     stim_transform=lambda x: x,
+                    # resp_transform=lambda x: x,
                     resp_transform=csng.utils.Normalize(
                         # mean=0,
                         mean=resp_mean,
