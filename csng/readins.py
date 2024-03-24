@@ -11,7 +11,7 @@ from torchvision.transforms.functional import gaussian_blur
 
 from csng.GAN import GAN
 from csng.CNN_Decoder import CNN_Decoder
-from csng.utils import build_layers
+from csng.utils import build_layers, crop
 
 
 class MultiReadIn(nn.Module):
@@ -1034,3 +1034,110 @@ class AttentionReadIn(ReadIn):
             x = self.conv_out(x)
 
         return x
+
+
+class MEIReadIn(ReadIn):
+    def __init__(
+        self,
+        meis_path,
+        n_neurons,
+        mei_resize_method="crop",
+        mei_target_shape=(22, 36),
+        pointwise_conv_config={
+            "out_channels": 256,
+            "bias": False,
+            "batch_norm": False,
+            "act_fn": nn.ReLU,
+        },
+        ctx_net_config={
+            "in_channels": 3, # resp, x, y
+            "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+            "act_fn": nn.LeakyReLU,
+            "out_act_fn": nn.Identity,
+            "dropout": 0.1,
+            "batch_norm": False,
+        },
+        shift_coords=True,
+        shifter_net_layers=[("fc", 10), ("fc", 10), ("fc", 2)],
+        shifter_net_act_fn=nn.LeakyReLU,
+        shifter_net_out_act_fn=nn.Tanh,
+        out_channels=None, # set manually
+        device="cpu",
+    ):
+        super().__init__()
+        
+        self.requires_neuron_coords = True
+        self.requires_pupil_center = True
+
+        self.meis_path = meis_path
+        self.meis = torch.load(meis_path)["meis"].to(device)
+        self.n_neurons = n_neurons
+        assert self.meis.shape[0] == n_neurons, "number of neurons in MEIs does not match n_neurons"
+        if mei_resize_method == "crop":
+            self.meis = crop(self.meis, mei_target_shape)
+        elif mei_resize_method == "resize":
+            self.meis = torchvision.transforms.Resize(mei_target_shape)(self.meis)
+        else:
+            raise ValueError(f"mei_resize_method {mei_resize_method} not recognized")
+        self.meis = self.meis.squeeze(1) # (n_neurons, H, W)
+
+        self.shift_coords = shift_coords
+        self.shifter_net = None
+        if shift_coords:
+            self.shifter_net = ShifterNet( # pupil center (x, y) -> (delta_x, delta_y)
+                in_channels=2,
+                layers_config=shifter_net_layers,
+                act_fn=shifter_net_act_fn,
+                out_act_fn=shifter_net_out_act_fn,
+                dropout=0.0,
+                batch_norm=False,
+            )
+
+        self.pointwise_conv_config = pointwise_conv_config
+        self.pointwise_conv = nn.Identity()
+        if pointwise_conv_config is not None:
+            self.pointwise_conv = nn.Sequential(
+                nn.Dropout2d(pointwise_conv_config["dropout"]) if pointwise_conv_config.get("dropout", 0) > 0 else nn.Identity(),
+                nn.Conv2d(
+                    in_channels=n_neurons,
+                    out_channels=pointwise_conv_config["out_channels"],
+                    kernel_size=1,
+                    stride=1,
+                    padding=0,
+                    bias=pointwise_conv_config.get("bias", False),
+                ),
+                nn.BatchNorm2d(pointwise_conv_config["out_channels"]) if pointwise_conv_config.get("batch_norm", False) else nn.Identity(),
+                pointwise_conv_config.get("act_fn", nn.ReLU)(),
+            )
+        self.out_channels = pointwise_conv_config["out_channels"] if out_channels is None else out_channels
+
+        self.ctx_net_config = ctx_net_config
+        self.ctx_net = build_layers(**ctx_net_config)
+
+        self.device = device
+
+    def forward(self, x, neuron_coords, pupil_center):
+        B, n_neurons = x.shape
+
+        ### prepare neuron_coords
+        if neuron_coords.ndim == 2:
+            neuron_coords = neuron_coords.unsqueeze(0).repeat(B, 1, 1)
+        if self.shift_coords:
+            ### shift neuron_coords by pupil_center
+            delta = self.shifter_net(pupil_center)
+            neuron_coords[:, torch.arange(n_neurons), :2] += delta.unsqueeze(1)
+
+        ### contextually modulate MEIs        
+        out = self.meis.unsqueeze(0).repeat(B, 1, 1, 1)
+        ctx_inp = torch.cat([
+            x.unsqueeze(-1),
+            neuron_coords[..., :2],
+        ], dim=-1) # (B, n_neurons, 3)
+        ctx_inp = ctx_inp.view(B * n_neurons, -1) # (B * n_neurons, 3)
+        ctx_out = self.ctx_net(ctx_inp) # (B * n_neurons, H * W)
+        out = out * ctx_out.view(B, n_neurons, *out.shape[-2:])
+
+        ### apply pointwise conv
+        out = self.pointwise_conv(out)
+
+        return out
