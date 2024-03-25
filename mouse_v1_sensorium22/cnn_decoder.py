@@ -29,6 +29,7 @@ from csng.readins import (
     AutoEncoderReadIn,
     Conv1dReadIn,
     LocalizedFCReadIn,
+    MEIReadIn,
 )
 
 from encoder import get_encoder
@@ -88,6 +89,9 @@ config["data"]["mouse_v1"] = {
         "seed": config["seed"],
         "use_cache": False,
     },
+    "skip_train": False,
+    "skip_val": False,
+    "skip_test": False,
     "normalize_neuron_coords": True,
     "average_test_multitrial": True,
     "save_test_multitrial": True,
@@ -112,25 +116,25 @@ config["data"]["syn_dataset_config"] = {
 }
 _dataloaders, _ = get_all_data(config=config)
 
-config["data"]["data_augmentation"] = {
-    # "data_transforms": [{
-    #     data_key: RespGaussianNoise(
-    #         noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float(),
-    #         clip_min=0.0,
-    #     ) for data_key, dataset in zip(dataloaders["mouse_v1"]["train"].data_keys, dataloaders["mouse_v1"]["train"].datasets)
-    # }],
-    "data_transforms": [[  # for synthetic data
-        RespGaussianNoise(
-            noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
-            clip_min=0.0,
-            # dynamic_mul_factor=0.05,
-            # resp_fn="squared",
-        ) for dataset in _dataloaders["mouse_v1"]["train"].datasets
-    ]],
-    "append_data_parts": ["train"],
-    "force_same_order": True,
-    "seed": config["seed"],
-}
+# config["data"]["data_augmentation"] = {
+#     # "data_transforms": [{
+#     #     data_key: RespGaussianNoise(
+#     #         noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float(),
+#     #         clip_min=0.0,
+#     #     ) for data_key, dataset in zip(dataloaders["mouse_v1"]["train"].data_keys, dataloaders["mouse_v1"]["train"].datasets)
+#     # }],
+#     "data_transforms": [[  # for synthetic data
+#         RespGaussianNoise(
+#             noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
+#             clip_min=0.0,
+#             # dynamic_mul_factor=0.05,
+#             # resp_fn="squared",
+#         ) for dataset in _dataloaders["mouse_v1"]["train"].datasets
+#     ]],
+#     "append_data_parts": ["train"],
+#     "force_same_order": True,
+#     "seed": config["seed"],
+# }
 _dataloaders, _ = get_all_data(config=config)
 
 config["decoder"] = {
@@ -157,7 +161,8 @@ config["decoder"] = {
                         "pointwise_conv_config": {
                             "in_channels": n_coords.shape[-2],
                             "out_channels": 256,
-                            "act_fn": nn.LeakyReLU,
+                            # "act_fn": nn.LeakyReLU,
+                            "act_fn": nn.Identity,
                             "bias": False,
                             "batch_norm": True,
                             "dropout": 0.1,
@@ -169,6 +174,45 @@ config["decoder"] = {
                         "gauss_blur_sigma_init": 1.5,
                         "neuron_emb_dim": None,
                     }),
+
+                    # (FCReadIn, {
+                    #     "in_shape": n_coords.shape[-2],
+                    #     "layers_config": [
+                    #         ("fc", 432),
+                    #         ("unflatten", 1, (3, 9, 16)),
+                    #     ],
+                    #     "act_fn": nn.ReLU,
+                    #     "out_act_fn": nn.Identity,
+                    #     "batch_norm": True,
+                    #     "layer_norm": False,
+                    #     "dropout": 0.3,
+                    #     "l2_reg_mul": 5e-2,
+                    #     "out_channels": 3,
+                    # }),
+
+                    # (MEIReadIn, {
+                    #     "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
+                    #     "n_neurons": n_coords.shape[-2],
+                    #     "mei_resize_method": "resize",
+                    #     "mei_target_shape": (22, 36),
+                    #     "pointwise_conv_config": {
+                    #         "out_channels": 144,
+                    #         "bias": False,
+                    #         "batch_norm": True,
+                    #         "act_fn": nn.Identity,
+                    #     },
+                    #     "ctx_net_config": {
+                    #         "in_channels": 3, # resp, x, y
+                    #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "out_act_fn": nn.Identity,
+                    #         "dropout": 0.1,
+                    #         "batch_norm": True,
+                    #     },
+                    #     "shift_coords": False,
+                    #     "device": config["device"],
+                    # }),
+                    
                 ],
             } for data_key, n_coords in _dataloaders["mouse_v1"]["train"].neuron_coords.items()
         ],
@@ -195,14 +239,24 @@ config["decoder"] = {
                 # ("deconv", 32, 4, 1, 1),
 
                 # ("deconv", 64, 4, 1, 1),
-                ("deconv", 64, 3, 1, 1),
+                ("deconv", 32, 3, 1, 1),
                 # ("deconv", 32, 3, 1, 1),
 
                 ("deconv", 1, 3, 1, 0),
+
+                # ### for MEIReadin
+                # # ("conv", 256, 7, 1, 3),
+                # ("conv", 128, 7, 1, 3),
+                # # ("conv", 128, 5, 1, 2),
+                # ("conv", 64, 5, 1, 2),
+                # # ("conv", 64, 3, 1, 1),
+                # # ("conv", 64, 3, 1, 1),
+                # ("conv", 32, 3, 1, 1),
+                # ("conv", 1, 3, 1, 1),
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
-            "dropout": 0.35,
+            "dropout": 0.3,
             "batch_norm": True,
         },
     },
@@ -211,16 +265,16 @@ config["decoder"] = {
         "lr": 3e-4,
     },
     "loss": {
-        "loss_fn": SSIMLoss(
+        # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
         # "loss_fn": MultiSSIMLoss(
+        "loss_fn": SSIMLoss(
             window=config["crop_win"],
             log_loss=True,
             inp_normalized=True,
             inp_standardized=False,
         ),
-        # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
         "l1_reg_mul": 0,
-        "l2_reg_mul": 3e-4,
+        "l2_reg_mul": 1e-5,
         "con_reg_mul": 0,
         # "con_reg_mul": 1,
         # "con_reg_loss_fn": SSIMLoss(
@@ -239,19 +293,26 @@ config["decoder"] = {
         #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         # ),
     },
-    "n_epochs": 150,
+    "n_epochs": 50,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-03-20_17-51-50", "ckpt", "decoder_55.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-03-24_12-19-00", "ckpt", "decoder_55.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-03-24_12-19-00", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "ufhjka2b"
+    #     "resume_wandb_id": "ecm9nksd"
     # },
     "save_run": True,
 }
+print(
+    f"[INFO] List of dataloaders:"
+    f"\n  TRAIN: {_dataloaders['mouse_v1']['train'].dataloaders}"
+    f"\n  VAL: {_dataloaders['mouse_v1']['val'].dataloaders}"
+    f"\n  TEST: {_dataloaders['mouse_v1']['test'].dataloaders}"
+)
 del _dataloaders
 
 
