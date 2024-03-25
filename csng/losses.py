@@ -741,9 +741,9 @@ class PerceptualLoss(torch.nn.Module):
 
 
 class VGGPerceptualLoss(torch.nn.Module):
-    """ Source: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
-    def __init__(self, resize=True):
-        super(VGGPerceptualLoss, self).__init__()
+    """ Modified from: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
+    def __init__(self, resize=False, device="cuda"):
+        super().__init__()
         blocks = []
         blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[:4].eval())
         blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[4:9].eval())
@@ -752,11 +752,11 @@ class VGGPerceptualLoss(torch.nn.Module):
         for bl in blocks:
             for p in bl.parameters():
                 p.requires_grad = False
-        self.blocks = torch.nn.ModuleList(blocks)
+        self.blocks = torch.nn.ModuleList(blocks).to(device)
         self.transform = torch.nn.functional.interpolate
         self.resize = resize
-        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
-        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1))
 
     def forward(self, inp, target, feature_layers=[0, 1, 2, 3], style_layers=[]):
         assert inp.min() >= 0.0 and inp.max() <= 1.0, "Input should be normalized to [0, 1] range."
