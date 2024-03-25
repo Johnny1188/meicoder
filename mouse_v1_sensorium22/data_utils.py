@@ -428,7 +428,8 @@ class MixedBatchLoader:
         elif self.mixing_strategy == "parallel_max":
             self.n_batches = max(self.n_batches, len(dataloader))
         elif self.mixing_strategy == "parallel_min":
-            self.n_batches = min(self.n_batches, len(dataloader))
+            self.n_batches = min(self.n_batches, len(dataloader)) \
+                if self.n_batches > 0 else len(dataloader)
         if hasattr(dataloader, "dataset"):
             self.datasets.append(dataloader.dataset)
         else:
