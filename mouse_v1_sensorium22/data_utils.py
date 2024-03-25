@@ -30,12 +30,28 @@ def get_mouse_v1_data(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 device=config["mouse_v1"]["device"],
+            ) if config["mouse_v1"]["skip_train"] is False else MixedBatchLoader(
+                dataloaders=[],
+                neuron_coords=None,
+                mixing_strategy=config["mixing_strategy"],
+                data_keys=[],
+                return_data_key=True,
+                return_pupil_center=True,
+                device=config["mouse_v1"]["device"],
             ),
             "val": MixedBatchLoader(
                 dataloaders=[_dataloaders["validation"][data_key] for data_key in _dataloaders["validation"].keys()],
                 neuron_coords=None,  # added below
                 mixing_strategy=config["mixing_strategy"],
                 data_keys=list(_dataloaders["train"].keys()),
+                return_data_key=True,
+                return_pupil_center=True,
+                device=config["mouse_v1"]["device"],
+            ) if config["mouse_v1"]["skip_val"] is False else MixedBatchLoader(
+                dataloaders=[],
+                neuron_coords=None,
+                mixing_strategy=config["mixing_strategy"],
+                data_keys=[],
                 return_data_key=True,
                 return_pupil_center=True,
                 device=config["mouse_v1"]["device"],
@@ -48,6 +64,14 @@ def get_mouse_v1_data(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 device=config["mouse_v1"]["device"],
+            ) if config["mouse_v1"]["skip_test"] is False else MixedBatchLoader(
+                dataloaders=[],
+                neuron_coords=None,
+                mixing_strategy=config["mixing_strategy"],
+                data_keys=[],
+                return_data_key=True,
+                return_pupil_center=True,
+                device=config["mouse_v1"]["device"],
             ),
             "test_no_resp": MixedBatchLoader(
                 dataloaders=[_dataloaders["final_test"][data_key] for data_key in _dataloaders["final_test"].keys()],
@@ -57,14 +81,14 @@ def get_mouse_v1_data(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 device=config["mouse_v1"]["device"],
-            ),
+            )
         }
     }
     
     ### get cell coordinates
     neuron_coords = {
         data_key: torch.tensor(d.neurons.cell_motor_coordinates, dtype=torch.float32, device=config["mouse_v1"]["device"])
-        for data_key, d in zip(dataloaders["mouse_v1"]["train"].data_keys, dataloaders["mouse_v1"]["train"].datasets)
+        for data_key, d in zip(list(_dataloaders["train"].keys()), [_dl.dataset for _dl in _dataloaders["train"].values()])
     }
     if config["mouse_v1"]["normalize_neuron_coords"]: # normalize coordinates to [-1, 1]
         for data_key in neuron_coords.keys():
@@ -369,11 +393,11 @@ class MixedBatchLoader:
         self.batch_idx = 0
         
         if self.mixing_strategy == "sequential":
-            self.n_batches = sum([len(dataloader) for dataloader in dataloaders])
+            self.n_batches = sum([len(dataloader) for dataloader in dataloaders]) if len(dataloaders) > 0 else 0
         elif self.mixing_strategy == "parallel_max":
-            self.n_batches = max([len(dataloader) for dataloader in dataloaders])
+            self.n_batches = max([len(dataloader) for dataloader in dataloaders]) if len(dataloaders) > 0 else 0
         elif self.mixing_strategy == "parallel_min":
-            self.n_batches = min([len(dataloader) for dataloader in dataloaders])
+            self.n_batches = min([len(dataloader) for dataloader in dataloaders]) if len(dataloaders) > 0 else 0
 
         self.datasets = []
         for dl in dataloaders:
