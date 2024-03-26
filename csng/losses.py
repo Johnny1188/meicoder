@@ -742,7 +742,7 @@ class PerceptualLoss(torch.nn.Module):
 
 class VGGPerceptualLoss(torch.nn.Module):
     """ Modified from: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
-    def __init__(self, resize=False, device="cuda"):
+    def __init__(self, resize=False, mean_across_layers=True, device="cuda"):
         super().__init__()
         blocks = []
         blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[:4].eval())
@@ -755,6 +755,7 @@ class VGGPerceptualLoss(torch.nn.Module):
         self.blocks = torch.nn.ModuleList(blocks).to(device)
         self.transform = torch.nn.functional.interpolate
         self.resize = resize
+        self.mean_across_layers = mean_across_layers
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1))
 
@@ -783,6 +784,13 @@ class VGGPerceptualLoss(torch.nn.Module):
                 gram_x = act_x @ act_x.permute(0, 2, 1)
                 gram_y = act_y @ act_y.permute(0, 2, 1)
                 loss += torch.nn.functional.l1_loss(gram_x, gram_y)
+
+        if self.mean_across_layers:
+            loss = loss / (
+                max(1, len(feature_layers) + len(style_layers))
+                * len(self.blocks)
+            )
+
         return loss
 
 
