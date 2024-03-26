@@ -85,7 +85,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 8,
+        "batch_size": 9,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -107,7 +107,7 @@ config["data"]["syn_dataset_config"] = {
         # "23656-14-22",
         # "23964-4-22",
     ],
-    "batch_size": 8,
+    "batch_size": 3,
     "append_data_parts": ["train"],
     # "data_key_prefix": "syn",
     "data_key_prefix": None, # the same data key as the original (real) data
@@ -116,25 +116,19 @@ config["data"]["syn_dataset_config"] = {
 }
 _dataloaders, _ = get_all_data(config=config)
 
-# config["data"]["data_augmentation"] = {
-#     # "data_transforms": [{
-#     #     data_key: RespGaussianNoise(
-#     #         noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float(),
-#     #         clip_min=0.0,
-#     #     ) for data_key, dataset in zip(dataloaders["mouse_v1"]["train"].data_keys, dataloaders["mouse_v1"]["train"].datasets)
-#     # }],
-#     "data_transforms": [[  # for synthetic data
-#         RespGaussianNoise(
-#             noise_std=2 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
-#             clip_min=0.0,
-#             # dynamic_mul_factor=0.05,
-#             # resp_fn="squared",
-#         ) for dataset in _dataloaders["mouse_v1"]["train"].datasets
-#     ]],
-#     "append_data_parts": ["train"],
-#     "force_same_order": True,
-#     "seed": config["seed"],
-# }
+config["data"]["data_augmentation"] = {
+    "data_transforms": [[  # for synthetic data
+        RespGaussianNoise(
+            noise_std=1.5 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
+            clip_min=0.0,
+            dynamic_mul_factor=0.08,
+            resp_fn="squared",
+        ) for dataset in _dataloaders["mouse_v1"]["train"].datasets
+    ]],
+    "append_data_parts": ["train"],
+    "force_same_order": True,
+    "seed": config["seed"],
+}
 _dataloaders, _ = get_all_data(config=config)
 
 config["decoder"] = {
@@ -300,10 +294,10 @@ config["decoder"] = {
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         # DATA_PATH, "models", "cnn", "2024-03-24_12-19-00", "ckpt", "decoder_55.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-03-24_12-19-00", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-03-26_10-03-01", "ckpt", "decoder_35.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-03-24_12-19-00", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "ecm9nksd"
+    #     "resume_wandb_id": "e0yb6w71"
     # },
     "save_run": True,
 }
@@ -433,6 +427,7 @@ if __name__ == "__main__":
         wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config, id=config["decoder"]["load_ckpt"]["resume_wandb_id"], resume="must")
 
     ### train
+    print(f"[INFO] Config:\n{json.dumps(config, indent=2, default=str)}")
     s, e = len(history["train_loss"]), config["decoder"]["n_epochs"]
     for epoch in range(s, e):
         print(f"[{epoch + 1}/{e}]")
