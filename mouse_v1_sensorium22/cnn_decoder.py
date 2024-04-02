@@ -72,10 +72,10 @@ config["data"]["mouse_v1"] = {
             # os.path.join(DATA_PATH, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
             # os.path.join(DATA_PATH, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
             os.path.join(DATA_PATH, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            # os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            # os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            # os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            # os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+            os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+            os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+            os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+            os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
         ],
         "normalize": True,
         "scale": 0.25, # 256x144 -> 64x36
@@ -85,7 +85,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 9,
+        "batch_size": 1,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -102,12 +102,12 @@ config["data"]["mouse_v1"] = {
 config["data"]["syn_dataset_config"] = {
     "data_keys": [
         "21067-10-18",
-        # "22846-10-16",
-        # "23343-5-17",
-        # "23656-14-22",
-        # "23964-4-22",
+        "22846-10-16",
+        "23343-5-17",
+        "23656-14-22",
+        "23964-4-22",
     ],
-    "batch_size": 3,
+    "batch_size": 7,
     "append_data_parts": ["train"],
     # "data_key_prefix": "syn",
     "data_key_prefix": None, # the same data key as the original (real) data
@@ -116,19 +116,19 @@ config["data"]["syn_dataset_config"] = {
 }
 _dataloaders, _ = get_all_data(config=config)
 
-config["data"]["data_augmentation"] = {
-    "data_transforms": [[  # for synthetic data
-        RespGaussianNoise(
-            noise_std=1.5 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
-            clip_min=0.0,
-            dynamic_mul_factor=0.08,
-            resp_fn="squared",
-        ) for dataset in _dataloaders["mouse_v1"]["train"].datasets
-    ]],
-    "append_data_parts": ["train"],
-    "force_same_order": True,
-    "seed": config["seed"],
-}
+# config["data"]["data_augmentation"] = {
+#     "data_transforms": [[  # for synthetic data
+#         RespGaussianNoise(
+#             noise_std=1.5 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
+#             clip_min=0.0,
+#             dynamic_mul_factor=0.08,
+#             resp_fn="squared",
+#         ) for dataset in _dataloaders["mouse_v1"]["train"].datasets
+#     ]],
+#     "append_data_parts": ["train"],
+#     "force_same_order": True,
+#     "seed": config["seed"],
+# }
 _dataloaders, _ = get_all_data(config=config)
 
 config["decoder"] = {
@@ -140,6 +140,8 @@ config["decoder"] = {
                 "decoding_objective_config": None,
                 "layers": [
                     (ConvReadIn, {
+                        "H": 10,
+                        "W": 18,
                         "shift_coords": False,
                         "learn_grid": True,
                         "grid_l1_reg": 8e-3,
@@ -152,9 +154,17 @@ config["decoder"] = {
                         #     "dropout": 0.1,
                         #     "batch_norm": False,
                         # },
+                        "grid_net_config": {
+                            "in_channels": 3, # x, y, resp
+                            "layers_config": [("fc", 32), ("fc", 86), ("fc", 18*10)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.1,
+                            "batch_norm": False,
+                        },
                         "pointwise_conv_config": {
                             "in_channels": n_coords.shape[-2],
-                            "out_channels": 256,
+                            "out_channels": 480,
                             # "act_fn": nn.LeakyReLU,
                             "act_fn": nn.Identity,
                             "bias": False,
@@ -212,28 +222,28 @@ config["decoder"] = {
         ],
         "core_cls": CNN_Decoder,
         "core_config": {
-            "resp_shape": [256],
+            "resp_shape": [480],
             "stim_shape": list(_dataloaders["mouse_v1"]["train"].datasets[0][0].images[0].shape[1:]),
             "layers": [
                 ### for conv_readin
                 # ("deconv", 256, 5, 2, 2),
-                ("deconv", 256, 7, 2, 2),
+                ("deconv", 480, 7, 2, 3),
                 # ("deconv", 128, 7, 2, 1),
                 # ("deconv", 64, 5, 2, 2),
 
-                ("deconv", 128, 5, 1, 2),
+                ("deconv", 256, 5, 1, 2),
                 # ("deconv", 64, 5, 1, 1),
 
                 # ("deconv", 64, 4, 1, 1),
-                ("deconv", 64, 5, 1, 2),
+                ("deconv", 256, 5, 1, 2),
                 # ("deconv", 32, 4, 1, 1),
 
                 # ("deconv", 64, 3, 1, 1),
-                ("deconv", 64, 4, 1, 1),
+                ("deconv", 128, 4, 1, 1),
                 # ("deconv", 32, 4, 1, 1),
 
                 # ("deconv", 64, 4, 1, 1),
-                ("deconv", 32, 3, 1, 1),
+                ("deconv", 64, 3, 1, 1),
                 # ("deconv", 32, 3, 1, 1),
 
                 ("deconv", 1, 3, 1, 0),
@@ -250,13 +260,14 @@ config["decoder"] = {
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
-            "dropout": 0.3,
+            "dropout": 0.35,
             "batch_norm": True,
         },
     },
-    "opter_cls": torch.optim.Adam,
+    "opter_cls": torch.optim.AdamW,
     "opter_kwargs": {
         "lr": 3e-4,
+        "weight_decay": 0.03,
     },
     "loss": {
         # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
@@ -268,7 +279,8 @@ config["decoder"] = {
             inp_standardized=False,
         ),
         "l1_reg_mul": 0,
-        "l2_reg_mul": 1e-5,
+        # "l2_reg_mul": 3e-5,
+        "l2_reg_mul": 0,
         "con_reg_mul": 0,
         # "con_reg_mul": 1,
         # "con_reg_loss_fn": SSIMLoss(
@@ -294,10 +306,10 @@ config["decoder"] = {
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-03-26_10-03-01", "ckpt", "decoder_35.pt"),
-    #         # DATA_PATH, "models", "cnn", "2024-03-24_12-19-00", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-04-01_11-16-55", "ckpt", "decoder_45.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "e0yb6w71"
+    #     "resume_wandb_id": "ienoeanr"
     # },
     "save_run": True,
 }
