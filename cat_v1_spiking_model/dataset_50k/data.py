@@ -90,6 +90,7 @@ def prepare_v1_dataloaders(
         return_coords=return_coords,
         return_ori=return_ori,
         coords_ori_filepath=coords_ori_filepath,
+        average_over_repeats=True,
     )
     if cached:
         train_dataset = CachedDataset(train_dataset)
@@ -140,7 +141,8 @@ class PerSampleStoredDataset(Dataset):
         resp_keys=("resp",),
         return_coords=False,
         return_ori=False,
-        coords_ori_filepath=None
+        coords_ori_filepath=None,
+        average_over_repeats=False,
     ):
         self.dataset_dir = dataset_dir
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
@@ -151,6 +153,7 @@ class PerSampleStoredDataset(Dataset):
         ]
         self.stim_keys = stim_keys
         self.resp_keys = resp_keys
+        self.average_over_repeats = average_over_repeats
 
         self.return_coords = return_coords
         self.return_ori = return_ori
@@ -178,7 +181,10 @@ class PerSampleStoredDataset(Dataset):
         with open(os.path.join(self.dataset_dir, f_name), "rb") as f:
             data = pickle.load(f)
             stimuli = np.concatenate([data[key] for key in self.stim_keys], axis=0)
-            responses = np.concatenate([data[key] for key in self.resp_keys], axis=0)
+            if self.average_over_repeats:
+                responses = np.concatenate([np.mean(data[key], 0) for key in self.resp_keys], axis=0)
+            else:
+                responses = np.concatenate([data[key] for key in self.resp_keys], axis=0)
             to_return_keys, to_return_vals = ["images", "responses"], [stimuli, responses]
             if self.stim_transform is not None:
                 to_return_vals[0] = self.stim_transform(to_return_vals[0])
