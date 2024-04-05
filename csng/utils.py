@@ -118,7 +118,7 @@ def plot_comparison(target, pred, target_title="Target", pred_title="Reconstruct
 
     if save_to is not None:
         fig.savefig(save_to, bbox_inches="tight", pad_inches=0.1)
-        print(f"Saved to {save_to}.")
+        # print(f"Saved to {save_to}.")
 
     return fig
 
