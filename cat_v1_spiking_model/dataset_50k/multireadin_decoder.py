@@ -56,7 +56,11 @@ config = {
     "only_cat_v1_eval": True,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
-    "wandb": None,
+    # "wandb": None,
+    "wandb": {
+        "project": "CSNG",
+        "group": "cat_v1_50k",
+    },
 }
 config["data"]["cat_v1"] = {
     "train_path": os.path.join(DATA_PATH, "datasets", "train"),
@@ -90,15 +94,15 @@ config["decoder"] = {
                 "decoding_objective_config": None,
                 "layers": [
                     (ConvReadIn, {
-                        "H": 8,
-                        "W": 8,
+                        "H": 10,
+                        "W": 10,
                         "shift_coords": False,
                         "learn_grid": True,
                         "grid_l1_reg": 8e-3,
                         "in_channels_group_size": 1,
                         "grid_net_config": {
                             "in_channels": 3, # x, y, resp
-                            "layers_config": [("fc", 64), ("fc", 128), ("fc", 8*8)],
+                            "layers_config": [("fc", 64), ("fc", 128), ("fc", 10*10)],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
                             "dropout": 0.15,
@@ -106,11 +110,11 @@ config["decoder"] = {
                         },
                         "pointwise_conv_config": {
                             "in_channels": 46875,
-                            "out_channels": 256,
+                            "out_channels": 576,
                             "act_fn": nn.Identity,
                             "bias": False,
                             "batch_norm": True,
-                            "dropout": 0.1,
+                            "dropout": 0.15,
                         },
                         "gauss_blur": False,
                         "gauss_blur_kernel_size": 7,
@@ -121,42 +125,65 @@ config["decoder"] = {
                     }),
 
                     # (FCReadIn, {
-                    #     "in_shape": d.n_neurons,
+                    #     "in_shape": 46875,
                     #     "layers_config": [
-                    #         ("fc", 288),
-                    #         ("unflatten", 1, (2, 9, 16)),
+                    #         ("fc", 768),
+                    #         ("unflatten", 1, (12, 8, 8)),
                     #     ],
                     #     "act_fn": nn.LeakyReLU,
                     #     "out_act_fn": nn.Identity,
                     #     "batch_norm": True,
                     #     "dropout": 0.15,
-                    #     "out_channels": 2,
+                    #     "out_channels": 12,
                     # }),
-                
+
                 ],
             }
         ],
         "core_cls": CNN_Decoder,
         "core_config": {
-            "resp_shape": [256],
+            "resp_shape": [576],
             "stim_shape": [1, 50, 50],
             "layers": [
                 ### for conv_readin
-                ("deconv", 128, 7, 2, 1),
-                ("deconv", 64, 5, 1, 1),
-                ("deconv", 32, 4, 1, 1),
+                # ("deconv", 128, 7, 2, 1),
+                # ("deconv", 64, 5, 1, 1),
+                # ("deconv", 32, 4, 1, 1),
+                # ("deconv", 1, 3, 1, 0),
+
+                ### for conv_readin
+                # ("deconv", 256, 5, 2, 2),
+                # ("deconv", 480, 7, 2, 3),
+                ("deconv", 576, 7, 2, 3),
+                # ("deconv", 128, 7, 2, 1),
+                # ("deconv", 64, 5, 2, 2),
+
+                # ("deconv", 256, 5, 1, 2),
+                ("deconv", 320, 5, 1, 1),
+                # ("deconv", 64, 5, 1, 1),
+
+                # ("deconv", 64, 4, 1, 1),
+                ("deconv", 256, 5, 1, 1),
+                # ("deconv", 32, 4, 1, 1),
+
+                # ("deconv", 64, 3, 1, 1),
+                # ("deconv", 128, 4, 1, 1),
+                ("deconv", 256, 3, 1, 1),
+                # ("deconv", 32, 4, 1, 1),
+
+                # ("deconv", 64, 4, 1, 1),
+                # ("deconv", 64, 3, 1, 1),
+                ("deconv", 128, 3, 1, 1),
+                # ("deconv", 32, 3, 1, 1),
+
                 ("deconv", 1, 3, 1, 0),
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
-            "dropout": 0.25,
+            "dropout": 0.35,
             "batch_norm": True,
         },
     },
-    # "opter_cls": torch.optim.Adam,
-    # "opter_kwargs": {
-    #     "lr": 1e-4,
-    # },
     "opter_cls": torch.optim.AdamW,
     "opter_kwargs": {
         "lr": 3e-4,
@@ -180,11 +207,17 @@ config["decoder"] = {
         "encoder": None,
         # "encoder": encoder,
     },
-    "n_epochs": 150,
+    "n_epochs": 60,
     "load_ckpt": None,
     # "load_ckpt": {
-    #     "run_name": "2023-08-25_09-07-46",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2023-08-25_09-07-46", "ckpt", "decoder_40.pt"),
+    #     "load_only_core": False,
+    #     # "load_only_core": True,
+    #     "ckpt_path": os.path.join(
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-04-05_14-40-23", "ckpt", "decoder_45.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "jnq28zyo"
     # },
     "save_run": True,
 }
