@@ -27,7 +27,6 @@ class MultiReadIn(nn.Module):
         ### core decoder
         self.core_config = deepcopy(core_config)
         if "resp_shape" in self.core_config:
-            print(f"[WARNING] resp_shape in core_config will be overwritten by the output of the last readin layer (shape {in_channels})")
             self.core_config["resp_shape"] = (in_channels,)
         self.core = core_cls(**self.core_config)
 
@@ -180,7 +179,10 @@ class FCReadIn(ReadIn):
         if out_channels is not None:
             self.out_channels = out_channels
         else:
-            self.out_channels = layers_config[-1][-1]
+            if layers_config[-1][0] == "unflatten":
+                self.out_channels = layers_config[-1][-1][0]
+            else:
+                self.out_channels = layers_config[-1][-1]
         
         self.l2_reg_mul = l2_reg_mul
         self.l1_reg_mul = l1_reg_mul
