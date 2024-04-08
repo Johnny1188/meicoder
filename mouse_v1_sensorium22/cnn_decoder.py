@@ -179,48 +179,49 @@ config["decoder"] = {
                     #     "neuron_emb_dim": None,
                     # }),
 
-                    (FCReadIn, {
-                        "in_shape": n_coords.shape[-2],
-                        "layers_config": [
-                            ("fc", 432),
-                            ("unflatten", 1, (3, 9, 16)),
-                        ],
-                        "act_fn": nn.LeakyReLU,
-                        "out_act_fn": nn.Identity,
-                        "batch_norm": True,
-                        "dropout": 0.15,
-                        "l2_reg_mul": 5e-5,
-                    }),
-
-                    # (MEIReadIn, {
-                    #     "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
-                    #     "n_neurons": n_coords.shape[-2],
-                    #     "mei_resize_method": "resize",
-                    #     "mei_target_shape": (22, 36),
-                    #     "pointwise_conv_config": {
-                    #         "out_channels": 480,
-                    #         "bias": False,
-                    #         "batch_norm": True,
-                    #         "act_fn": nn.Identity,
-                    #         "dropout": 0.1,
-                    #     },
-                    #     "ctx_net_config": {
-                    #         "in_channels": 3, # resp, x, y
-                    #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "out_act_fn": nn.Identity,
-                    #         "dropout": 0.1,
-                    #         "batch_norm": True,
-                    #     },
-                    #     "shift_coords": False,
-                    #     "device": config["device"],
+                    # (FCReadIn, {
+                    #     "in_shape": n_coords.shape[-2],
+                    #     "layers_config": [
+                    #         ("fc", 432),
+                    #         ("unflatten", 1, (3, 9, 16)),
+                    #     ],
+                    #     "act_fn": nn.LeakyReLU,
+                    #     "out_act_fn": nn.Identity,
+                    #     "batch_norm": True,
+                    #     "dropout": 0.15,
+                    #     "l2_reg_mul": 5e-5,
                     # }),
+
+                    (MEIReadIn, {
+                        "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
+                        "n_neurons": n_coords.shape[-2],
+                        "mei_resize_method": "resize",
+                        "mei_target_shape": (22, 36),
+                        "pointwise_conv_config": {
+                            "out_channels": 480,
+                            "bias": False,
+                            "batch_norm": True,
+                            "act_fn": nn.LeakyReLU,
+                            "dropout": 0.1,
+                        },
+                        "ctx_net_config": {
+                            "in_channels": 3, # resp, x, y
+                            "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.1,
+                            "batch_norm": True,
+                        },
+                        "shift_coords": False,
+                        "device": config["device"],
+                    }),
                     
                 ],
             } for data_key, n_coords in _dataloaders["mouse_v1"]["train"].neuron_coords.items()
         ],
         "core_cls": CNN_Decoder,
         "core_config": {
+            "resp_shape": (480,),
             "layers": [
                 # ("deconv", 480, 7, 2, 2),
                 ("conv", 480, 7, 1, 3), # MEIReadIn
@@ -249,7 +250,7 @@ config["decoder"] = {
                 # ("deconv", 32, 3, 1, 1),
 
                 # ("deconv", 1, 3, 1, 0),
-                ("conv", 1, 3, 1, 0), # MEIReadIn
+                ("conv", 1, 3, 1, 1), # MEIReadIn
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
@@ -257,11 +258,11 @@ config["decoder"] = {
             "batch_norm": True,
         },
     },
-    "opter_cls": torch.optim.AdamW,
-    # "opter_cls": torch.optim.Adam,
+    # "opter_cls": torch.optim.AdamW,
+    "opter_cls": torch.optim.Adam,
     "opter_kwargs": {
         "lr": 3e-4,
-        "weight_decay": 0.03,
+        # "weight_decay": 0.03,
     },
     "loss": {
         # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
@@ -273,8 +274,8 @@ config["decoder"] = {
             inp_standardized=False,
         ),
         "l1_reg_mul": 0,
-        # "l2_reg_mul": 1e-5,
-        "l2_reg_mul": 0,
+        "l2_reg_mul": 1e-5,
+        # "l2_reg_mul": 0,
         "con_reg_mul": 0,
         # "con_reg_mul": 1,
         # "con_reg_loss_fn": SSIMLoss(
