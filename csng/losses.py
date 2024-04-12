@@ -40,6 +40,8 @@ class Loss:
         return self.con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
 
     def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
+        assert phase in ("train", "val"), f"phase {phase} not recognized"
+
         if phase == "val":
             if hasattr(self.loss_fn, "reduction"):
                 before_red = self.loss_fn.reduction

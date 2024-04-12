@@ -55,6 +55,15 @@ class MultiReadIn(nn.Module):
         
         return nn.ModuleList(readin), in_channels
 
+    def _load_state_dict(self, state_dict):
+        if self.core.__class__ == GAN:
+            core_state_dict = {".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "G" in k or "D" in k}
+            self.core.G.load_state_dict(core_state_dict["G"])
+            self.core.D.load_state_dict(core_state_dict["D"])
+            self.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" in k})
+        else:
+            self.load_state_dict(state_dict)
+
     def add_readin(self, data_key, readin_config):
         if data_key in self.readins:
             print(f"[WARNING] readin layer for {data_key} already exists, overwriting it.")
