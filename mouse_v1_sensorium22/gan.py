@@ -1,4 +1,5 @@
 import os
+os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 32,
+        "batch_size": 16,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -146,10 +147,10 @@ config["decoder"] = {
                         "pointwise_conv_config": {
                             "in_channels": n_coords.shape[-2],
                             "out_channels": 480,
-                            "act_fn": nn.LeakyReLU,
-                            "bias": True,
+                            "act_fn": nn.Identity,
+                            "bias": False,
                             "batch_norm": True,
-                            "dropout": 0.15,
+                            "dropout": 0.1,
                         },
                         "gauss_blur": False,
                         "gauss_blur_kernel_size": 7,
@@ -158,6 +159,31 @@ config["decoder"] = {
                         "gauss_blur_sigma_init": 1.5,
                         "neuron_emb_dim": None,
                     }),
+
+                    # (MEIReadIn, {
+                    #     "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
+                    #     "n_neurons": n_coords.shape[-2],
+                    #     "mei_resize_method": "resize",
+                    #     "mei_target_shape": (22, 36),
+                    #     "pointwise_conv_config": {
+                    #         "out_channels": 480,
+                    #         "bias": False,
+                    #         "batch_norm": True,
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "dropout": 0.1,
+                    #     },
+                    #     "ctx_net_config": {
+                    #         "in_channels": 3, # resp, x, y
+                    #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "out_act_fn": nn.Identity,
+                    #         "dropout": 0.1,
+                    #         "batch_norm": True,
+                    #     },
+                    #     "shift_coords": False,
+                    #     "device": config["device"],
+                    # }),
+
                 ],
             } for data_key, n_coords in _dataloaders["mouse_v1"]["train"].neuron_coords.items()
         ],
@@ -166,14 +192,16 @@ config["decoder"] = {
             "G_kwargs": {
                 "in_shape": [480],
                 "layers": [
-                    # ("deconv", 64, 7, 2, 3),
-                    # ("deconv", 64, 5, 2, 2),
-                    # ("deconv", 32, 4, 1, 1),
+                    # # ("deconv", 480, 7, 2, 3),
+                    # ("deconv", 256, 7, 2, 3),
+                    # # ("deconv", 256, 5, 1, 2),
+                    # ("deconv", 256, 5, 1, 2),
+                    # ("deconv", 128, 4, 1, 1),
+                    # ("deconv", 64, 3, 1, 1),
                     # ("deconv", 1, 3, 1, 0),
 
-                    # ("deconv", 480, 7, 2, 3),
-                    ("deconv", 256, 7, 2, 3),
-                    # ("deconv", 256, 5, 1, 2),
+                    ("deconv", 480, 7, 2, 3),
+                    ("deconv", 256, 5, 1, 2),
                     ("deconv", 256, 5, 1, 2),
                     ("deconv", 128, 4, 1, 1),
                     ("deconv", 64, 3, 1, 1),
@@ -181,28 +209,22 @@ config["decoder"] = {
                 ],
                 "act_fn": nn.ReLU,
                 "out_act_fn": nn.Identity,
-                "dropout": 0.3,
+                "dropout": 0.35,
                 "batch_norm": True,
             },
             "D_kwargs": {
                 "in_shape": [1, *list(crop(_dataloaders["mouse_v1"]["train"].datasets[0][0].images[0], config["crop_win"]).shape)],
                 "layers": [
-                    # ("conv", 32, 4, 1, 2),
-                    # ("conv", 16, 4, 1, 0),
-                    # # ("conv", 16, 4, 1, 0),
-                    # ("conv", 16, 3, 1, 0),
-                    # ("fc", 1),
-
                     ("conv", 256, 7, 2, 2),
-                    ("conv", 128, 5, 1, 1),
+                    ("conv", 256, 5, 1, 2),
+                    ("conv", 128, 3, 1, 1),
                     ("conv", 64, 3, 1, 1),
-                    # ("conv", 32, 3, 1, 0),
-                    ("conv", 32, 3, 1, 1),
+                    ("conv", 64, 3, 1, 1),
                     ("fc", 1),
                 ],
                 "act_fn": nn.ReLU,
                 "out_act_fn": nn.Sigmoid,
-                "dropout": 0.25,
+                "dropout": 0.3,
                 "batch_norm": True,
             },
         },
@@ -218,25 +240,45 @@ config["decoder"] = {
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
         "con_reg_mul": 0,
+        # "con_reg_mul": 1,
+        # "con_reg_loss_fn": SSIMLoss(
+        #     window=config["crop_win"],
+        #     log_loss=True,
+        #     inp_normalized=True,
+        #     inp_standardized=False,
+        # ),
+        "encoder": None,
+        # "encoder": get_encoder(
+        #     device=config["device"],
+        #     eval_mode=True,
+        #     # use_shifter=False,
+        #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+        # ),
     },
     "G_opter_cls": torch.optim.AdamW,
-    "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 5e-3},
+    "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
     "D_opter_cls": torch.optim.AdamW,
-    "D_opter_kwargs": {"lr": 3e-4, "weight_decay": 5e-3},
+    "D_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
     "G_reg": {"l1": 0, "l2": 0},
     "D_reg": {"l1": 0, "l2": 0},
     "G_adv_loss_mul": 0.1,
+    # "G_adv_loss_mul": 0.05,
     "G_stim_loss_mul": 0.9,
+    # "G_stim_loss_mul": 0.45,
     "D_real_loss_mul": 0.5,
     "D_fake_loss_mul": 0.5,
     "D_real_stim_labels_noise": 0.05,
     "D_fake_stim_labels_noise": 0.05,
-    "n_epochs": 120,
+    "n_epochs": 250,
     "load_ckpt": None,
     # "load_ckpt": {
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-05_11-31-49", "ckpt", "decoder_45.pt"),
+    #     "load_best": False,
+    #     "load_opter_state": True,
+    #     "reset_history": False,
+    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "ckpt", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "ienoeanr",
+    #     "resume_wandb_id": "ydm6n31u",
     # },
     "save_run": True,
 }
@@ -271,18 +313,28 @@ if __name__ == "__main__":
         ckpt = torch.load(config["decoder"]["load_ckpt"]["ckpt_path"], map_location=config["device"], pickle_module=dill)
 
         history = ckpt["history"]
-        config = ckpt["config"]
+        config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
         best = ckpt["best"]
 
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
-        core_state_dict = {".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "G" in k or "D" in k}
+        if config["decoder"]["load_ckpt"]["load_best"]:
+            core_state_dict = {".".join(k.split(".")[1:]):v for k,v in best["model"].items() if "G" in k or "D" in k}
+        else:
+            core_state_dict = {".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "G" in k or "D" in k}
         decoder.core.G.load_state_dict(core_state_dict["G"])
         decoder.core.D.load_state_dict(core_state_dict["D"])
-        decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "readin" in k})
+        if config["decoder"]["load_ckpt"]["load_best"]:
+            decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in best["model"].items() if "readin" in k})
+        else:
+            decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "readin" in k})
         decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])
         decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
-        decoder.core.G_optim.load_state_dict(core_state_dict["G_optim"])
-        decoder.core.D_optim.load_state_dict(core_state_dict["D_optim"])
+        if config["decoder"]["load_ckpt"]["load_opter_state"]:
+            decoder.core.G_optim.load_state_dict(core_state_dict["G_optim"])
+            decoder.core.D_optim.load_state_dict(core_state_dict["D_optim"])
+
+        if config["decoder"]["load_ckpt"]["reset_history"]:
+            history = {"val_loss": []}
 
         loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
     else:
@@ -292,7 +344,7 @@ if __name__ == "__main__":
         decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
         loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
 
-        history = {"train_loss": [], "val_loss": []}
+        history = {"val_loss": []}
         best = {"val_loss": np.inf, "epoch": 0, "model": None}
 
     ### print model and fix sizes of stimuli
@@ -359,7 +411,7 @@ if __name__ == "__main__":
     
     ### train
     print(f"[INFO] Config:\n{json.dumps(config, indent=2, default=str)}")
-    s, e = len(history["train_loss"]), config["decoder"]["n_epochs"]
+    s, e = len(history["val_loss"]), config["decoder"]["n_epochs"]
     for epoch in range(s, e):
         print(f"[{epoch}/{e}]")
 
