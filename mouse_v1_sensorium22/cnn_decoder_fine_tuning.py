@@ -1,4 +1,5 @@
 import os
+os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -146,14 +147,6 @@ config["decoder"] = {
                         "learn_grid": True,
                         "grid_l1_reg": 8e-3,
                         "in_channels_group_size": 1,
-                        # "grid_net_config": {
-                        #     "in_channels": 32, # x, y, z, resp
-                        #     "layers_config": [("fc", 64), ("fc", 64), ("fc", 16*9)],
-                        #     "act_fn": nn.LeakyReLU,
-                        #     "out_act_fn": nn.Identity,
-                        #     "dropout": 0.1,
-                        #     "batch_norm": False,
-                        # },
                         "grid_net_config": {
                             "in_channels": 3, # x, y, resp
                             "layers_config": [("fc", 32), ("fc", 86), ("fc", 18*10)],
@@ -299,18 +292,33 @@ config["decoder"] = {
         #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         # ),
     },
-    "n_epochs": 750,
+    "val_loss": None,
+    # "val_loss": {
+    #     "loss_fn": CroppedLoss(
+    #         window=config["crop_win"],
+    #         normalize=False,
+    #         standardize=True,
+    #         loss_fn=VGGPerceptualLoss(
+    #             resize=False,
+    #             device=config["device"],
+    #         ),
+    #     ),
+    #     "l1_reg_mul": 0,
+    #     "l2_reg_mul": 0,
+    #     "con_reg_mul": 0,
+    # },
+    "n_epochs": 100,
     # "load_ckpt": None,
     "load_ckpt": {
-        "load_only_core": False,
-        "load_best": False,
-        "load_opter_state": True,
-        # "load_only_core": True,
+        "load_only_core": True,
+        "load_best": True,
+        "load_opter_state": False,
         "ckpt_path": os.path.join(
-            # DATA_PATH, "models", "cnn", "2024-04-01_11-16-55", "decoder.pt"),
-            DATA_PATH, "models", "cnn", "2024-04-02_10-45-50", "ckpt", "decoder_645.pt"),
-        "resume_checkpointing": True,
-        "resume_wandb_id": "tjx78tcb"
+            DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-04-03_22-53-01", "decoder.pt"),
+            # DATA_PATH, "models", "cnn", "2024-03-31_17-58-59", "decoder.pt"),
+            # DATA_PATH, "models", "cnn", "2024-04-02_10-45-50", "ckpt", "decoder_645.pt"),
+        "resume_checkpointing": False,
+        "resume_wandb_id": None,
     },
     "save_run": True,
 }
@@ -351,7 +359,14 @@ if __name__ == "__main__":
             config["decoder"]["model"]["core_cls"] = ckpt["config"]["decoder"]["model"]["core_cls"]
             config["decoder"]["model"]["core_config"] = ckpt["config"]["decoder"]["model"]["core_config"]
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
-            decoder.load_state_dict({k:v for k,v in ckpt["best"]["model"].items() if "readin" not in k}, strict=False)
+            
+            ### load params
+            if config["decoder"]["load_ckpt"]["load_best"]:
+                decoder.load_state_dict({k:v for k,v in ckpt["best"]["model"].items() if "readin" not in k}, strict=False)
+            else:
+                decoder.load_state_dict({k:v for k,v in ckpt["decoder"].items() if "readin" not in k}, strict=False)
+
+            assert not config["decoder"]["load_ckpt"]["load_opter_state"], "load_opter_state=True not supported."
 
             ### init the rest
             opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
@@ -444,20 +459,10 @@ if __name__ == "__main__":
         wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config, id=config["decoder"]["load_ckpt"]["resume_wandb_id"], resume="must")
 
     ### setup loss for early stopping
-    val_loss_fn = Loss(model=decoder, config={
-        "loss_fn": CroppedLoss(
-            window=config["crop_win"],
-            normalize=False,
-            standardize=True,
-            loss_fn=VGGPerceptualLoss(
-                resize=False,
-                device=config["device"],
-            ),
-        ),
-        "l1_reg_mul": 0,
-        "l2_reg_mul": 0,
-        "con_reg_mul": 0,
-    })
+    if config["decoder"]["val_loss"] is not None:
+        val_loss_fn = Loss(model=decoder, config=config["decoder"]["val_loss"])
+    else:
+        val_loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
 
     ### eval before fine-tuning
     stim_pred = decoder(
