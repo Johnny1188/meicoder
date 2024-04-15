@@ -167,11 +167,15 @@ class PerSampleStoredDataset(Dataset):
                     "V1_Inh_L23": np.concatenate((pos_ori_file["V1_Inh_L23"]["pos_x"].reshape(-1,1), pos_ori_file["V1_Inh_L23"]["pos_y"].reshape(-1,1)), axis=1),
                 }
                 self.coords["all"] = np.concatenate((self.coords["V1_Exc_L23"], self.coords["V1_Inh_L23"]), axis=0)
+                for k in self.coords:
+                    self.coords[k] = torch.from_numpy(self.coords[k]).float()
                 self.ori = {
                     "V1_Exc_L23": np.array(pos_ori_file["V1_Exc_L23"]["ori"]),
                     "V1_Inh_L23": np.array(pos_ori_file["V1_Inh_L23"]["ori"]),
                 }
                 self.ori["all"] = np.concatenate((self.ori["V1_Exc_L23"], self.ori["V1_Inh_L23"]), axis=0)
+                for k in self.ori:
+                    self.ori[k] = torch.from_numpy(self.ori[k]).float()
 
     def __len__(self):
         return len(self.file_names)

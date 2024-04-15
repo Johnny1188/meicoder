@@ -56,7 +56,7 @@ def train(model, dataloader, loss_fn, config, history, log_freq=100, wdb_run=Non
             fake_stim_pred_for_G = model.core.D(crop(stim_pred, config["crop_win"]))
             G_loss_adv = torch.mean((fake_stim_pred_for_G - 1.)**2) * config["decoder"]["G_adv_loss_mul"]
             # reconstruction quality
-            G_loss_stim = loss_fn(stim_pred, stim) * config["decoder"]["G_stim_loss_mul"]
+            G_loss_stim = config["decoder"]["G_stim_loss_mul"] * loss_fn(stim_pred, stim, data_key=data_key, phase="train", neuron_coords=neuron_coords)
             G_loss = G_loss + G_loss_adv + G_loss_stim
 
         ##### update generator [START] #####
