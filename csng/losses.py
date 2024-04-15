@@ -641,6 +641,7 @@ class SSIM(torch.nn.Module):
         spatial_dims: int = 2,
         K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
         nonnegative_ssim: bool = False,
+        reduction: str = "none",
     ) -> None:
         r""" class for ssim
         Args:
@@ -660,9 +661,10 @@ class SSIM(torch.nn.Module):
         self.data_range = data_range
         self.K = K
         self.nonnegative_ssim = nonnegative_ssim
+        self.reduction = reduction
 
     def forward(self, X: Tensor, Y: Tensor) -> Tensor:
-        return ssim(
+        ssim_val = ssim(
             X,
             Y,
             data_range=self.data_range,
@@ -671,6 +673,15 @@ class SSIM(torch.nn.Module):
             K=self.K,
             nonnegative_ssim=self.nonnegative_ssim,
         )
+
+        if self.reduction == "mean":
+            ssim_val = ssim_val.mean()
+        elif self.reduction == "sum":
+            ssim_val = ssim_val.sum()
+        elif self.reduction == "none":
+            pass
+
+        return ssim_val
 
 
 class MS_SSIM(torch.nn.Module):

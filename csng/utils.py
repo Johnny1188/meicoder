@@ -51,6 +51,7 @@ def normalize(x, dim=(1,2,3), mean=None, std=None, inplace=False):
     else:
         return (x - x_mean) / (x_std + 1e-8)
 
+
 def get_mean_and_std(dataset=None, dataloader=None, verbose=False):
     """ Compute the mean and std value of dataset. """
     assert dataset is not None or dataloader is not None, "Either dataset or dataloader must be provided."
@@ -89,6 +90,7 @@ def get_mean_and_std(dataset=None, dataloader=None, verbose=False):
             "std": std_targets
         }
     }
+
 
 def plot_comparison(target, pred, target_title="Target", pred_title="Reconstructed", n_cols=8, show=True, save_to=None):
     n_imgs = (target.shape[0], pred.shape[0])
@@ -325,3 +327,14 @@ def build_layers(
             in_channels = out_channels
 
         return nn.Sequential(*layers)
+
+
+def dict_to_str(d):
+    def print_val(v):
+        if type(v) == dict:
+            return dict_to_str(v)
+        elif type(v) in (list, tuple):
+            return [print_val(_v) for _v in v]
+        else:
+            return f"{v:.3f}"
+    return ", ".join([f"{k}: {print_val(v)}" for k, v in d.items()])
