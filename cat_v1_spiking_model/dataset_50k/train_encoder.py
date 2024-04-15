@@ -1,5 +1,4 @@
 import os
-os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
 import random
 import numpy as np
 import json

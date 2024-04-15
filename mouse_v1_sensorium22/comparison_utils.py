@@ -257,7 +257,6 @@ def eval_decoder(model, dataloader, loss_fns, config, normalize_decoded=False):
                         "pupil_center": pupil_center,
                     }
                 )
-                breakpoint()
             else:
                 stim_pred = model(
                     resp,
