@@ -25,6 +25,7 @@ from csng.utils import crop, plot_comparison, standardize, normalize, get_mean_a
 from csng.losses import (
     MultiSSIMLoss,
     SSIMLoss,
+    SSIM,
     CroppedLoss,
     Loss,
     MS_SSIMLoss,
@@ -33,8 +34,9 @@ from csng.losses import (
     VGGPerceptualLoss,
 )
 from csng.data import MixedBatchLoader
+from csng.readins import MultiReadIn
 
-from BoostedInvertedEncoder import BoostedInvertedEncoder
+# from BoostedInvertedEncoder import BoostedInvertedEncoder
 from encoder import get_encoder
 from data_utils import get_mouse_v1_data, PerSampleStoredDataset, append_syn_dataloaders, append_data_aug_dataloaders
 
@@ -42,7 +44,202 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 print(f"{DATA_PATH=}")
 
 
-def eval_decoder(model, dataloader, loss_fns, normalize_decoded, config):
+def load_decoder_from_ckpt(config, ckpt_path):
+    ckpt = torch.load(ckpt_path, map_location=config["device"], pickle_module=dill)
+    ckpt_config = ckpt["config"]
+
+    ### TODO: remove (quick fix) -->
+    if "meis_path" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1] \
+        and not os.path.exists(ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]):
+        # and "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]:
+        for rc in ckpt_config["decoder"]["model"]["readins_config"]:
+            rc["layers"][0][1]["meis_path"] = rc["layers"][0][1]["meis_path"].replace(
+                "/media/jsobotka/ext_ssd/csng_data/mouse_v1_sensorium22/meis/",
+                "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/",
+            )
+    ### TODO: remove (quick fix) <--
+
+    decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(config["device"])
+    if config["comparison"]["eval_all_ckpts"] or not config["comparison"]["load_best"]:
+        print(f"  [WARNING] Not loading the best model from the ckpt.")
+        decoder._load_state_dict(ckpt["decoder"])
+    else:
+        decoder._load_state_dict(ckpt["best"]["model"])
+    decoder.eval()
+
+    return decoder, ckpt
+
+
+def get_metrics(config):
+    metrics = {
+        "SSIM": CroppedLoss(
+            window=config["crop_win"],
+            normalize=False,
+            standardize=True,
+            loss_fn=SSIM(size_average=False, reduction="sum"),
+        ),
+        "Log SSIM Loss": SSIMLoss(
+            window=config["crop_win"],
+            log_loss=True,
+            inp_normalized=True,
+            inp_standardized=False,
+            reduction="sum",
+        ),
+        "Log MultiSSIM Loss": MultiSSIMLoss(
+            window=config["crop_win"],
+            log_loss=True,
+            inp_normalized=True,
+            inp_standardized=False,
+            reduction="sum",
+        ),
+        "SSIM Loss": SSIMLoss(
+            window=config["crop_win"],
+            log_loss=False,
+            inp_normalized=True,
+            inp_standardized=False,
+            reduction="sum",
+        ),
+        "MultiSSIM Loss": MultiSSIMLoss(
+            window=config["crop_win"],
+            log_loss=False,
+            inp_normalized=True,
+            inp_standardized=False,
+            reduction="sum",
+        ),
+        "Perceptual Loss (VGG16)": CroppedLoss(
+            window=config["crop_win"],
+            normalize=False,
+            standardize=True,
+            loss_fn=VGGPerceptualLoss(
+                resize=False,
+                device=config["device"],
+            ),
+        ),
+        # "Perceptual Loss (Encoder)": CroppedLoss(
+        #     window=config["crop_win"],
+        #     normalize=True,
+        #     standardize=False,
+        #     loss_fn=EncoderPerceptualLoss(
+        #         encoder=encoder,
+        #         device=config["device"],
+        #     ),
+        # ),
+        "FFL": CroppedLoss(
+            window=config["crop_win"],
+            normalize=False,
+            standardize=True,
+            loss_fn=FFL(loss_weight=1, alpha=1.0),
+        ),
+        "MSE": lambda x_hat, x: F.mse_loss(
+            standardize(crop(x_hat, config["crop_win"])),
+            standardize(crop(x, config["crop_win"])),
+            reduction="none",
+        ).mean((1,2,3)).sum(),
+        "MAE": lambda x_hat, x: F.l1_loss(
+            standardize(crop(x_hat, config["crop_win"])),
+            standardize(crop(x, config["crop_win"])),
+            reduction="none",
+        ).mean((1,2,3)).sum(),
+    }
+    metrics["SSIML + PSL"] = CroppedLoss(
+        window=config["crop_win"],
+        normalize=False,
+        standardize=False,
+        loss_fn=lambda y_hat, y: metrics["SSIM Loss"](y_hat, y) + metrics["Perceptual Loss (VGG16)"](y_hat, y)
+    )
+
+    for k in metrics.keys():
+        metrics[k] = Loss(
+            model=None,
+            config={
+                "loss_fn": metrics[k],
+                "l1_reg_mul": 0,
+                "l2_reg_mul": 0,
+                "con_reg_mul": 0,
+            }
+        )
+
+    return metrics
+
+
+def get_all_data(config):
+    dls, neuron_coords = get_mouse_v1_data(config=config["data"])
+    if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:
+        dls = append_syn_dataloaders(dls, config=config["data"]["syn_dataset_config"]) # append synthetic data
+    if "data_augmentation" in config["data"] and config["data"]["data_augmentation"] is not None:
+        dls = append_data_aug_dataloaders(
+            dataloaders=dls,
+            config=config["data"]["data_augmentation"],
+        )
+    return dls, neuron_coords
+
+
+def find_best_ckpt(config, ckpt_paths, metrics):
+    best_ckpt_path, best_loss = None, np.inf
+    for ckpt_path in ckpt_paths:
+        ckpt = torch.load(ckpt_path, map_location=config["device"], pickle_module=dill)
+        ckpt_config = ckpt["config"]
+        ### TODO: remove (quick fix)
+        if "meis_path" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1] \
+            and not os.path.exists(ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]):
+            # and "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]:
+            for rc in ckpt_config["decoder"]["model"]["readins_config"]:
+                rc["layers"][0][1]["meis_path"] = rc["layers"][0][1]["meis_path"].replace(
+                    "/media/jsobotka/ext_ssd/csng_data/mouse_v1_sensorium22/meis/",
+                    "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/",
+                )
+        decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(config["device"])
+        decoder._load_state_dict(ckpt["decoder"])
+        decoder.eval()
+        
+        ### eval
+        dls, neuron_coords = get_all_data(config=config)
+        val_loss = eval_decoder(
+            model=decoder,
+            dataloader=dls["mouse_v1"]["val"],
+            loss_fns={config["comparison"]["find_best_ckpt_according_to"]: metrics[config["comparison"]["find_best_ckpt_according_to"]]},
+            normalize_decoded=False,
+            config=config,
+        )[config["comparison"]["find_best_ckpt_according_to"]]["total"]
+        
+        # print(f"{ckpt_path}:\n  {val_loss}")
+        # sample_data_key = dls["mouse_v1"]["val"].data_keys[0]
+        # datapoint = next(iter(dls["mouse_v1"]["val"].dataloaders[0]))
+        # stim, resp, pupil_center = datapoint.images.to(config["device"]), datapoint.responses.to(config["device"]), datapoint.pupil_center.to(config["device"])
+        # stim_pred = decoder(resp, data_key=sample_data_key, neuron_coords=neuron_coords[sample_data_key], pupil_center=pupil_center).detach().cpu()
+        # fig = plt.figure()
+        # plt.imshow(crop(stim_pred, config["crop_win"])[2].permute(1,2,0), "gray")
+        # from pathlib import Path
+        # fig.savefig(f"{Path(ckpt_path).stem}.png")
+
+        # fig = plt.figure()
+        # plt.imshow(crop(stim.cpu(), config["crop_win"])[2].permute(1,2,0), "gray")
+        # fig.savefig(f"{Path(ckpt_path).stem}_target_{metrics[config['comparison']['find_best_ckpt_according_to']](stim_pred[2].unsqueeze(0).cuda(), stim[2].unsqueeze(0).cuda(),data_key=sample_data_key,phase='val'):.3f}.png")
+
+        if val_loss < best_loss:
+            best_loss = val_loss
+            best_ckpt_path = ckpt_path
+    return best_ckpt_path, best_loss
+
+
+def plot_decoding_history(decoding_history, save_to=None, show=True):
+    fig = plt.figure(figsize=(16, 6))
+    ax = fig.add_subplot(121)
+    ax.plot(decoding_history["resp_loss"])
+    ax.set_title("resp_loss")
+
+    ax = fig.add_subplot(122)
+    ax.plot(decoding_history["stim_loss"])
+    ax.set_title("stim_loss")
+
+    if show:
+        plt.show()
+
+    if save_to is not None:
+        fig.savefig(save_to)
+
+
+def eval_decoder(model, dataloader, loss_fns, config, normalize_decoded=False):
     model.eval()
     val_losses = {loss_fn_name: {"total": 0} for loss_fn_name in loss_fns.keys()}
     num_samples = 0
@@ -52,7 +249,7 @@ def eval_decoder(model, dataloader, loss_fns, normalize_decoded, config):
         ### combine from all data keys
         for data_key, stim, resp, neuron_coords, pupil_center in b:
             if model.__class__.__name__ == "InvertedEncoder":
-                stim_pred, _, _ = model(
+                stim_pred, _, hist = model(
                     resp_target=resp,
                     stim_target=stim,
                     additional_encoder_inp={
@@ -60,32 +257,7 @@ def eval_decoder(model, dataloader, loss_fns, normalize_decoded, config):
                         "pupil_center": pupil_center,
                     }
                 )
-            elif hasattr(model, "core") and model.core.__class__.__name__ == "L2O_Decoder":
-                raise NotImplementedError("L2O_Decoder not implemented yet - data needs to be standardized")
-                stim_pred, _ = model(
-                    x=resp,
-                    data_key=data_key,
-                    neuron_coords=neuron_coords,
-                    pupil_center=pupil_center,
-                    additional_core_inp=dict(
-                        train=False,
-                        stim=None,
-                        resp=resp,
-                        neuron_coords=neuron_coords,
-                        pupil_center=pupil_center,
-                        data_key=data_key,
-                        n_steps=config["decoder"]["n_steps"],
-                        x_hat_history_iters=None,
-                    ),
-                )
-            elif isinstance(model, BoostedInvertedEncoder):
-                stim_pred, _, _ = model(
-                    resp,
-                    train=False,
-                    data_key=data_key,
-                    neuron_coords=neuron_coords,
-                    pupil_center=pupil_center,
-                )
+                breakpoint()
             else:
                 stim_pred = model(
                     resp,
@@ -111,18 +283,6 @@ def eval_decoder(model, dataloader, loss_fns, normalize_decoded, config):
             val_losses[loss_name][k] /= denom_data_keys[k]
 
     return val_losses
-
-
-def get_all_data(config):
-    dls, neuron_coords = get_mouse_v1_data(config=config["data"])
-    if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:
-        dls = append_syn_dataloaders(dls, config=config["data"]["syn_dataset_config"]) # append synthetic data
-    if "data_augmentation" in config["data"] and config["data"]["data_augmentation"] is not None:
-        dls = append_data_aug_dataloaders(
-            dataloaders=dls,
-            config=config["data"]["data_augmentation"],
-        )
-    return dls, neuron_coords
 
 
 ##### Plotting utils #####
