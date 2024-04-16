@@ -212,7 +212,7 @@ def _ssim(
 def ssim(
     X: Tensor,
     Y: Tensor,
-    data_range: float = 255,
+    data_range: float = 1.0,
     size_average: bool = True,
     win_size: int = 11,
     win_sigma: float = 1.5,
@@ -755,7 +755,7 @@ class PerceptualLoss(torch.nn.Module):
 
 class VGGPerceptualLoss(torch.nn.Module):
     """ Modified from: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
-    def __init__(self, resize=False, mean_across_layers=True, device="cuda"):
+    def __init__(self, resize=False, mean_across_layers=True, reduction="per_sample_mean_sum", device="cuda"):
         super().__init__()
         blocks = []
         blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[:4].eval())
@@ -768,9 +768,24 @@ class VGGPerceptualLoss(torch.nn.Module):
         self.blocks = torch.nn.ModuleList(blocks).to(device)
         self.transform = torch.nn.functional.interpolate
         self.resize = resize
+        self.reduction = reduction
+        print(f"[INFO] VGGPerceptualLoss: reduction={reduction}")
         self.mean_across_layers = mean_across_layers
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1))
+
+    def _loss_fn(self, y_hat, y):
+        if self.reduction == "per_sample_mean":
+            loss = torch.nn.functional.l1_loss(y_hat, y, reduction="none")
+            loss = loss.mean(dim=[1, 2, 3])
+        elif self.reduction == "per_sample_mean_sum":
+            loss = torch.nn.functional.l1_loss(y_hat, y, reduction="none")
+            loss = loss.mean(dim=[1, 2, 3]).sum()
+        elif self.reduction == "mean":
+            loss = torch.nn.functional.l1_loss(y_hat, y, reduction="mean")
+        else:
+            raise ValueError(f"Invalid reduction: {self.reduction}")
+        return loss
 
     def forward(self, inp, target, feature_layers=[0, 1, 2, 3], style_layers=[]):
         assert inp.min() >= 0.0 and inp.max() <= 1.0, "Input should be normalized to [0, 1] range."
@@ -790,13 +805,13 @@ class VGGPerceptualLoss(torch.nn.Module):
             x = block(x)
             y = block(y)
             if i in feature_layers:
-                loss += torch.nn.functional.l1_loss(x, y)
+                loss += self._loss_fn(x, y)
             if i in style_layers:
                 act_x = x.reshape(x.shape[0], x.shape[1], -1)
                 act_y = y.reshape(y.shape[0], y.shape[1], -1)
                 gram_x = act_x @ act_x.permute(0, 2, 1)
                 gram_y = act_y @ act_y.permute(0, 2, 1)
-                loss += torch.nn.functional.l1_loss(gram_x, gram_y)
+                loss += self._loss_fn(gram_x, gram_y)
 
         if self.mean_across_layers:
             loss = loss / (
