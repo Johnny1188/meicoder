@@ -76,37 +76,38 @@ def get_metrics(config):
             window=config["crop_win"],
             normalize=False,
             standardize=True,
-            loss_fn=SSIM(size_average=False, reduction="sum"),
+            # loss_fn=SSIM(size_average=False, reduction="sum"),
+            loss_fn=SSIM(reduction="sum"),
         ),
-        "Log SSIM Loss": SSIMLoss(
+        "Log SSIML": SSIMLoss(
             window=config["crop_win"],
             log_loss=True,
             inp_normalized=True,
             inp_standardized=False,
             reduction="sum",
         ),
-        "Log MultiSSIM Loss": MultiSSIMLoss(
-            window=config["crop_win"],
-            log_loss=True,
-            inp_normalized=True,
-            inp_standardized=False,
-            reduction="sum",
-        ),
-        "SSIM Loss": SSIMLoss(
-            window=config["crop_win"],
-            log_loss=False,
-            inp_normalized=True,
-            inp_standardized=False,
-            reduction="sum",
-        ),
-        "MultiSSIM Loss": MultiSSIMLoss(
+        # "Log MultiSSIM Loss": MultiSSIMLoss(
+        #     window=config["crop_win"],
+        #     log_loss=True,
+        #     inp_normalized=True,
+        #     inp_standardized=False,
+        #     reduction="sum",
+        # ),
+        "SSIML": SSIMLoss(
             window=config["crop_win"],
             log_loss=False,
             inp_normalized=True,
             inp_standardized=False,
             reduction="sum",
         ),
-        "Perceptual Loss (VGG16)": CroppedLoss(
+        # "MultiSSIM Loss": MultiSSIMLoss(
+        #     window=config["crop_win"],
+        #     log_loss=False,
+        #     inp_normalized=True,
+        #     inp_standardized=False,
+        #     reduction="sum",
+        # ),
+        "PL": CroppedLoss(
             window=config["crop_win"],
             normalize=False,
             standardize=True,
@@ -141,11 +142,11 @@ def get_metrics(config):
             reduction="none",
         ).mean((1,2,3)).sum(),
     }
-    metrics["SSIML + PSL"] = CroppedLoss(
+    metrics["SSIML-PL"] = CroppedLoss(
         window=config["crop_win"],
         normalize=False,
         standardize=False,
-        loss_fn=lambda y_hat, y: metrics["SSIM Loss"](y_hat, y) + metrics["Perceptual Loss (VGG16)"](y_hat, y)
+        loss_fn=lambda y_hat, y: metrics["SSIML"](y_hat, y) + metrics["PL"](y_hat, y)
     )
 
     for k in metrics.keys():
@@ -249,7 +250,7 @@ def eval_decoder(model, dataloader, loss_fns, config, normalize_decoded=False):
         ### combine from all data keys
         for data_key, stim, resp, neuron_coords, pupil_center in b:
             if model.__class__.__name__ == "InvertedEncoder":
-                stim_pred, _, hist = model(
+                stim_pred, _, _ = model(
                     resp_target=resp,
                     stim_target=stim,
                     additional_encoder_inp={

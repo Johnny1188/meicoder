@@ -1,15 +1,14 @@
 import os
+os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import json
-import pandas as pd
 from datetime import datetime
 from copy import deepcopy
 import dill
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 from torchvision import transforms
 import lovely_tensors as lt
@@ -17,8 +16,6 @@ from nnfabrik.builder import get_data
 from focal_frequency_loss import FocalFrequencyLoss as FFL
 
 import csng
-from csng.InvertedEncoder import InvertedEncoder
-from csng.CNN_Decoder import CNN_Decoder
 from csng.utils import crop, plot_comparison, standardize, normalize, get_mean_and_std, count_parameters, plot_losses
 from csng.losses import (
     MultiSSIMLoss,
@@ -30,20 +27,9 @@ from csng.losses import (
     EncoderPerceptualLoss,
     VGGPerceptualLoss,
 )
-from csng.data import MixedBatchLoader
-from csng.readins import (
-    MultiReadIn,
-    HypernetReadIn,
-    ConvReadIn,
-    AttentionReadIn,
-    FCReadIn,
-    AutoEncoderReadIn,
-    Conv1dReadIn,
-)
 
-# from BoostedInvertedEncoder import BoostedInvertedEncoder
 from encoder import get_encoder
-from data_utils import get_mouse_v1_data, PerSampleStoredDataset, append_syn_dataloaders, append_data_aug_dataloaders
+from data_utils import get_mouse_v1_data
 from comparison_utils import (
     load_decoder_from_ckpt,
     get_metrics,
@@ -98,7 +84,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 128,
+        "batch_size": 16,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -119,12 +105,12 @@ config["comparison"] = {
     "eval_all_ckpts": True,
     # "eval_all_ckpts": False,
     "find_best_ckpt_according_to": None,
-    "find_best_ckpt_according_to": "Perceptual Loss (VGG16)",
-    "find_best_ckpt_according_to": "SSIML + PSL",
+    # "find_best_ckpt_according_to": "Perceptual Loss (VGG16)",
+    "find_best_ckpt_according_to": "SSIML-PL",
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "table_02",
+        "test",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -204,42 +190,42 @@ config["comparison"]["to_compare"] = {
         "run_name": "2024-03-27_11-35-11",
         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_11-35-11", "decoder.pt"),
     },
-    "CNN-Conv w/ encoder matching (M-1)": {
-        "run_name": "2024-04-11_10-22-00",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-22-00", "decoder.pt"),
-    },
-    "CNN-Conv (M-All)": {
-        "run_name": "2024-03-27_23-26-05",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_23-26-05", "decoder.pt"),
-    },
-    "CNN-Conv w/ encoder matching (M-All)": {
-        "run_name": "2024-04-11_10-18-14",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-18-14", "decoder.pt"),
-    },
-    "CNN-MEI (M-1)": {
-        "run_name": "2024-04-09_08-42-29",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
-    },
-    "CNN-MEI w/ encoder matching (M-1)": {
-        "run_name": "2024-04-12_23-44-06",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_23-44-06", "decoder.pt"),
-    },
-    "GAN (M-1)": {
-        "run_name": "2024-04-10_11-06-28",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_11-06-28", "decoder.pt"),
-    },
-    "GAN w/ encoder matching (M-1)": {
-        "run_name": "2024-04-11_13-54-42",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "decoder.pt"),
-    },
-    "GAN (M-All)": {
-        "run_name": "2024-04-10_17-36-41",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_17-36-41", "decoder.pt"),
-    },
-    "GAN w/ encoder matching (M-All)": {
-        "run_name": "2024-04-11_14-31-27",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_14-31-27", "decoder.pt"),
-    },
+    # "CNN-Conv w/ encoder matching (M-1)": {
+    #     "run_name": "2024-04-11_10-22-00",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-22-00", "decoder.pt"),
+    # },
+    # "CNN-Conv (M-All)": {
+    #     "run_name": "2024-03-27_23-26-05",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_23-26-05", "decoder.pt"),
+    # },
+    # "CNN-Conv w/ encoder matching (M-All)": {
+    #     "run_name": "2024-04-11_10-18-14",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-18-14", "decoder.pt"),
+    # },
+    # "CNN-MEI (M-1)": {
+    #     "run_name": "2024-04-09_08-42-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
+    # },
+    # "CNN-MEI w/ encoder matching (M-1)": {
+    #     "run_name": "2024-04-12_23-44-06",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_23-44-06", "decoder.pt"),
+    # },
+    # "GAN (M-1)": {
+    #     "run_name": "2024-04-10_11-06-28",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_11-06-28", "decoder.pt"),
+    # },
+    # "GAN w/ encoder matching (M-1)": {
+    #     "run_name": "2024-04-11_13-54-42",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "decoder.pt"),
+    # },
+    # "GAN (M-All)": {
+    #     "run_name": "2024-04-10_17-36-41",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_17-36-41", "decoder.pt"),
+    # },
+    # "GAN w/ encoder matching (M-All)": {
+    #     "run_name": "2024-04-11_14-31-27",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_14-31-27", "decoder.pt"),
+    # },
 
     ### Table 3 (Synthetic data M-1/S-1)
     # "CNN-Conv (0%)": {

@@ -11,7 +11,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 import torchvision
-
+from torchmetrics.image import StructuralSimilarityIndexMeasure as _SSIM
 
 from csng.utils import standardize, normalize, crop
 
@@ -351,33 +351,21 @@ def ms_ssim(
 
 
 class SSIMLoss(torch.nn.Module):
-    r""" class for ssim loss
-    Args:
-        data_range (float or int, optional): value range of input images. (usually 1.0 or 255)
-        size_average (bool, optional): if size_average=True, ssim of all images will be averaged as a scalar
-        win_size: (int, optional): the size of gauss kernel
-        win_sigma: (float, optional): sigma of normal distribution
-        channel: (int, optional): input channels (default: 3)
-        spatial_dims: (int, optional): spatial dims (default: 2)
-        K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
-        nonnegative_ssim (bool, optional): force the ssim response to be nonnegative to avoid negative results.
-    """
-
     def __init__(
         self,
-        inp_normalized: bool = True,
-        inp_standardized: bool = False,
-        log_loss: bool = False,
+        inp_normalized=True,
+        inp_standardized=False,
+        log_loss=False,
         window=None, # (x1, x2, y1, y2)
-        size_average: bool = False,
-        win_size: int = 11,
-        win_sigma: float = 1.5,
-        channel: int = 1,
-        spatial_dims: int = 2,
-        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
-        nonnegative_ssim: bool = False,
-        reduction: str = "mean",
-    ) -> None:
+        size_average=False,
+        win_size=11,
+        win_sigma=1.5,
+        channel=1,
+        spatial_dims=2,
+        K=(0.01, 0.03),
+        nonnegative_ssim=False,
+        reduction="mean",
+    ):
         assert (inp_normalized and not inp_standardized) or (
             not inp_normalized and inp_standardized
         ), "Input should be either normalized or standardized."
@@ -394,32 +382,21 @@ class SSIMLoss(torch.nn.Module):
         self.spatial_dims = spatial_dims
         self.K = K
         self.reduction = reduction
-        # if not nonnegative_ssim and log_loss:
-        #     print("[WARNING] Setting nonnegative_ssim to True as log_loss is set to True.")
-        #     nonnegative_ssim = True
         self.nonnegative_ssim = nonnegative_ssim
 
         self.ssim = SSIM(
             data_range=1.0,
-            size_average=size_average,
+            # size_average=size_average,
             win_size=win_size,
             win_sigma=win_sigma,
-            channel=channel,
-            spatial_dims=spatial_dims,
+            # channel=channel,
+            # spatial_dims=spatial_dims,
             K=K,
-            nonnegative_ssim=nonnegative_ssim,
+            nonnegative=nonnegative_ssim,
         )
     
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
-        r""" function for computing ssim loss
-        Args:
-            X (torch.Tensor): a batch of images, (N,C,[T,]H,W)
-            Y (torch.Tensor): a batch of images, (N,C,[T,]H,W)
-        Returns:
-            torch.Tensor: ssim results
-        """
-
-        ### loss wrt window
+        ### crop only window
         if self.window is not None:
             pred = crop(pred, win=self.window)
             target = crop(target, win=self.window)
@@ -428,7 +405,11 @@ class SSIMLoss(torch.nn.Module):
             pred = standardize(pred)
             target = standardize(target)
 
+        assert torch.all(pred >= 0) and torch.all(pred <= 1), "Predictions should be in the [0, 1] range."
+        assert torch.all(target >= 0) and torch.all(target <= 1), "Targets should be in the [0, 1] range."
         ssim_val = self.ssim(pred, target) # (B,)
+        assert ssim_val.ndim == 1 and ssim_val.size(0) == pred.size(0), \
+            "Incorrect dimensions encountered in computing the SSIM value."
 
         if not self.nonnegative_ssim:
             # ssim value is in range [-1, 1] - shift to [0, 1]
@@ -633,46 +614,43 @@ class MS_SSIMLoss(torch.nn.Module):
 class SSIM(torch.nn.Module):
     def __init__(
         self,
-        data_range: float = 1,
-        size_average: bool = False,
-        win_size: int = 11,
-        win_sigma: float = 1.5,
-        channel: int = 1,
-        spatial_dims: int = 2,
-        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
-        nonnegative_ssim: bool = False,
-        reduction: str = "none",
-    ) -> None:
-        r""" class for ssim
-        Args:
-            data_range (float or int, optional): value range of input images. (usually 1.0 or 255)
-            size_average (bool, optional): if size_average=True, ssim of all images will be averaged as a scalar
-            win_size: (int, optional): the size of gauss kernel
-            win_sigma: (float, optional): sigma of normal distribution
-            channel (int, optional): input channels (default: 3)
-            K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
-            nonnegative_ssim (bool, optional): force the ssim response to be nonnegative with relu.
-        """
-
-        super(SSIM, self).__init__()
+        data_range=1,
+        # size_average=False,
+        win_size=11,
+        win_sigma=1.5,
+        # channel=1,
+        # spatial_dims=2,
+        K=(0.01, 0.03),
+        nonnegative=False,
+        reduction="none",
+    ):
+        super().__init__()
         self.win_size = win_size
-        self.win = _fspecial_gauss_1d(win_size, win_sigma).repeat([channel, 1] + [1] * spatial_dims)
-        self.size_average = size_average
+        # self.win = _fspecial_gauss_1d(win_size, win_sigma).repeat([channel, 1] + [1] * spatial_dims)
+        # self.size_average = size_average
         self.data_range = data_range
         self.K = K
-        self.nonnegative_ssim = nonnegative_ssim
+        self.nonnegative = nonnegative
         self.reduction = reduction
-
-    def forward(self, X: Tensor, Y: Tensor) -> Tensor:
-        ssim_val = ssim(
-            X,
-            Y,
-            data_range=self.data_range,
-            size_average=self.size_average,
-            win=self.win,
-            K=self.K,
-            nonnegative_ssim=self.nonnegative_ssim,
+        self._ssim = _SSIM(
+            gaussian_kernel=True,
+            sigma=win_sigma,
+            kernel_size=win_size,
+            reduction="none", # done manually
+            data_range=data_range,
+            k1=K[0],
+            k2=K[1],
+            return_full_image=False,
+            return_contrast_sensitivity=False,
         )
+
+    def forward(self, x, y):
+        ssim_val = self._ssim(x, y)
+        if x.ndim == 4 and x.size(0) == 1:
+            ssim_val = ssim_val.unsqueeze(0) # value to 1D tensor
+
+        if self.nonnegative:
+            ssim_val = F.relu(ssim_val)
 
         if self.reduction == "mean":
             ssim_val = ssim_val.mean()
