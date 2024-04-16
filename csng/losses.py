@@ -11,7 +11,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 import torchvision
-from torchmetrics.image import StructuralSimilarityIndexMeasure as _SSIM
+import torchmetrics
+# from torchmetrics.image import StructuralSimilarityIndexMeasure as _SSIM
 
 from csng.utils import standardize, normalize, crop
 
@@ -626,20 +627,36 @@ class SSIM(torch.nn.Module):
     ):
         super().__init__()
         self.win_size = win_size
+        self.win_sigma = win_sigma
         # self.win = _fspecial_gauss_1d(win_size, win_sigma).repeat([channel, 1] + [1] * spatial_dims)
         # self.size_average = size_average
         self.data_range = data_range
         self.K = K
         self.nonnegative = nonnegative
         self.reduction = reduction
-        self._ssim = _SSIM(
+
+    def _ssim(self, x, y):
+        # return ssim(
+        #     X=x,
+        #     Y=y,
+        #     data_range=self.data_range,
+        #     size_average=self.size_average,
+        #     win_size=self.win_size,
+        #     win_sigma=self.win_sigma,
+        #     win=self.win,
+        #     K=self.K,
+        #     nonnegative_ssim=self.nonnegative,
+        # )
+        return torchmetrics.functional.image.structural_similarity_index_measure(
+            preds=x,
+            target=y,
             gaussian_kernel=True,
-            sigma=win_sigma,
-            kernel_size=win_size,
+            sigma=self.win_sigma,
+            kernel_size=self.win_size,
             reduction="none", # done manually
-            data_range=data_range,
-            k1=K[0],
-            k2=K[1],
+            data_range=self.data_range,
+            k1=self.K[0],
+            k2=self.K[1],
             return_full_image=False,
             return_contrast_sensitivity=False,
         )
@@ -768,7 +785,7 @@ class VGGPerceptualLoss(torch.nn.Module):
 
     def forward(self, inp, target, feature_layers=[0, 1, 2, 3], style_layers=[]):
         assert inp.min() >= 0.0 and inp.max() <= 1.0, "Input should be normalized to [0, 1] range."
-        
+
         if inp.shape[1] != 3:
             inp = inp.repeat(1, 3, 1, 1)
             target = target.repeat(1, 3, 1, 1)
