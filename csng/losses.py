@@ -13,7 +13,7 @@ from torch import Tensor
 import torchvision
 
 
-from csng.utils import standardize, crop
+from csng.utils import standardize, normalize, crop
 
 
 class Loss:
@@ -87,8 +87,8 @@ class CroppedLoss(torch.nn.Module):
             target = crop(target, win=self.window)
 
         if self.normalize:
-            pred = standardize(pred)
-            target = standardize(target)
+            pred = normalize(pred)
+            target = normalize(target)
 
         if self.standardize:
             pred = standardize(pred)
@@ -166,7 +166,7 @@ def _ssim(
     Y: Tensor,
     data_range: float,
     win: Tensor,
-    size_average: bool = True,
+    size_average: bool = False,
     K: Union[Tuple[float, float], List[float]] = (0.01, 0.03)
 ) -> Tuple[Tensor, Tensor]:
     r""" Calculate ssim index for X and Y
@@ -634,7 +634,7 @@ class SSIM(torch.nn.Module):
     def __init__(
         self,
         data_range: float = 1,
-        size_average: bool = True,
+        size_average: bool = False,
         win_size: int = 11,
         win_sigma: float = 1.5,
         channel: int = 1,
@@ -755,7 +755,7 @@ class PerceptualLoss(torch.nn.Module):
 
 class VGGPerceptualLoss(torch.nn.Module):
     """ Modified from: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
-    def __init__(self, resize=False, mean_across_layers=True, reduction="per_sample_mean_sum", device="cuda"):
+    def __init__(self, resize=False, mean_across_layers=True, mul_factor=1/4, reduction="per_sample_mean_sum", device="cuda"):
         super().__init__()
         blocks = []
         blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[:4].eval())
@@ -770,6 +770,7 @@ class VGGPerceptualLoss(torch.nn.Module):
         self.resize = resize
         self.reduction = reduction
         print(f"[INFO] VGGPerceptualLoss: reduction={reduction}")
+        self.mul_factor = mul_factor
         self.mean_across_layers = mean_across_layers
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1))
@@ -799,6 +800,7 @@ class VGGPerceptualLoss(torch.nn.Module):
             inp = self.transform(inp, mode="bilinear", size=(224, 224), align_corners=False)
             target = self.transform(target, mode="bilinear", size=(224, 224), align_corners=False)
         loss = 0.0
+        n_ls = 0
         x = inp
         y = target
         for i, block in enumerate(self.blocks):
@@ -806,18 +808,20 @@ class VGGPerceptualLoss(torch.nn.Module):
             y = block(y)
             if i in feature_layers:
                 loss += self._loss_fn(x, y)
+                n_ls += 1
             if i in style_layers:
                 act_x = x.reshape(x.shape[0], x.shape[1], -1)
                 act_y = y.reshape(y.shape[0], y.shape[1], -1)
                 gram_x = act_x @ act_x.permute(0, 2, 1)
                 gram_y = act_y @ act_y.permute(0, 2, 1)
                 loss += self._loss_fn(gram_x, gram_y)
+                n_ls += 1
 
         if self.mean_across_layers:
-            loss = loss / (
-                max(1, len(feature_layers) + len(style_layers))
-                * len(self.blocks)
-            )
+            if n_ls > 0:
+                loss = loss / n_ls
+
+        loss = loss * self.mul_factor
 
         return loss
 
