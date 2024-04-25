@@ -663,8 +663,6 @@ class SSIM(torch.nn.Module):
 
     def forward(self, x, y):
         ssim_val = self._ssim(x, y)
-        if x.ndim == 4 and x.size(0) == 1:
-            ssim_val = ssim_val.unsqueeze(0) # value to 1D tensor
 
         if self.nonnegative:
             ssim_val = F.relu(ssim_val)
