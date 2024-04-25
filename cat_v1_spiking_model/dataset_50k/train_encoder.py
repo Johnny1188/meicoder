@@ -29,6 +29,7 @@ config = {
     "only_cat_v1_eval": True,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
+    "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter_206-215.pth"),
 }
 config["data"]["cat_v1"] = {
     "train_path": os.path.join(DATA_PATH, "datasets", "train"),
@@ -102,21 +103,22 @@ if __name__ == "__main__":
         dataloaders=dataloaders,
         seed=config["seed"],
     )
-    ckpt_path = os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter_61-75.pth")
-    print(f"{ckpt_path=}")
-    model.load_state_dict(torch.load(ckpt_path, pickle_module=dill)["model"])
-    model.to(config["device"])
+
+    ### load ckpt
+    if config["load_ckpt"] is not None:
+        print(f"[INFO] Loading ckpt from {config['load_ckpt']}")
+        model.load_state_dict(torch.load(config["load_ckpt"], pickle_module=dill)["model"])
 
     ### train
+    model.to(config["device"])
     trainer_fn = "sensorium.training.standard_trainer"
     trainer_config = {
-        'max_iter': 15,
+        'max_iter': 160,
         'verbose': True,
         'lr_decay_steps': 4,
         'avg_loss': False,
-        'lr_init': 0.0008,
+        'lr_init': 0.008,
         "track_training": True,
-        # "epoch": 21,
     }
     trainer = get_trainer(trainer_fn=trainer_fn, trainer_config=trainer_config)
     print(
@@ -148,5 +150,5 @@ if __name__ == "__main__":
             "trainer_output": trainer_output,
             "test_single_trial_corr": df_corr_mean,
             "state_dict": state_dict,
-        }, "encoder_cat_v1_no_shifter_76-90.pth", pickle_module=dill,
+        }, "encoder_cat_v1_no_shifter.pth", pickle_module=dill,
     )

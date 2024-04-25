@@ -30,6 +30,7 @@ def prepare_v1_dataloaders(
         resp_normalize_std=None,
         stim_keys=("stim",),
         resp_keys=("resp",),
+        verbose=False,
     ):
     ### prepare transforms
     if image_size != -1 and crop:
@@ -98,7 +99,8 @@ def prepare_v1_dataloaders(
         test_dataset = CachedDataset(test_dataset)
 
 
-    print(f"Train dataset size: {len(train_dataset)}. Validation dataset size: {len(val_dataset)}. Test dataset size: {len(test_dataset)}.")
+    if verbose:
+        print(f"Train dataset size: {len(train_dataset)}. Validation dataset size: {len(val_dataset)}. Test dataset size: {len(test_dataset)}.")
 
     ### create data loaders
     data_loaders = {
@@ -405,8 +407,8 @@ class SyntheticDataset(Dataset):
         return patches, resps
 
 
-# dataloader that mixes patches from different images within a batch
 class BatchPatchesDataLoader():
+    """ Dataloader that mixes patches from different images within a batch """
     def __init__(self, dataloader):
         self.dataloader = dataloader
 
@@ -425,7 +427,6 @@ class BatchPatchesDataLoader():
             resps = resps[idx].float()
 
             yield patches, resps
-
 
 
 class MixedBatchLoader:
@@ -662,96 +663,6 @@ class MixedBatchLoader:
             raise StopIteration
 
         return out
-
-# class MixedBatchLoader:
-#     """ Mixes batches from multiple dataloaders into one batch. """
-#     def __init__(self, dataloaders, mixing_strategy="sequential", device="cpu"):
-#         assert mixing_strategy in ["sequential", "parallel_min", "parallel_max"], \
-#             f"mixing_strategy must be one of ['sequential', 'parallel'], but got {mixing_strategy}"
-
-#         self.dataloader_iters = [iter(dataloader) for dataloader in dataloaders]
-#         self.n_dataloaders = len(self.dataloader_iters)
-#         self.mixing_strategy = mixing_strategy
-#         self.device = device
-#         self.batch_idx = 0
-        
-#         if self.mixing_strategy == "sequential":
-#             self.n_batches = sum([len(dataloader) for dataloader in dataloaders])
-#         elif self.mixing_strategy == "parallel_max":
-#             self.n_batches = max([len(dataloader) for dataloader in dataloaders])
-#         elif self.mixing_strategy == "parallel_min":
-#             self.n_batches = min([len(dataloader) for dataloader in dataloaders])
-
-#     def _get_sequential(self):
-#         ### interleave multiple dataloaders - one after another
-#         while True:
-#             try:
-#                 stim, resp = next(self.dataloader_iters[self.batch_idx % self.n_dataloaders])
-#                 break
-#             except StopIteration:
-#                 self.dataloader_iters.pop(self.batch_idx % self.n_dataloaders)
-#                 self.n_dataloaders -= 1
-#                 if self.n_dataloaders == 0:
-#                     return None, None
-#                 else:
-#                     continue
-#         return stim.to(self.device), resp.to(self.device)
-    
-#     def _get_parallel(self):
-#         ### mix single batches from all dataloaders into one batch
-#         stim, resp = [], []
-#         empty_dataloader_idxs = set()
-#         for d_idx, dataloader_iter in enumerate(self.dataloader_iters):
-#             try:
-#                 _stim, _resp = next(dataloader_iter)
-#                 stim.append(_stim.to(self.device))
-#                 resp.append(_resp.to(self.device))
-#             except StopIteration:
-#                 if self.mixing_strategy == "parallel_min":
-#                     ### if a single dataloader ends, end the whole loop
-#                     _ = [empty_dataloader_idxs.add(_d_idx) for _d_idx in range(0, self.n_dataloaders)]
-#                 elif self.mixing_strategy == "parallel_max":
-#                     ### if a single dataloader ends, continue with the remaining ones
-#                     empty_dataloader_idxs.add(d_idx)
-#                 else:
-#                     raise NotImplementedError
-        
-#         ### remove empty dataloaders
-#         if len(empty_dataloader_idxs) > 0:
-#             new_dataloader_iters = []
-#             for d_idx, dataloader_iter in enumerate(self.dataloader_iters):
-#                 if d_idx not in empty_dataloader_idxs:
-#                     new_dataloader_iters.append(dataloader_iter)
-#             self.dataloader_iters = new_dataloader_iters
-#             self.n_dataloaders = len(new_dataloader_iters)
-
-#         if len(stim) == 0:
-#             return None, None
-
-#         ### concatenate
-#         stim = torch.cat(stim, dim=0)
-#         resp = torch.cat(resp, dim=0)
-#         return stim, resp
-
-#     def __len__(self):
-#         return self.n_batches
-
-#     def __iter__(self):
-#         return self
-
-#     def __next__(self):
-#         self.batch_idx += 1
-#         if self.mixing_strategy == "sequential":
-#             stim, resp = self._get_sequential()
-#         elif self.mixing_strategy in ("parallel_min", "parallel_max"):
-#             stim, resp = self._get_parallel()
-#         else:
-#             raise NotImplementedError
-        
-#         if stim is None: # no more data
-#             raise StopIteration
-#         return stim, resp
-
 
 """
 - Loading synthetic data within a script:

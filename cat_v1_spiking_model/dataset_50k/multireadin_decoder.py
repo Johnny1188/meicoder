@@ -21,6 +21,7 @@ from csng.utils import plot_losses, plot_comparison, standardize, normalize, get
 from csng.losses import SSIMLoss, MSELossWithCrop, Loss, CroppedLoss
 from csng.readins import MultiReadIn, FCReadIn, ConvReadIn
 
+from cat_v1_spiking_model.dataset_50k.encoder import get_encoder
 from cat_v1_spiking_model.dataset_50k.data import (
     prepare_v1_dataloaders,
     SyntheticDataset,
@@ -56,7 +57,7 @@ config = {
     "only_cat_v1_eval": True,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
-    # "wandb": None,
+    "wandb": None,
     "wandb": {
         "project": "CSNG",
         "group": "cat_v1_50k",
@@ -110,11 +111,11 @@ config["decoder"] = {
                         },
                         "pointwise_conv_config": {
                             "in_channels": 46875,
-                            "out_channels": 576,
+                            "out_channels": 480,
                             "act_fn": nn.Identity,
                             "bias": False,
                             "batch_norm": True,
-                            "dropout": 0.15,
+                            "dropout": 0.1,
                         },
                         "gauss_blur": False,
                         "gauss_blur_kernel_size": 7,
@@ -137,46 +138,53 @@ config["decoder"] = {
                     #     "out_channels": 12,
                     # }),
 
+                    # (MEIReadIn, {
+                    #     "meis_path": os.path.join(DATA_PATH, "meis", "cat_v1",  "meis.pt"),
+                    #     "n_neurons": 46875,
+                    #     "mei_resize_method": "crop",
+                    #     "mei_target_shape": (20, 20),
+                    #     "pointwise_conv_config": {
+                    #         "out_channels": 480,
+                    #         "bias": False,
+                    #         "batch_norm": True,
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "dropout": 0.15,
+                    #     },
+                    #     "ctx_net_config": {
+                    #         "in_channels": 3, # resp, x, y
+                    #         "layers_config": [("fc", 64), ("fc", 128), ("fc", 20*20)],
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "out_act_fn": nn.Identity,
+                    #         "dropout": 0.15,
+                    #         "batch_norm": True,
+                    #     },
+                    #     "shift_coords": False,
+                    #     "device": config["device"],
+                    # }),
+
                 ],
             }
         ],
         "core_cls": CNN_Decoder,
         "core_config": {
-            "resp_shape": [576],
+            "resp_shape": [480],
             "stim_shape": [1, 50, 50],
             "layers": [
-                ### for conv_readin
-                # ("deconv", 128, 7, 2, 1),
-                # ("deconv", 64, 5, 1, 1),
-                # ("deconv", 32, 4, 1, 1),
-                # ("deconv", 1, 3, 1, 0),
-
-                ### for conv_readin
-                # ("deconv", 256, 5, 2, 2),
-                # ("deconv", 480, 7, 2, 3),
-                ("deconv", 576, 7, 2, 3),
-                # ("deconv", 128, 7, 2, 1),
-                # ("deconv", 64, 5, 2, 2),
-
-                # ("deconv", 256, 5, 1, 2),
-                ("deconv", 320, 5, 1, 2),
-                # ("deconv", 64, 5, 1, 1),
-
-                # ("deconv", 64, 4, 1, 1),
+                ### Conv/FC readin
+                ("deconv", 480, 7, 2, 3),
                 ("deconv", 256, 5, 1, 2),
-                # ("deconv", 32, 4, 1, 1),
-
-                # ("deconv", 64, 3, 1, 1),
-                # ("deconv", 128, 4, 1, 1),
-                ("deconv", 256, 4, 1, 1),
-                # ("deconv", 32, 4, 1, 1),
-
-                # ("deconv", 64, 4, 1, 1),
-                # ("deconv", 64, 3, 1, 1),
-                ("deconv", 128, 3, 1, 1),
-                # ("deconv", 32, 3, 1, 1),
-
+                ("deconv", 256, 5, 1, 2),
+                ("deconv", 128, 4, 1, 1),
+                ("deconv", 64, 3, 1, 1),
                 ("deconv", 1, 3, 1, 0),
+
+                ### MEI readin
+                # ("conv", 480, 7, 1, 3),
+                # ("conv", 256, 5, 1, 2),
+                # ("conv", 256, 5, 1, 2),
+                # ("conv", 128, 3, 1, 1),
+                # ("conv", 64, 3, 1, 1),
+                # ("conv", 1, 3, 1, 1),
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
@@ -199,25 +207,28 @@ config["decoder"] = {
             inp_standardized=False,
         ),
         "l1_reg_mul": 0,
-        # "l2_reg_mul": 5e-5,
         "l2_reg_mul": 0,
-        # "con_reg_mul": 0,
-        "con_reg_mul": 1,
+        "con_reg_mul": 0,
+        # "con_reg_mul": 1,
         "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
-        # "encoder": None,
-        "encoder": encoder,
+        "encoder": None,
+        # "encoder": get_encoder(
+        #     device=config["device"],
+        #     eval_mode=True,
+        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
+        # ),
     },
-    "n_epochs": 60,
+    "n_epochs": 50,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-04-05_14-40-23", "ckpt", "decoder_45.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-04-23_11-56-13", "ckpt", "decoder_20.pt"),
     #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "jnq28zyo"
+    #     "resume_wandb_id": "0rx79gwn"
     # },
     "save_run": True,
 }

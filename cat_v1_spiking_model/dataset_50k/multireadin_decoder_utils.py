@@ -53,7 +53,7 @@ def train(model, dataloader, opter, loss_fn, config, verbose=True):
         
             ### train
             stim_pred = model(resp, data_key=data_key, neuron_coords=neuron_coords)
-            loss += loss_fn(stim_pred, stim, phase="train")
+            loss += loss_fn(stim_pred, stim, data_key=data_key, neuron_coords=neuron_coords, phase="train")
             model.set_additional_loss(
                 inp={
                     "resp": resp,
@@ -84,39 +84,23 @@ def train(model, dataloader, opter, loss_fn, config, verbose=True):
 def val(model, dataloader, loss_fn, config):
     model.eval()
     val_loss = 0
-    
+    n_samples = 0
+
     with torch.no_grad():
         for batch_idx, b in enumerate(dataloader):
-
-            loss = 0
-
             ### combine from all data keys
             for data_key, (stim, resp, neuron_coords) in b.items():
                 ### data
                 stim = stim.to(config["device"])
                 resp = resp.to(config["device"])
                 neuron_coords = neuron_coords.float().to(config["device"])
-            
+
                 ### predict
                 stim_pred = model(resp, data_key=data_key, neuron_coords=neuron_coords)
-                loss += loss_fn(stim_pred, stim, phase="test")
-                model.set_additional_loss(
-                    inp={
-                        "resp": resp,
-                        "stim": stim,
-                        "neuron_coords": neuron_coords,
-                        "data_key": data_key,
-                    }, out={
-                        "stim_pred": stim_pred,
-                    },
-                )
-                loss += model.get_additional_loss(data_key=data_key)
+                val_loss += loss_fn(stim_pred, stim, data_key=data_key, neuron_coords=neuron_coords, phase="val").item()
+                n_samples += resp.shape[0]
 
-            ### log
-            loss /= len(b)
-            val_loss += loss.item()
-
-    val_loss /= len(dataloader)
+    val_loss /= n_samples
     return val_loss
 
 

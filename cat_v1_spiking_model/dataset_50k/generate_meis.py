@@ -1,5 +1,5 @@
 import os
-os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
+# os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
 
 import json
 from tqdm import tqdm
@@ -38,7 +38,8 @@ def generate_meis():
         "device": "cuda" if torch.cuda.is_available() else "cpu",
         "data_key": "cat_v1",
         "save_path": os.path.join(DATA_PATH, "meis"),
-        "chunk_size": 500, # number of cells to process at once
+        "chunk_size": 250, # number of cells to process at once
+        "encoder_output_offset": 500, # required to overcome the mei grad being zero due to ELU in encoder
         "mei": {
             "mean": 0, # (here people often uses 0. I think that the midgreyscale value is a better choice though (pixel_min + pixel_max)/2 )
             "std": 0.15, # (everything from 0.10 to 0.25 works here)
@@ -49,7 +50,7 @@ def generate_meis():
             "num_iterations": 1000,
             "gradient_f": ops.GaussianBlur(1.), # this blurs the gradient to avoid artifacts.
             "print_iters": 1e10,
-        }
+        },
     }
 
     ### prepare save dir
@@ -66,6 +67,8 @@ def generate_meis():
         eval_mode=True,
         ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
     )
+    if config["encoder_output_offset"] is not None:
+        encoder.offset = config["encoder_output_offset"]
     config["n_cells"] = encoder.readout[config["data_key"]].outdims
     with open(os.path.join(save_dir, "config.json"), "w") as f:
         json.dump(config, f, indent=4, default=str)
