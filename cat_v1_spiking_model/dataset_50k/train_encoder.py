@@ -29,7 +29,7 @@ config = {
     "only_cat_v1_eval": True,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
-    "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter_206-215.pth"),
+    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
 }
 config["data"]["cat_v1"] = {
     "train_path": os.path.join(DATA_PATH, "datasets", "train"),
@@ -37,7 +37,7 @@ config["data"]["cat_v1"] = {
     "test_path": os.path.join(DATA_PATH, "datasets", "test"),
     "image_size": [50, 50],
     "crop": False,
-    "batch_size": 64,
+    "batch_size": 128,
     "stim_keys": ("stim",),
     "resp_keys": ("exc_resp", "inh_resp"),
     "return_coords": True,
@@ -52,6 +52,7 @@ config["data"]["cat_v1"] = {
     "resp_normalize_std": torch.load(
         os.path.join(DATA_PATH, "responses_std.pt")
     ),
+    "clamp_neg_resp": True,
 }
 
 class Neurons:
@@ -113,7 +114,7 @@ if __name__ == "__main__":
     model.to(config["device"])
     trainer_fn = "sensorium.training.standard_trainer"
     trainer_config = {
-        'max_iter': 160,
+        'max_iter': 200,
         'verbose': True,
         'lr_decay_steps': 4,
         'avg_loss': False,

@@ -94,54 +94,54 @@ config["decoder"] = {
                 "in_shape": 46875,
                 "decoding_objective_config": None,
                 "layers": [
-                    (ConvReadIn, {
-                        "H": 10,
-                        "W": 10,
-                        "shift_coords": False,
-                        "learn_grid": True,
-                        "grid_l1_reg": 8e-3,
-                        "in_channels_group_size": 1,
-                        "grid_net_config": {
-                            "in_channels": 3, # x, y, resp
-                            "layers_config": [("fc", 64), ("fc", 128), ("fc", 10*10)],
-                            "act_fn": nn.LeakyReLU,
-                            "out_act_fn": nn.Identity,
-                            "dropout": 0.15,
-                            "batch_norm": False,
-                        },
-                        "pointwise_conv_config": {
-                            "in_channels": 46875,
-                            "out_channels": 480,
-                            "act_fn": nn.Identity,
-                            "bias": False,
-                            "batch_norm": True,
-                            "dropout": 0.1,
-                        },
-                        "gauss_blur": False,
-                        "gauss_blur_kernel_size": 7,
-                        "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
-                        # "gauss_blur_sigma": "per_neuron", # "fixed", "single", "per_neuron"
-                        "gauss_blur_sigma_init": 1.5,
-                        "neuron_emb_dim": None,
-                    }),
-
-                    # (FCReadIn, {
-                    #     "in_shape": 46875,
-                    #     "layers_config": [
-                    #         ("fc", 768),
-                    #         ("unflatten", 1, (12, 8, 8)),
-                    #     ],
-                    #     "act_fn": nn.LeakyReLU,
-                    #     "out_act_fn": nn.Identity,
-                    #     "batch_norm": True,
-                    #     "dropout": 0.15,
-                    #     "out_channels": 12,
+                    # (ConvReadIn, {
+                    #     "H": 10,
+                    #     "W": 10,
+                    #     "shift_coords": False,
+                    #     "learn_grid": True,
+                    #     "grid_l1_reg": 8e-3,
+                    #     "in_channels_group_size": 1,
+                    #     "grid_net_config": {
+                    #         "in_channels": 3, # x, y, resp
+                    #         "layers_config": [("fc", 64), ("fc", 128), ("fc", 10*10)],
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "out_act_fn": nn.Identity,
+                    #         "dropout": 0.15,
+                    #         "batch_norm": False,
+                    #     },
+                    #     "pointwise_conv_config": {
+                    #         "in_channels": 46875,
+                    #         "out_channels": 480,
+                    #         "act_fn": nn.Identity,
+                    #         "bias": False,
+                    #         "batch_norm": True,
+                    #         "dropout": 0.1,
+                    #     },
+                    #     "gauss_blur": False,
+                    #     "gauss_blur_kernel_size": 7,
+                    #     "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
+                    #     # "gauss_blur_sigma": "per_neuron", # "fixed", "single", "per_neuron"
+                    #     "gauss_blur_sigma_init": 1.5,
+                    #     "neuron_emb_dim": None,
                     # }),
+
+                    (FCReadIn, {
+                        "in_shape": 46875,
+                        "layers_config": [
+                            ("fc", 512),
+                            ("unflatten", 1, (8, 8, 8)),
+                        ],
+                        "act_fn": nn.LeakyReLU,
+                        "out_act_fn": nn.Identity,
+                        "batch_norm": True,
+                        "dropout": 0.15,
+                        "out_channels": 8,
+                    }),
 
                     # (MEIReadIn, {
                     #     "meis_path": os.path.join(DATA_PATH, "meis", "cat_v1",  "meis.pt"),
                     #     "n_neurons": 46875,
-                    #     "mei_resize_method": "crop",
+                    #     "mei_resize_method": "resize",
                     #     "mei_target_shape": (20, 20),
                     #     "pointwise_conv_config": {
                     #         "out_channels": 480,
@@ -167,7 +167,7 @@ config["decoder"] = {
         ],
         "core_cls": CNN_Decoder,
         "core_config": {
-            "resp_shape": [480],
+            "resp_shape": [8],
             "stim_shape": [1, 50, 50],
             "layers": [
                 ### Conv/FC readin
@@ -208,28 +208,28 @@ config["decoder"] = {
         ),
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
-        "con_reg_mul": 0,
-        # "con_reg_mul": 1,
+        # "con_reg_mul": 0,
+        "con_reg_mul": 1,
         "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
-        "encoder": None,
-        # "encoder": get_encoder(
-        #     device=config["device"],
-        #     eval_mode=True,
-        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
-        # ),
+        # "encoder": None,
+        "encoder": get_encoder(
+            device=config["device"],
+            eval_mode=True,
+            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
+        ),
     },
-    "n_epochs": 50,
+    "n_epochs": 80,
     "load_ckpt": None,
-    # "load_ckpt": {
-    #     "load_only_core": False,
-    #     # "load_only_core": True,
-    #     "ckpt_path": os.path.join(
-    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-04-23_11-56-13", "ckpt", "decoder_20.pt"),
-    #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
-    #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "0rx79gwn"
-    # },
+    "load_ckpt": {
+        "load_only_core": False,
+        # "load_only_core": True,
+        "ckpt_path": os.path.join(
+            # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+            DATA_PATH, "models", "cnn", "2024-04-26_22-13-19", "ckpt", "decoder_50.pt"),
+            # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
+        "resume_checkpointing": True,
+        "resume_wandb_id": "ywu43ow3",
+    },
     "save_run": True,
 }
 

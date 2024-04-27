@@ -1,5 +1,7 @@
+import os
 import numpy as np
 from scipy import signal
+import dill
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -18,7 +20,9 @@ class InvertedEncoder(nn.Module):
         resp_loss_fn=F.mse_loss,
         stim_loss_fn=F.mse_loss,
         img_gauss_blur_config=None,
+        img_gauss_blur_freq=1,
         img_grad_gauss_blur_config=None,
+        img_grad_gauss_blur_freq=1,
         device="cpu",
     ):
         super().__init__()
@@ -35,10 +39,12 @@ class InvertedEncoder(nn.Module):
         self.stim_loss_fn = stim_loss_fn
         
         self.img_gauss_blur_config = img_gauss_blur_config
-        self.img_grad_gauss_blur_config = img_grad_gauss_blur_config
+        self.img_gauss_blur_freq = img_gauss_blur_freq
         self.img_gauss_blur = None if img_gauss_blur_config is None else GaussianBlur(**img_gauss_blur_config)
+        self.img_grad_gauss_blur_config = img_grad_gauss_blur_config
+        self.img_grad_gauss_blur_freq = img_grad_gauss_blur_freq
         self.img_grad_gauss_blur = None if img_grad_gauss_blur_config is None else GaussianBlur(**img_grad_gauss_blur_config)
-        
+
         self.device = device
 
     def _init_x_hat(self, B):
@@ -53,7 +59,7 @@ class InvertedEncoder(nn.Module):
             raise ValueError(f"Unknown stim_pred_init: {self.stim_pred_init}")
         return x_hat
 
-    def forward(self, resp_target, stim_target=None, additional_encoder_inp=None):
+    def forward(self, resp_target, stim_target=None, additional_encoder_inp=None, ckpt_config=None):
         assert resp_target.ndim > 1, "resp_target should be at least 2d (batch_dim, neurons_dim)"
 
         ### init decoded img
@@ -70,7 +76,7 @@ class InvertedEncoder(nn.Module):
             resp_loss.backward()
 
             ### apply gaussian blur to gradients
-            if self.img_grad_gauss_blur is not None:
+            if self.img_grad_gauss_blur is not None and step_i % self.img_grad_gauss_blur_freq == 0:
                 x_hat.grad = self.img_grad_gauss_blur(x_hat.grad)
 
             ### update
@@ -83,11 +89,24 @@ class InvertedEncoder(nn.Module):
                     history["best"]["stim_pred"] = x_hat.detach().clone()
 
             ### apply gaussian blur to image
-            if self.img_gauss_blur is not None:
-                x_hat = self.img_gauss_blur(x_hat)
+            if self.img_gauss_blur is not None and step_i % self.img_gauss_blur_freq == 0:
+                with torch.no_grad():
+                    x_hat.data = self.img_gauss_blur(x_hat)
 
             ### log
             history["resp_loss"].append(resp_loss.item())
+
+            ### ckpt
+            if ckpt_config is not None and step_i % ckpt_config["ckpt_freq"] == 0:
+                curr_ckpt_dir = os.path.join(ckpt_config["ckpt_dir"], str(step_i))
+                os.makedirs(curr_ckpt_dir)
+                torch.save({
+                    "reconstruction": x_hat,
+                    "history": history,
+                    "opter_state": opter.state_dict(),
+                }, os.path.join(curr_ckpt_dir, "ckpt.pt"), pickle_module=dill)
+                if ckpt_config.get("plot_fn", None) is not None:
+                    ckpt_config["plot_fn"](target=stim_target, pred=x_hat, save_to=os.path.join(curr_ckpt_dir, f"stim_pred.png"))
 
         return x_hat.detach(), resp_pred.detach(), history
 
