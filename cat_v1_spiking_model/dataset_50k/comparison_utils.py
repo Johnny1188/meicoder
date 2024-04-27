@@ -310,7 +310,6 @@ def plot_img_at_ax(ax, img):
 
 def plot_reconstructions_publication(runs_to_compare, stim, config, save_to=None):
     fig = plt.figure(facecolor="white")
-
     img_grid_shape = (stim.shape[0], 1 + len(runs_to_compare))
 
     ### plot comparison

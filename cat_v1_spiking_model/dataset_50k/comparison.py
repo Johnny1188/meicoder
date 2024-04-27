@@ -82,7 +82,7 @@ config["comparison"] = {
     # "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "cnn",
+        "cnn_gan",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -151,31 +151,38 @@ config["comparison"]["to_compare"] = {
         "run_name": "2024-04-03_22-53-01",
         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-03_22-53-01", "decoder.pt"),
     },
-    "CNN-MEI": {
-        "run_name": "2024-04-20_11-09-52",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-20_11-09-52", "decoder.pt"),
-    },
-    # "GAN-FC": {
-    #     "run_name": "2024-04-24_09-36-46",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-24_09-36-46", "decoder.pt"),
-    # },
-    # "GAN-Conv": {
-    #     "run_name": "2024-04-13_14-49-05",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-13_14-49-05", "decoder.pt"),
-    # },
-    # "GAN-MEI": {
-    #     "run_name": "2024-04-20_21-54-09",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-20_21-54-09", "decoder.pt"),
-    # },
-
     "CNN-Conv w/ encoder matching": {
         "run_name": "2024-04-23_11-56-13",
         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-23_11-56-13", "decoder.pt"),
     },
-    # "GAN-Conv w/ encoder matching": {
-    #     "run_name": "2024-04-23_11-56-13",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_11-56-13", "decoder.pt"),
-    # },
+    "CNN-MEI": {
+        "run_name": "2024-04-20_11-09-52",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-20_11-09-52", "decoder.pt"),
+    },
+    "CNN-MEI w/ encoder matching": {
+        "run_name": "2024-04-25_18-06-51",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-25_18-06-51", "decoder.pt"),
+    },
+    "GAN-FC": {
+        "run_name": "2024-04-24_09-36-46",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-24_09-36-46", "decoder.pt"),
+    },
+    "GAN-Conv": {
+        "run_name": "2024-04-13_14-49-05",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-13_14-49-05", "decoder.pt"),
+    },
+    "GAN-Conv w/ encoder matching": {
+        "run_name": "2024-04-23_11-56-13",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_11-56-13", "decoder.pt"),
+    },
+    "GAN-MEI": {
+        "run_name": "2024-04-20_21-54-09",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-20_21-54-09", "decoder.pt"),
+    },
+    "GAN-MEI w/ encoder matching": {
+        "run_name": "2024-04-25_18-00-05",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_18-00-05", "decoder.pt"),
+    },
 }
 
 
