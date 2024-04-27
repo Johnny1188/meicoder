@@ -28,6 +28,7 @@ def prepare_v1_dataloaders(
         stim_normalize_std=None,
         resp_normalize_mean=None,
         resp_normalize_std=None,
+        clamp_neg_resp=False,
         stim_keys=("stim",),
         resp_keys=("resp",),
         verbose=False,
@@ -71,6 +72,7 @@ def prepare_v1_dataloaders(
         return_coords=return_coords,
         return_ori=return_ori,
         coords_ori_filepath=coords_ori_filepath,
+        clamp_neg_resp=clamp_neg_resp,
     )
     val_dataset = PerSampleStoredDataset(
         dataset_dir=val_path,
@@ -81,6 +83,7 @@ def prepare_v1_dataloaders(
         return_coords=return_coords,
         return_ori=return_ori,
         coords_ori_filepath=coords_ori_filepath,
+        clamp_neg_resp=clamp_neg_resp,
     )
     test_dataset = PerSampleStoredDataset(
         dataset_dir=test_path,
@@ -92,6 +95,7 @@ def prepare_v1_dataloaders(
         return_ori=return_ori,
         coords_ori_filepath=coords_ori_filepath,
         average_over_repeats=True,
+        clamp_neg_resp=clamp_neg_resp,
     )
     if cached:
         train_dataset = CachedDataset(train_dataset)
@@ -145,6 +149,7 @@ class PerSampleStoredDataset(Dataset):
         return_ori=False,
         coords_ori_filepath=None,
         average_over_repeats=False,
+        clamp_neg_resp=False,
     ):
         self.dataset_dir = dataset_dir
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
@@ -156,6 +161,7 @@ class PerSampleStoredDataset(Dataset):
         self.stim_keys = stim_keys
         self.resp_keys = resp_keys
         self.average_over_repeats = average_over_repeats
+        self.clamp_neg_resp = clamp_neg_resp
 
         self.return_coords = return_coords
         self.return_ori = return_ori
@@ -196,6 +202,8 @@ class PerSampleStoredDataset(Dataset):
                 to_return_vals[0] = self.stim_transform(to_return_vals[0])
             if self.resp_transform is not None:
                 to_return_vals[1] = self.resp_transform(to_return_vals[1])
+            if self.clamp_neg_resp:
+                to_return_vals[1].clamp_min_(0)
             if self.return_coords:
                 to_return_keys.append("neuron_coords")
                 to_return_vals.append(self.coords["all"])
