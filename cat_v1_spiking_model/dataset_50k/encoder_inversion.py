@@ -56,8 +56,13 @@ config["data"]["cat_v1"] = {
     "resp_normalize_std": torch.load(
         os.path.join(DATA_PATH, "responses_std.pt")
     ),
+    "clamp_neg_resp": True,
 }
 
+
+# def resp_loss_fn(resp_pred, resp_target):
+#     idxs = np.random.choice(resp_pred.size(1), size=5000, replace=False)
+#     return F.mse_loss(resp_pred[:,idxs], resp_target[:,idxs], reduction="none").mean(-1).sum()
 
 ### Encoder inversion config
 config["enc_inv"] = {
@@ -70,20 +75,26 @@ config["enc_inv"] = {
         "img_dims": (1, 50, 50),
         "stim_pred_init": "zeros",
         "opter_cls": torch.optim.SGD,
-        "opter_config": {"lr": 0.1, "momentum": 0.},
-        "n_steps": 800,
+        "opter_config": {"lr": 30, "momentum": 0.},
+        "n_steps": 400000,
         "resp_loss_fn": lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
+        # "resp_loss_fn": resp_loss_fn,
         "stim_loss_fn": None, # set below
         "img_gauss_blur_config": None,
-        "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5},
-        # "img_grad_gauss_blur_config": None,
+        # "img_gauss_blur_freq": 10,
+        # "img_gauss_blur_config": {"kernel_size": 13, "sigma": 1},
+        "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2},
+        "img_grad_gauss_blur_freq": 1,
         "device": config["device"],
     },
     "loss_fns": get_metrics(config=config),
     "save_dir": os.path.join(DATA_PATH, "models", "inverted_encoder"),
-    "find_best_ckpt_according_to": "SSIML-PL",
+    # "find_best_ckpt_according_to": "SSIML-PL",
+    "find_best_ckpt_according_to": "SSIML",
 }
 config["enc_inv"]["model"]["stim_loss_fn"] = config["enc_inv"]["loss_fns"][config["enc_inv"]["find_best_ckpt_according_to"]]
+
+
 
 ### hyperparam runs config
 config_updates = [
@@ -159,6 +170,7 @@ if __name__ == "__main__":
     run_dir = os.path.join(config["enc_inv"]["save_dir"], datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
     os.makedirs(config["enc_inv"]["save_dir"], exist_ok=True)
     os.makedirs(run_dir, exist_ok=True)
+    print(f"[INFO] Config:\n{json.dumps(config['enc_inv'], indent=2, default=str)}")
     print(f"[INFO] Saving to {run_dir}")
 
     ### get data samples for plotting
@@ -168,6 +180,9 @@ if __name__ == "__main__":
     datapoint = next(iter(test_dl))
     stim, resp, neuron_coords = datapoint[sample_data_key][0].to(config["device"]), datapoint[sample_data_key][1].to(config["device"]), datapoint[sample_data_key][2].float().to(config["device"])
     stim, resp, neuron_coords = stim[:7], resp[:7], neuron_coords[:7]
+
+    # _resp = config["enc_inv"]["model"]["encoder"](stim, data_key="cat_v1").detach()
+    # resp = (_resp - 30).clip(min=0, max=15)
 
     ### run
     best = {"config": None, "val_loss": np.inf, "idx": None}
@@ -207,6 +222,16 @@ if __name__ == "__main__":
             additional_encoder_inp={
                 "data_key": sample_data_key,
             },
+            # ckpt_config={
+            #     "ckpt_dir": os.path.join(run_dir, "ckpt"),
+            #     "ckpt_freq": 3000,
+            #     "plot_fn": lambda target, pred, save_to: plot_comparison(
+            #         target=crop(target[:8].cpu(), config["crop_win"]).cpu(),
+            #         pred=crop(pred[:8].detach().cpu(), config["crop_win"]).cpu(),
+            #         save_to=save_to,
+            #         show=False,
+            #     ) and plt.close(),
+            # },
         )
         stim_pred = stim_pred.detach().cpu()
         stim_pred_best = decoding_history["best"]["stim_pred"].detach().cpu()
@@ -224,6 +249,18 @@ if __name__ == "__main__":
             target=crop(stim[:8], config["crop_win"]).cpu(),
             pred=crop(stim_pred[:8], config["crop_win"]).cpu(),
             save_to=os.path.join(run_dir, f"stim_pred_{i}.png"),
+            show=False,
+        )
+        plot_comparison(
+            target=stim[:8].cpu(),
+            pred=stim_pred[:8].cpu(),
+            save_to=os.path.join(run_dir, f"stim_pred_no_crop_{i}.png"),
+            show=False,
+        )
+        plot_comparison(
+            target=crop(stim[:8], config["crop_win"]).cpu(),
+            pred=crop(stim_pred_best[:8], config["crop_win"]).cpu(),
+            save_to=os.path.join(run_dir, f"stim_pred_best_{i}.png"),
             show=False,
         )
         plot_decoding_history(
