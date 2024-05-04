@@ -1,5 +1,5 @@
 import os
-# os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
+import itertools
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -50,13 +50,16 @@ config["data"]["cat_v1"] = {
     "cached": False,
     "stim_normalize_mean": 46.143,
     "stim_normalize_std": 20.420,
-    "resp_normalize_mean": torch.load(
-        os.path.join(DATA_PATH, "responses_mean.pt")
-    ),
-    "resp_normalize_std": torch.load(
-        os.path.join(DATA_PATH, "responses_std.pt")
-    ),
-    "clamp_neg_resp": True,
+    "resp_normalize_mean": None,
+    "resp_normalize_std": None,
+    # "resp_normalize_mean": torch.load(
+    #     os.path.join(DATA_PATH, "responses_mean.pt")
+    # ),
+    # "resp_normalize_std": torch.load(
+    #     os.path.join(DATA_PATH, "responses_std.pt")
+    # ),
+    # "clamp_neg_resp": True,
+    "clamp_neg_resp": False,
 }
 
 
@@ -70,78 +73,55 @@ config["enc_inv"] = {
         "encoder": get_encoder(
             device=config["device"],
             eval_mode=True,
-            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
+            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter_mean_activity.pth"),
         ),
         "img_dims": (1, 50, 50),
         "stim_pred_init": "zeros",
         "opter_cls": torch.optim.SGD,
-        "opter_config": {"lr": 30, "momentum": 0.},
-        "n_steps": 400000,
+        "opter_config": {"lr": 20},
+        "n_steps": 200,
         "resp_loss_fn": lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
         # "resp_loss_fn": resp_loss_fn,
         "stim_loss_fn": None, # set below
         "img_gauss_blur_config": None,
-        # "img_gauss_blur_freq": 10,
-        # "img_gauss_blur_config": {"kernel_size": 13, "sigma": 1},
-        "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2},
-        "img_grad_gauss_blur_freq": 1,
+        "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2.5},
         "device": config["device"],
     },
     "loss_fns": get_metrics(config=config),
     "save_dir": os.path.join(DATA_PATH, "models", "inverted_encoder"),
-    # "find_best_ckpt_according_to": "SSIML-PL",
-    "find_best_ckpt_according_to": "SSIML",
+    "find_best_ckpt_according_to": "SSIML-PL",
+    # "find_best_ckpt_according_to": "SSIML",
+    # "max_batches": None,
+    "max_batches": 10,
 }
 config["enc_inv"]["model"]["stim_loss_fn"] = config["enc_inv"]["loss_fns"][config["enc_inv"]["find_best_ckpt_according_to"]]
 
 
 
 ### hyperparam runs config
-config_updates = [
-    {},
-    # {"n_steps": 100, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
-    # {"n_steps": 300, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
-    # {"n_steps": 500, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
-    # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=9, sigma=1.5)},
-    # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=9, sigma=1.5)},
-    # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=9, sigma=1.5)},
-    # {"n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.)},
-    # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.)},
-    # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.)},
-    # {"n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=0.6)},
-    # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=0.6)},
-    # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=0.6)},
-
-    # {"n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"n_steps": 800, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-
-    # {"opter_config": {"lr": 1500}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"opter_config": {"lr": 1500, "momentum":0.}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"opter_config": {"lr": 2000}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"opter_config": {"lr": 2000, "momentum":0.}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"opter_config": {"lr": 2500}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"opter_config": {"lr": 1500}, "n_steps": 800, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    # {"opter_config": {"lr": 1500}, "n_steps": 1000, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
+# config_updates = [
+#     {},
+#     # {"n_steps": 1000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2.0}},
+#     # {"n_steps": 5000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2.0}},
     
-    # {"opter_config": {"lr": 500}, "n_steps": 500, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=2.)},
-    # {"opter_config": {"lr": 1000}, "n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.)},
-    # {"opter_config": {"lr": 1500}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.)},
-    # {"opter_config": {"lr": 1500}, "img_grad_gauss_blur_config": dict(kernel_size=13, sigma=2.)},
-    # {"opter_config": {"lr": 1500}, "img_grad_gauss_blur_config": dict(kernel_size=11, sigma=2.)},
-    # {"opter_config": {"lr": 1000}, "img_grad_gauss_blur_config": dict(kernel_size=13, sigma=2.)},
-    # {"opter_config": {"lr": 1000}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.)},
+#     # {"n_steps": 3000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
+#     # {"n_steps": 1000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
+#     # {"n_steps": 500, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
+    
+#     # {"n_steps": 3000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2.5}},
+#     # {"n_steps": 1000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2.5}},
+#     # {"n_steps": 500, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 2.5}},
 
-    # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=13, sigma=2.5)},
-    # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.5)},
-    # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=2.5)},
-    # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=21, sigma=2.5)},
-
-    # {"opter_config": {"lr": 1000, "momentum": 0}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.5)},
-    # {"opter_config": {"lr": 1000, "momentum": 0}, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=2.5)},
-]
-
+#     # {"n_steps": 3000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.}},
+#     # {"n_steps": 1000, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.}},
+#     # {"n_steps": 500, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.}},
+# ]
+config_updates = None
+config_grid_search = {
+    "n_steps": [100, 200, 500, 1000],
+    "opter_config": [{"lr": 10}, {"lr": 20}, {"lr": 50}],
+    "img_grad_gauss_blur_config": [{"kernel_size": 13, "sigma": 1}, {"kernel_size": 13, "sigma": 1.5}, {"kernel_size": 13, "sigma": 2}, {"kernel_size": 13, "sigma": 2.5}],
+}
 
 def plot_decoding_history(decoding_history, save_to=None, show=True):
     fig = plt.figure(figsize=(16, 6))
@@ -181,8 +161,11 @@ if __name__ == "__main__":
     stim, resp, neuron_coords = datapoint[sample_data_key][0].to(config["device"]), datapoint[sample_data_key][1].to(config["device"]), datapoint[sample_data_key][2].float().to(config["device"])
     stim, resp, neuron_coords = stim[:7], resp[:7], neuron_coords[:7]
 
-    # _resp = config["enc_inv"]["model"]["encoder"](stim, data_key="cat_v1").detach()
-    # resp = (_resp - 30).clip(min=0, max=15)
+    ### prepare config_updates
+    if config_updates is None:
+        keys, vals = zip(*config_grid_search.items())
+        config_updates = [dict(zip(keys, v)) for v in itertools.product(*vals)]
+    print(f"[INFO] Config updates to try:\n ", "\n  ".join([dict_to_str(config_update) for config_update in config_updates]))
 
     ### run
     best = {"config": None, "val_loss": np.inf, "idx": None}
@@ -202,6 +185,7 @@ if __name__ == "__main__":
             dataloader=val_dl,
             loss_fns=config["enc_inv"]["loss_fns"],
             config=config,
+            max_batches=config["enc_inv"]["max_batches"],
         )
 
         ### update best

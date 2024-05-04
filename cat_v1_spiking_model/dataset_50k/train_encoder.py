@@ -10,12 +10,12 @@ from collections import OrderedDict
 import lovely_tensors as lt
 from nnfabrik.builder import get_model, get_trainer
 from sensorium.utility import get_correlations
+from sensorium.utility.scores import get_poisson_loss
 from sensorium.utility.measure_helpers import get_df_for_scores
 
 from cat_v1_spiking_model.dataset_50k.data import prepare_v1_dataloaders
 
 lt.monkey_patch()
-
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
 print(f"{DATA_PATH=}")
 
@@ -29,6 +29,7 @@ config = {
     "only_cat_v1_eval": True,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
+    "load_ckpt": None,
     # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
 }
 config["data"]["cat_v1"] = {
@@ -37,7 +38,7 @@ config["data"]["cat_v1"] = {
     "test_path": os.path.join(DATA_PATH, "datasets", "test"),
     "image_size": [50, 50],
     "crop": False,
-    "batch_size": 128,
+    "batch_size": 64,
     "stim_keys": ("stim",),
     "resp_keys": ("exc_resp", "inh_resp"),
     "return_coords": True,
@@ -46,13 +47,16 @@ config["data"]["cat_v1"] = {
     "cached": False,
     "stim_normalize_mean": 46.143,
     "stim_normalize_std": 20.420,
-    "resp_normalize_mean": torch.load(
-        os.path.join(DATA_PATH, "responses_mean.pt")
-    ),
-    "resp_normalize_std": torch.load(
-        os.path.join(DATA_PATH, "responses_std.pt")
-    ),
-    "clamp_neg_resp": True,
+    "resp_normalize_mean": None,
+    # "resp_normalize_mean": torch.load(
+    #     os.path.join(DATA_PATH, "responses_mean.pt")
+    # ),
+    "resp_normalize_std": None,
+    # "resp_normalize_std": torch.load(
+    #     os.path.join(DATA_PATH, "responses_std.pt")
+    # ),
+    # "clamp_neg_resp": True,
+    "clamp_neg_resp": False,
 }
 
 class Neurons:
@@ -97,6 +101,11 @@ if __name__ == "__main__":
         'gauss_type': 'full',
         'shifter': False,
         'stack': -1,
+        "mean_activity_dict": {
+            "cat_v1": torch.load(
+                os.path.join(DATA_PATH, "responses_mean.pt")
+            ).to(config["device"])
+        },
     }
     model = get_model(
         model_fn=model_fn,
@@ -114,7 +123,7 @@ if __name__ == "__main__":
     model.to(config["device"])
     trainer_fn = "sensorium.training.standard_trainer"
     trainer_config = {
-        'max_iter': 200,
+        'max_iter': 80,
         'verbose': True,
         'lr_decay_steps': 4,
         'avg_loss': False,
@@ -132,14 +141,9 @@ if __name__ == "__main__":
     validation_score, trainer_output, state_dict = trainer(model, dataloaders, seed=config["seed"])
     print(f"{trainer_output=}")
     print(f"{validation_score=}")
-    
-    print(f"[INFO] Evaluating single trial correlation...")
-    model.eval()
-    single_trial_correlation = get_correlations(model, dataloaders, tier="test", device=config["device"], as_dict=True)
-    df_corr_mean = get_df_for_scores(session_dict=single_trial_correlation, measure_attribute="Single Trial Correlation").groupby("dataset").mean()
-    print(df_corr_mean)
 
     ### save
+    print(f"[INFO] Saving the model...")
     torch.save({
             "config": config,
             "model_fn": model_fn,
@@ -149,7 +153,39 @@ if __name__ == "__main__":
             "model": model.state_dict(),
             "val_score": validation_score,
             "trainer_output": trainer_output,
-            "test_single_trial_corr": df_corr_mean,
             "state_dict": state_dict,
         }, "encoder_cat_v1_no_shifter.pth", pickle_module=dill,
     )
+
+    print(f"[INFO] Evaluating single trial correlation...")
+    model.eval()
+    single_trial_correlation = get_correlations(model, dataloaders, tier="test", device=config["device"], as_dict=True)
+    df_corr_mean = get_df_for_scores(session_dict=single_trial_correlation, measure_attribute="Single Trial Correlation").groupby("dataset").mean()
+    print(df_corr_mean)
+    print("Validation loss: ", get_poisson_loss(
+        model,
+        dataloaders["validation"],
+        device=config["device"],
+        as_dict=False,
+        avg=True,
+        per_neuron=False,
+        eps=1e-12,
+    ))
+    print("Test loss: ", get_poisson_loss(
+        model,
+        dataloaders["test"],
+        device=config["device"],
+        as_dict=False,
+        avg=True,
+        per_neuron=False,
+        eps=1e-12,
+    ))
+    # print("Training loss: ", get_poisson_loss(
+    #     model,
+    #     dataloaders["train"],
+    #     device=config["device"],
+    #     as_dict=False,
+    #     avg=True,
+    #     per_neuron=False,
+    #     eps=1e-12,
+    # ))
