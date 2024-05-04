@@ -9,16 +9,14 @@ from copy import deepcopy
 import dill
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 from torchvision import transforms
 import lovely_tensors as lt
 import wandb
-from nnfabrik.builder import get_data
 
 import csng
 from csng.CNN_Decoder import CNN_Decoder
-from csng.utils import crop, plot_comparison, standardize, normalize, get_mean_and_std, count_parameters, plot_losses
+from csng.utils import crop, plot_comparison, standardize, normalize, count_parameters, plot_losses
 from csng.losses import SSIMLoss, MultiSSIMLoss, Loss, CroppedLoss
 from csng.readins import (
     MultiReadIn,
@@ -56,7 +54,6 @@ config = {
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
-    # "crop_win": (slice(7, 29), slice(15, 51)),
     "crop_win": (22, 36),
     # "wandb": None,
     "wandb": {
@@ -72,10 +69,10 @@ config["data"]["mouse_v1"] = {
             # os.path.join(DATA_PATH, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
             # os.path.join(DATA_PATH, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
             os.path.join(DATA_PATH, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+            # os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+            # os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+            # os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+            # os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
         ],
         "normalize": True,
         "scale": 0.25, # 256x144 -> 64x36
@@ -85,11 +82,11 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 7,
+        "batch_size": 16,
         "seed": config["seed"],
         "use_cache": False,
     },
-    "skip_train": True,
+    "skip_train": False,
     "skip_val": False,
     "skip_test": False,
     "normalize_neuron_coords": True,
@@ -99,21 +96,21 @@ config["data"]["mouse_v1"] = {
     "device": config["device"],
 }
 
-config["data"]["syn_dataset_config"] = {
-    "data_keys": [
-        "21067-10-18",
-        "22846-10-16",
-        "23343-5-17",
-        "23656-14-22",
-        "23964-4-22",
-    ],
-    "batch_size": 7,
-    "append_data_parts": ["train"],
-    # "data_key_prefix": "syn",
-    "data_key_prefix": None, # the same data key as the original (real) data
-    "dir_name": "synthetic_data_mouse_v1_encoder_new_stimuli",
-    "device": config["device"],
-}
+# config["data"]["syn_dataset_config"] = {
+#     "data_keys": [
+#         "21067-10-18",
+#         "22846-10-16",
+#         "23343-5-17",
+#         "23656-14-22",
+#         "23964-4-22",
+#     ],
+#     "batch_size": 7,
+#     "append_data_parts": ["train"],
+#     # "data_key_prefix": "syn",
+#     "data_key_prefix": None, # the same data key as the original (real) data
+#     "dir_name": "synthetic_data_mouse_v1_encoder_new_stimuli",
+#     "device": config["device"],
+# }
 _dataloaders, _ = get_all_data(config=config)
 
 # config["data"]["data_augmentation"] = {
@@ -165,7 +162,6 @@ config["decoder"] = {
                     #     "gauss_blur": False,
                     #     "gauss_blur_kernel_size": 7,
                     #     "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
-                    #     # "gauss_blur_sigma": "per_neuron", # "fixed", "single", "per_neuron"
                     #     "gauss_blur_sigma_init": 1.5,
                     #     "neuron_emb_dim": None,
                     # }),
@@ -180,7 +176,6 @@ config["decoder"] = {
                     #     "out_act_fn": nn.Identity,
                     #     "batch_norm": True,
                     #     "dropout": 0.15,
-                    #     "l2_reg_mul": 5e-5,
                     # }),
 
                     (MEIReadIn, {
@@ -214,33 +209,21 @@ config["decoder"] = {
         "core_config": {
             "resp_shape": (480,),
             "layers": [
-                # ("deconv", 480, 7, 2, 3),
-                ("conv", 480, 7, 1, 3), # MEIReadIn
-                # ("deconv", 256, 7, 2, 2),
-                # ("deconv", 128, 7, 2, 1),
-                # ("deconv", 64, 5, 2, 2),
-
-                # ("deconv", 256, 5, 1, 2),
-                ("conv", 256, 5, 1, 2), # MEIReadIn
-                # ("deconv", 128, 5, 1, 2),
-                # ("deconv", 64, 5, 1, 1),
-
-                # ("deconv", 256, 5, 1, 2),
-                ("conv", 256, 5, 1, 2), # MEIReadIn
-                # ("deconv", 64, 5, 1, 2),
-                # ("deconv", 32, 4, 1, 1),
-
-                # ("deconv", 128, 4, 1, 1),
-                ("conv", 128, 3, 1, 1), # MEIReadIn
-                # ("deconv", 64, 4, 1, 1),
-                # ("deconv", 32, 4, 1, 1),
-
-                # ("deconv", 64, 3, 1, 1),
-                ("conv", 64, 3, 1, 1), # MEIReadIn
-                # ("deconv", 32, 3, 1, 1),
-
-                # ("deconv", 1, 3, 1, 0),
-                ("conv", 1, 3, 1, 1), # MEIReadIn
+                ### Conv/FC readin
+                ("deconv", 480, 7, 2, 3),
+                ("deconv", 256, 5, 1, 2),
+                ("deconv", 256, 5, 1, 2),
+                ("deconv", 128, 4, 1, 1),
+                ("deconv", 64, 3, 1, 1),
+                ("deconv", 1, 3, 1, 0),
+                
+                ### MEI readin
+                # ("conv", 480, 7, 1, 3),
+                # ("conv", 256, 5, 1, 2),
+                # ("conv", 256, 5, 1, 2),
+                # ("conv", 128, 3, 1, 1),
+                # ("conv", 64, 3, 1, 1),
+                # ("conv", 1, 3, 1, 1),
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
@@ -287,10 +270,10 @@ config["decoder"] = {
     #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-04-14_22-48-06", "ckpt", "decoder_15.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-05-01_08-19-30", "ckpt", "decoder_27.pt"),
     #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "sjaa37pb",
+    #     "resume_wandb_id": "6rp5n9vz",
     # },
     "save_run": True,
 }
@@ -471,16 +454,16 @@ if __name__ == "__main__":
             plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["decoder"]["save_run"] else None)
 
         ### save ckpt
-        if epoch % 3 == 0 and epoch > 0:
-            ### ckpt
-            if config["decoder"]["save_run"]:
-                torch.save({
-                    "decoder": decoder.state_dict(),
-                    "opter": opter.state_dict(),
-                    "history": history,
-                    "config": config,
-                    "best": best,
-                }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
+        # if epoch % 3 == 0 and epoch > 0:
+        ### ckpt
+        if config["decoder"]["save_run"]:
+            torch.save({
+                "decoder": decoder.state_dict(),
+                "opter": opter.state_dict(),
+                "history": history,
+                "config": config,
+                "best": best,
+            }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
 
     ### final evaluation + logging + saving
     print(f"Best val loss: {best['val_loss']:.4f} at epoch {best['epoch']}")

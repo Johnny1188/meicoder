@@ -1,5 +1,4 @@
 import os
-os.environ["DATA_PATH"] = "/home/sobotj11/decoding-brain-activity/data"
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -160,28 +159,40 @@ config["decoder"] = {
                     #     "neuron_emb_dim": None,
                     # }),
 
-                    (MEIReadIn, {
-                        "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
-                        "n_neurons": n_coords.shape[-2],
-                        "mei_resize_method": "resize",
-                        "mei_target_shape": (22, 36),
-                        "pointwise_conv_config": {
-                            "out_channels": 480,
-                            "bias": False,
-                            "batch_norm": True,
-                            "act_fn": nn.LeakyReLU,
-                            "dropout": 0.1,
-                        },
-                        "ctx_net_config": {
-                            "in_channels": 3, # resp, x, y
-                            "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
-                            "act_fn": nn.LeakyReLU,
-                            "out_act_fn": nn.Identity,
-                            "dropout": 0.1,
-                            "batch_norm": True,
-                        },
-                        "shift_coords": False,
-                        "device": config["device"],
+                    # (MEIReadIn, {
+                    #     "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
+                    #     "n_neurons": n_coords.shape[-2],
+                    #     "mei_resize_method": "resize",
+                    #     "mei_target_shape": (22, 36),
+                    #     "pointwise_conv_config": {
+                    #         "out_channels": 480,
+                    #         "bias": False,
+                    #         "batch_norm": True,
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "dropout": 0.1,
+                    #     },
+                    #     "ctx_net_config": {
+                    #         "in_channels": 3, # resp, x, y
+                    #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "out_act_fn": nn.Identity,
+                    #         "dropout": 0.1,
+                    #         "batch_norm": True,
+                    #     },
+                    #     "shift_coords": False,
+                    #     "device": config["device"],
+                    # }),
+
+                    (FCReadIn, {
+                        "in_shape": n_coords.shape[-2],
+                        "layers_config": [
+                            ("fc", 432),
+                            ("unflatten", 1, (3, 9, 16)),
+                        ],
+                        "act_fn": nn.LeakyReLU,
+                        "out_act_fn": nn.Identity,
+                        "batch_norm": True,
+                        "dropout": 0.15,
                     }),
 
                 ],
@@ -190,22 +201,23 @@ config["decoder"] = {
         "core_cls": GAN,
         "core_config": {
             "G_kwargs": {
-                "in_shape": [480],
+                "in_shape": [3],
                 "layers": [
-                    # ("deconv", 480, 7, 2, 3),
-                    # ("deconv", 256, 5, 1, 2),
-                    # ("deconv", 256, 5, 1, 2),
-                    # ("deconv", 128, 4, 1, 1),
-                    # ("deconv", 64, 3, 1, 1),
-                    # ("deconv", 1, 3, 1, 0),
+                    ### Conv/FC readin
+                    ("deconv", 480, 7, 2, 2),
+                    ("deconv", 256, 5, 1, 2),
+                    ("deconv", 256, 5, 1, 2),
+                    ("deconv", 128, 4, 1, 1),
+                    ("deconv", 64, 3, 1, 1),
+                    ("deconv", 1, 3, 1, 0),
 
                     ### MEI readin
-                    ("conv", 480, 7, 1, 3),
-                    ("conv", 256, 5, 1, 2),
-                    ("conv", 256, 5, 1, 2),
-                    ("conv", 128, 3, 1, 1),
-                    ("conv", 64, 3, 1, 1),
-                    ("conv", 1, 3, 1, 1),
+                    # ("conv", 480, 7, 1, 3),
+                    # ("conv", 256, 5, 1, 2),
+                    # ("conv", 256, 5, 1, 2),
+                    # ("conv", 128, 3, 1, 1),
+                    # ("conv", 64, 3, 1, 1),
+                    # ("conv", 1, 3, 1, 1),
                 ],
                 "act_fn": nn.ReLU,
                 "out_act_fn": nn.Identity,
@@ -241,12 +253,7 @@ config["decoder"] = {
         "l2_reg_mul": 0,
         "con_reg_mul": 0,
         # "con_reg_mul": 1,
-        # "con_reg_loss_fn": SSIMLoss(
-        #     window=config["crop_win"],
-        #     log_loss=True,
-        #     inp_normalized=True,
-        #     inp_standardized=False,
-        # ),
+        "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         "encoder": None,
         # "encoder": get_encoder(
         #     device=config["device"],
@@ -262,24 +269,22 @@ config["decoder"] = {
     "G_reg": {"l1": 0, "l2": 0},
     "D_reg": {"l1": 0, "l2": 0},
     "G_adv_loss_mul": 0.1,
-    # "G_adv_loss_mul": 0.05,
     "G_stim_loss_mul": 0.9,
-    # "G_stim_loss_mul": 0.45,
     "D_real_loss_mul": 0.5,
     "D_fake_loss_mul": 0.5,
     "D_real_stim_labels_noise": 0.05,
     "D_fake_stim_labels_noise": 0.05,
-    "n_epochs": 130,
+    "n_epochs": 80,
     "load_ckpt": None,
-    "load_ckpt": {
-        "load_best": False,
-        "load_opter_state": True,
-        "reset_history": False,
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-22-04", "ckpt", "decoder_105.pt"),
-        # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "decoder.pt"),
-        "resume_checkpointing": True,
-        "resume_wandb_id": "4ls1sb1x",
-    },
+    # "load_ckpt": {
+    #     "load_best": False,
+    #     "load_opter_state": True,
+    #     "reset_history": False,
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_10-16-21", "ckpt", "decoder_65.pt"),
+    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-20_22-03-38", "decoder.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "bi3rv26y",
+    # },
     "save_run": True,
 }
 print(
@@ -350,11 +355,11 @@ if __name__ == "__main__":
     ### print model and fix sizes of stimuli
     with torch.no_grad():
         stim_pred = decoder(resp.to(config["device"]), data_key=sample_data_key, neuron_coords=neuron_coords[sample_data_key], pupil_center=pupil_center.to(config["device"]))
-        if stim_pred.shape != stim.shape:
-            print(f"[WARNING] Stimulus prediction shape {stim_pred.shape} does not match stimulus shape {stim.shape}.")
+        print(f"{stim_pred.shape=}")
+        if stim_pred.shape != crop(stim, config["crop_win"]).shape:
+            print(f"[WARNING] Stimulus prediction shape {stim_pred.shape} does not match stimulus shape {crop(stim, config['crop_win']).shape}.")
             assert stim_pred.shape[-2] >= crop(stim, config["crop_win"]).shape[-2] \
                 and stim_pred.shape[-1] >= crop(stim, config["crop_win"]).shape[-1]
-        print(f"{stim_pred.shape=}")
         del stim_pred
     print(
         decoder,

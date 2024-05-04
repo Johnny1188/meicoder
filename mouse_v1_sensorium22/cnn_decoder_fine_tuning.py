@@ -9,12 +9,10 @@ from copy import deepcopy
 import dill
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 from torchvision import transforms
 import lovely_tensors as lt
 import wandb
-from nnfabrik.builder import get_data
 
 import csng
 from csng.CNN_Decoder import CNN_Decoder
@@ -56,10 +54,9 @@ config = {
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
-    # "crop_win": None,
     # "crop_win": (slice(7, 29), slice(15, 51)),
     "crop_win": (22, 36),
-    # "wandb": None,
+    "wandb": None,
     "wandb": {
         "project": "CSNG",
         "group": "sensorium_2022",
@@ -157,7 +154,6 @@ config["decoder"] = {
                         "pointwise_conv_config": {
                             "in_channels": n_coords.shape[-2],
                             "out_channels": 480,
-                            # "act_fn": nn.LeakyReLU,
                             "act_fn": nn.Identity,
                             "bias": False,
                             "batch_norm": True,
@@ -192,10 +188,11 @@ config["decoder"] = {
                     #     "mei_resize_method": "resize",
                     #     "mei_target_shape": (22, 36),
                     #     "pointwise_conv_config": {
-                    #         "out_channels": 144,
+                    #         "out_channels": 480,
                     #         "bias": False,
                     #         "batch_norm": True,
-                    #         "act_fn": nn.Identity,
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "dropout": 0.1,
                     #     },
                     #     "ctx_net_config": {
                     #         "in_channels": 3, # resp, x, y
@@ -208,7 +205,7 @@ config["decoder"] = {
                     #     "shift_coords": False,
                     #     "device": config["device"],
                     # }),
-                    
+
                 ],
             } for data_key, n_coords in _dataloaders["mouse_v1"]["train"].neuron_coords.items()
         ],
@@ -306,16 +303,16 @@ config["decoder"] = {
     #     "l2_reg_mul": 0,
     #     "con_reg_mul": 0,
     # },
-    "n_epochs": 100,
+    "n_epochs": 120,
     # "load_ckpt": None,
     "load_ckpt": {
         "load_only_core": True,
-        "load_best": True,
+        "load_best": False,
         "load_opter_state": False,
         "ckpt_path": os.path.join(
-            DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-04-03_22-53-01", "decoder.pt"),
-            # DATA_PATH, "models", "cnn", "2024-03-31_17-58-59", "decoder.pt"),
-            # DATA_PATH, "models", "cnn", "2024-04-02_10-45-50", "ckpt", "decoder_645.pt"),
+            # DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-04-20_11-09-52", "decoder.pt"),
+            DATA_PATH, "models", "cnn", "2024-04-01_11-16-55", "decoder.pt"),
+            # DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "ckpt", "decoder_40.pt"),
         "resume_checkpointing": False,
         "resume_wandb_id": None,
     },
@@ -487,7 +484,7 @@ if __name__ == "__main__":
     print(f"  Val loss before fine-tuning: {val_loss_curr['total']:.4f}")
     s, e = len(history["train_loss"]), config["decoder"]["n_epochs"]
     for epoch in range(s, e):
-        print(f"[{epoch + 1}/{e}]")
+        print(f"[{epoch}/{e}]")
 
         ### train and val
         dls, neuron_coords = get_all_data(config=config)
