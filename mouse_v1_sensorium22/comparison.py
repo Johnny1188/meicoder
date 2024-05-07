@@ -100,8 +100,7 @@ config["comparison"] = {
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "fig_7_7",
-        "fig_extended_latest",
+        "s_pretraining",
     ),
     "loaded_ckpts_overwrite": True,
     # "load_ckpts": None,
@@ -123,7 +122,49 @@ config["comparison"] = {
             # ],
             "remap": None,
             # "remap": {
-            #     "CNN-Conv (25%)": "CNN-Conv (25% S-1)",
+            #     "CNN-Conv (0%)": "CNN-Conv (100% M-1 + 0% S-1)",
+            #     "CNN-Conv (25%)": "CNN-Conv (75% M-1 + 25% S-1)",
+            #     "CNN-Conv (50%)": "CNN-Conv (50% M-1 + 50% S-1)",
+            #     "CNN-Conv (87.5%)": "CNN-Conv (12.5% M-1 + 87.5% S-1)",
+            #     "CNN-Conv (100%)": "CNN-Conv (0% M-1 + 100% S-1)",
+            #     "CNN-MEI (0%)": "CNN-MEI (100% M-1 + 0% S-1)",
+            #     "CNN-MEI (25%)": "CNN-MEI (75% M-1 + 25% S-1)",
+            #     "CNN-MEI (50%)": "CNN-MEI (50% M-1 + 50% S-1)",
+            #     "CNN-MEI (87.5%)": "CNN-MEI (12.5% M-1 + 87.5% S-1)",
+            #     "CNN-MEI (100%)": "CNN-MEI (0% M-1 + 100% S-1)",
+
+            #     "GAN-Conv (0%)": "GAN-Conv (100% M-1 + 0% S-1)",
+            #     "GAN-Conv (25%)": "GAN-Conv (75% M-1 + 25% S-1)",
+            #     "GAN-Conv (50%)": "GAN-Conv (50% M-1 + 50% S-1)",
+            #     "GAN-Conv (87.5%)": "GAN-Conv (12.5% M-1 + 87.5% S-1)",
+            #     "GAN-Conv (100%)": "GAN-Conv (0% M-1 + 100% S-1)",
+            #     "GAN-MEI (0%)": "GAN-MEI (100% M-1 + 0% S-1)",
+            #     "GAN-MEI (25%)": "GAN-MEI (75% M-1 + 25% S-1)",
+            #     "GAN-MEI (50%)": "GAN-MEI (50% M-1 + 50% S-1)",
+            #     "GAN-MEI (87.5%)": "GAN-MEI (12.5% M-1 + 87.5% S-1)",
+            #     "GAN-MEI (100%)": "GAN-MEI (0% M-1 + 100% S-1)",
+
+            #     "CNN-Conv (0%)": "CNN-Conv (100% M-All + 0% S-All)",
+            #     "CNN-Conv (25%)": "CNN-Conv (75% M-All + 25% S-All)",
+            #     "CNN-Conv (50%)": "CNN-Conv (50% M-All + 50% S-All)",
+            #     "CNN-Conv (87.5%)": "CNN-Conv (12.5% M-All + 87.5% S-All)",
+            #     "CNN-Conv (100%)": "CNN-Conv (0% M-All + 100% S-All)",
+            #     "CNN-MEI (0%)": "CNN-MEI (100% M-All + 0% S-All)",
+            #     "CNN-MEI (25%)": "CNN-MEI (75% M-All + 25% S-All)",
+            #     "CNN-MEI (50%)": "CNN-MEI (50% M-All + 50% S-All)",
+            #     "CNN-MEI (87.5%)": "CNN-MEI (12.5% M-All + 87.5% S-All)",
+            #     "CNN-MEI (100%)": "CNN-MEI (0% M-All + 100% S-All)",
+
+            #     "GAN-Conv (0%)": "GAN-Conv (100% M-All + 0% S-All)",
+            #     "GAN-Conv (25%)": "GAN-Conv (75% M-All + 25% S-All)",
+            #     "GAN-Conv (50%)": "GAN-Conv (50% M-All + 50% S-All)",
+            #     "GAN-Conv (87.5%)": "GAN-Conv (12.5% M-All + 87.5% S-All)",
+            #     "GAN-Conv (100%)": "GAN-Conv (0% M-All + 100% S-All)",
+            #     "GAN-MEI (0%)": "GAN-MEI (100% M-All + 0% S-All)",
+            #     "GAN-MEI (25%)": "GAN-MEI (75% M-All + 25% S-All)",
+            #     "GAN-MEI (50%)": "GAN-MEI (50% M-All + 50% S-All)",
+            #     "GAN-MEI (87.5%)": "GAN-MEI (12.5% M-All + 87.5% S-All)",
+            #     "GAN-MEI (100%)": "GAN-MEI (0% M-All + 100% S-All)",
             # },
         },
     ],
@@ -267,30 +308,30 @@ config["comparison"] = {
 #         "run_name": None,
 #     },
     
-#     # "CNN-FC (M-1)": {
-#     #     "run_name": "2024-04-08_00-43-03",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_00-43-03", "decoder.pt"),
-#     # },
-#     # "CNN-FC w/ EM (M-1)": {
-#     #     "run_name": "2024-04-25_19-39-26",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-25_19-39-26", "decoder.pt"),
-#     # },
-#     # "CNN-FC (M-All)": {
-#     #     "run_name": "2024-04-08_00-39-27",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_00-39-27", "decoder.pt"),
-#     # },
-#     # "CNN-FC w/ EM (M-All)": {
-#     #     "run_name": "2024-04-29_19-34-37",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-29_19-34-37", "decoder.pt"),
-#     # },
-#     # "CNN-Conv (M-1)": {
-#     #     "run_name": "2024-03-27_11-35-11",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_11-35-11", "decoder.pt"),
-#     # },
-#     # "CNN-Conv w/ EM (M-1)": {
-#     #     "run_name": "2024-04-11_10-22-00",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-22-00", "decoder.pt"),
-#     # },
+#     "CNN-FC (M-1)": {
+#         "run_name": "2024-04-08_00-43-03",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_00-43-03", "decoder.pt"),
+#     },
+#     "CNN-FC w/ EM (M-1)": {
+#         "run_name": "2024-04-25_19-39-26",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-25_19-39-26", "decoder.pt"),
+#     },
+#     "CNN-FC (M-All)": {
+#         "run_name": "2024-04-08_00-39-27",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_00-39-27", "decoder.pt"),
+#     },
+#     "CNN-FC w/ EM (M-All)": {
+#         "run_name": "2024-04-29_19-34-37",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-29_19-34-37", "decoder.pt"),
+#     },
+#     "CNN-Conv (M-1)": {
+#         "run_name": "2024-03-27_11-35-11",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_11-35-11", "decoder.pt"),
+#     },
+#     "CNN-Conv w/ EM (M-1)": {
+#         "run_name": "2024-04-11_10-22-00",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-22-00", "decoder.pt"),
+#     },
 #     "CNN-Conv (M-All)": {
 #         "run_name": "2024-03-27_23-26-05",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_23-26-05", "decoder.pt"),
@@ -299,50 +340,50 @@ config["comparison"] = {
 #         "run_name": "2024-04-11_10-18-14",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_10-18-14", "decoder.pt"),
 #     },
-#     # "CNN-MEI (M-1)": {
-#     #     "run_name": "2024-04-09_08-42-29",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
-#     # },
+#     "CNN-MEI (M-1)": {
+#         "run_name": "2024-04-09_08-42-29",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
+#     },
 #     "CNN-MEI w/ EM (M-1)": {
 #         "run_name": "2024-04-12_23-44-06",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_23-44-06", "decoder.pt"),
 #     },
-#     # "CNN-MEI (M-All)": {
-#     #     "run_name": "2024-04-09_08-46-00",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-46-00", "decoder.pt"),
-#     # },
-#     # "CNN-MEI w/ EM (M-All)": {
-#     #     "run_name": "2024-04-14_22-43-18",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-14_22-43-18", "decoder.pt"),
-#     # },
-#     # "GAN-Conv (M-1)": {
-#     #     "run_name": "2024-04-10_11-06-28",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_11-06-28", "decoder.pt"),
-#     # },
-#     # "GAN-Conv w/ EM (M-1)": {
-#     #     "run_name": "2024-04-11_13-54-42",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "decoder.pt"),
-#     # },
-#     # "GAN-Conv (M-All)": {
-#     #     "run_name": "2024-04-10_17-36-41",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_17-36-41", "decoder.pt"),
-#     # },
+#     "CNN-MEI (M-All)": {
+#         "run_name": "2024-04-09_08-46-00",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-46-00", "decoder.pt"),
+#     },
+#     "CNN-MEI w/ EM (M-All)": {
+#         "run_name": "2024-04-14_22-43-18",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-14_22-43-18", "decoder.pt"),
+#     },
+#     "GAN-Conv (M-1)": {
+#         "run_name": "2024-04-10_11-06-28",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_11-06-28", "decoder.pt"),
+#     },
+#     "GAN-Conv w/ EM (M-1)": {
+#         "run_name": "2024-04-11_13-54-42",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_13-54-42", "decoder.pt"),
+#     },
+#     "GAN-Conv (M-All)": {
+#         "run_name": "2024-04-10_17-36-41",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_17-36-41", "decoder.pt"),
+#     },
 #     "GAN-Conv w/ EM (M-All)": {
 #         "run_name": "2024-04-11_14-31-27",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_14-31-27", "decoder.pt"),
 #     },
-#     # "GAN-MEI (M-1)": {
-#     #     "run_name": "2024-04-12_11-19-16",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "decoder.pt"),
-#     # },
-#     # "GAN-MEI w/ EM (M-1)": {
-#     #     "run_name": "2024-04-23_13-46-11",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "decoder.pt"),
-#     # },
-#     # "GAN-MEI (M-All)": {
-#     #     "run_name": "2024-04-12_11-22-04",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-22-04", "decoder.pt"),
-#     # },
+#     "GAN-MEI (M-1)": {
+#         "run_name": "2024-04-12_11-19-16",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "decoder.pt"),
+#     },
+#     "GAN-MEI w/ EM (M-1)": {
+#         "run_name": "2024-04-23_13-46-11",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "decoder.pt"),
+#     },
+#     "GAN-MEI (M-All)": {
+#         "run_name": "2024-04-12_11-22-04",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-22-04", "decoder.pt"),
+#     },
 #     "GAN-MEI w/ EM (M-All)": {
 #         "run_name": "2024-04-23_13-49-03",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-49-03", "decoder.pt"),
@@ -378,84 +419,84 @@ config["comparison"] = {
 #         "run_name": None,
 #     },
 
-#     "CNN-Conv (0%)": {
+#     "CNN-Conv (100% M-1 + 0% S-1)": {
 #         "run_name": "2024-03-27_11-35-11",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_11-35-11", "decoder.pt"),
 #     },
-#     "CNN-Conv (25%)": {
+#     "CNN-Conv (75% M-1 + 25% S-1)": {
 #         "run_name": "2024-03-27_23-16-33",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_23-16-33", "decoder.pt"),
 #     },
-#     "CNN-Conv (50%)": {
+#     "CNN-Conv (50% M-1 + 50% S-1)": {
 #         "run_name": "2024-03-27_18-15-44",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_18-15-44", "decoder.pt"),
 #     },
-#     "CNN-Conv (87.5%)": {
+#     "CNN-Conv (12.5% M-1 + 87.5% S-1)": {
 #         "run_name": "2024-04-08_21-11-50",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_21-11-50", "decoder.pt"),
 #     },
-#     "CNN-Conv (100%)": {
+#     "CNN-Conv (0% M-1 + 100% S-1)": {
 #         "run_name": "2024-04-08_21-09-33",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_21-09-33", "decoder.pt"),
 #     },
-#     "CNN-MEI (0%)": {
+#     "CNN-MEI (100% M-1 + 0% S-1)": {
 #         "run_name": "2024-04-09_08-42-29",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
 #     },
-#     "CNN-MEI (25%)": {
+#     "CNN-MEI (75% M-1 + 25% S-1)": {
 #         "run_name": "2024-04-12_11-41-07",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_11-41-07", "decoder.pt"),
 #     },
-#     "CNN-MEI (50%)": {
+#     "CNN-MEI (50% M-1 + 50% S-1)": {
 #         "run_name": "2024-04-12_11-26-43",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_11-26-43", "decoder.pt"),
 #     },
-#     "CNN-MEI (87.5%)": {
+#     "CNN-MEI (12.5% M-1 + 87.5% S-1)": {
 #         "run_name": "2024-04-12_11-38-37",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_11-38-37", "decoder.pt"),
 #     },
-#     "CNN-MEI (100%)": {
+#     "CNN-MEI (0% M-1 + 100% S-1)": {
 #         "run_name": "2024-04-12_11-31-42",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_11-31-42", "decoder.pt"),
 #     },
 
-#     "GAN-Conv (0%)": {
+#     "GAN-Conv (100% M-1 + 0% S-1)": {
 #         "run_name": "2024-04-10_11-06-28",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_11-06-28", "decoder.pt"),
 #     },
-#     "GAN-Conv (25%)": {
+#     "GAN-Conv (75% M-1 + 25% S-1)": {
 #         "run_name": "2024-04-17_20-06-17",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_20-06-17", "decoder.pt"),
 #     },
-#     "GAN-Conv (50%)": {
+#     "GAN-Conv (50% M-1 + 50% S-1)": {
 #         "run_name": "2024-04-17_20-02-05",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_20-02-05", "decoder.pt"),
 #     },
-#     "GAN-Conv (87.5%)": {
+#     "GAN-Conv (12.5% M-1 + 87.5% S-1)": {
 #         "run_name": "2024-04-18_09-10-28",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-18_09-10-28", "decoder.pt"),
 #     },
-#     "GAN-Conv (100%)": {
+#     "GAN-Conv (0% M-1 + 100% S-1)": {
 #         "run_name": "2024-04-17_22-52-07",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_22-52-07", "decoder.pt"),
 #     },
-#     "GAN-MEI (0%)": {
+#     "GAN-MEI (100% M-1 + 0% S-1)": {
 #         "run_name": "2024-04-12_11-19-16",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "decoder.pt"),
 #     },
-#     "GAN-MEI (25%)": {
+#     "GAN-MEI (75% M-1 + 25% S-1)": {
 #         "run_name": "2024-04-17_13-49-33",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_13-49-33", "decoder.pt"),
 #     },
-#     "GAN-MEI (50%)": {
+#     "GAN-MEI (50% M-1 + 50% S-1)": {
 #         "run_name": "2024-04-17_13-41-46",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_13-41-46", "decoder.pt"),
 #     },
-#     "GAN-MEI (87.5%)": {
+#     "GAN-MEI (12.5% M-1 + 87.5% S-1)": {
 #         "run_name": "2024-04-17_13-45-38",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_13-45-38", "decoder.pt"),
 #     },
-#     "GAN-MEI (100%)": {
+#     "GAN-MEI (0% M-1 + 100% S-1)": {
 #         "run_name": "2024-04-17_19-57-26",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-17_19-57-26", "decoder.pt"),
 #     },
@@ -489,192 +530,194 @@ config["comparison"] = {
 #         ).to(config["device"]),
 #         "run_name": None,
 #     },
-#     "CNN-Conv (0%)": {
+    
+#     "CNN-Conv (100% M-All + 0% S-All)": {
 #         "run_name": "2024-03-27_23-26-05",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_23-26-05", "decoder.pt"),
 #     },
-#     "CNN-Conv (25%)": {
+#     "CNN-Conv (75% M-All + 25% S-All)": {
 #         "run_name": "2024-04-01_11-12-17",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-01_11-12-17", "decoder.pt"),
 #     },
-#     "CNN-Conv (50%)": {
+#     "CNN-Conv (50% M-All + 50% S-All)": {
 #         "run_name": "2024-03-31_17-58-59",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-31_17-58-59", "decoder.pt"),
 #     },
-#     "CNN-Conv (87.5%)": {
+#     "CNN-Conv (12.5% M-All + 87.5% S-All)": {
 #         "run_name": "2024-04-01_11-16-55",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-01_11-16-55", "decoder.pt"),
 #     },
-#     "CNN-Conv (100%)": {
+#     "CNN-Conv (0% M-All + 100% S-All)": {
 #         "run_name": "2024-04-09_08-52-18",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-52-18", "decoder.pt"),
 #     },
-#     "CNN-MEI (0%)": {
+#     "CNN-MEI (100% M-All + 0% S-All)": {
 #         "run_name": "2024-04-09_08-46-00",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-46-00", "decoder.pt"),
 #     },
-#     "CNN-MEI (25%)": {
+#     "CNN-MEI (75% M-All + 25% S-All)": {
 #         "run_name": "2024-04-12_23-17-47",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_23-17-47", "decoder.pt"),
 #     },
-#     "CNN-MEI (50%)": {
+#     "CNN-MEI (50% M-All + 50% S-All)": {
 #         "run_name": "2024-04-12_23-12-31",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_23-12-31", "decoder.pt"),
 #     },
-#     "CNN-MEI (87.5%)": {
+#     "CNN-MEI (12.5% M-All + 87.5% S-All)": {
 #         "run_name": "2024-04-12_23-16-03",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-12_23-16-03", "decoder.pt"),
 #     },
-#     "CNN-MEI (100%)": {
+#     "CNN-MEI (0% M-All + 100% S-All)": {
 #         "run_name": "2024-04-15_09-05-09",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-15_09-05-09", "decoder.pt"),
 #     },
 
-#     "GAN-Conv (0%)": {
+#     "GAN-Conv (100% M-All + 0% S-All)": {
 #         "run_name": "2024-04-10_17-36-41",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_17-36-41", "decoder.pt"),
 #     },
-#     "GAN-Conv (25%)": {
+#     "GAN-Conv (75% M-All + 25% S-All)": {
 #         "run_name": "2024-04-20_22-03-38",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-20_22-03-38", "decoder.pt"),
 #     },
-#     "GAN-Conv (50%)": {
+#     "GAN-Conv (50% M-All + 50% S-All)": {
 #         "run_name": "2024-04-18_22-07-20",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-18_22-07-20", "decoder.pt"),
 #     },
-#     "GAN-Conv (87.5%)": {
+#     "GAN-Conv (12.5% M-All + 87.5% S-All)": {
 #         "run_name": "2024-04-21_08-56-59",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-21_08-56-59", "decoder.pt"),
 #     },
-#     "GAN-Conv (100%)": {
+#     "GAN-Conv (0% M-All + 100% S-All)": {
 #         "run_name": "2024-04-21_15-07-26",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-21_15-07-26", "decoder.pt"),
 #     },
-#     "GAN-MEI (0%)": {
+#     "GAN-MEI (100% M-All + 0% S-All)": {
 #         "run_name": "2024-04-12_11-22-04",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-22-04", "decoder.pt"),
 #     },
-#     "GAN-MEI (25%)": {
+#     "GAN-MEI (75% M-All + 25% S-All)": {
 #         "run_name": "2024-04-18_15-21-57",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-18_15-21-57", "decoder.pt"),
 #     },
-#     "GAN-MEI (50%)": {
+#     "GAN-MEI (50% M-All + 50% S-All)": {
 #         "run_name": "2024-04-18_15-20-30",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-18_15-20-30", "decoder.pt"),
 #     },
-#     "GAN-MEI (87.5%)": {
+#     "GAN-MEI (12.5% M-All + 87.5% S-All)": {
 #         "run_name": "2024-04-18_15-23-39",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-18_15-23-39", "decoder.pt"),
 #     },
-#     "GAN-MEI (100%)": {
+#     "GAN-MEI (0% M-All + 100% S-All)": {
 #         "run_name": "2024-04-19_08-08-05",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-19_08-08-05", "decoder.pt"),
 #     },
 # }
 
 ### Table 4 - Transfer learning
-config["comparison"]["to_compare"] = {
-    "Inverted Encoder": {
-        "decoder": InvertedEncoder(
-            encoder=get_encoder(
-                device=config["device"],
-                eval_mode=True,
-                # use_shifter=False,
-                # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
-            ),
-            img_dims=(1, 36, 64),
-            stim_pred_init="zeros",
-            opter_cls=torch.optim.SGD,
-            opter_config={"lr": 150, "momentum": 0},
-            n_steps=200,
-            resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
-            stim_loss_fn=SSIMLoss(
-                window=config["crop_win"],
-                log_loss=True,
-                inp_normalized=True,
-                inp_standardized=False,
-            ),
-            img_gauss_blur_config=None,
-            img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 2},
-            device=config["device"],
-        ).to(config["device"]),
-        "run_name": None,
-    },
+# config["comparison"]["to_compare"] = {
+#     "Inverted Encoder": {
+#         "decoder": InvertedEncoder(
+#             encoder=get_encoder(
+#                 device=config["device"],
+#                 eval_mode=True,
+#                 # use_shifter=False,
+#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#             ),
+#             img_dims=(1, 36, 64),
+#             stim_pred_init="zeros",
+#             opter_cls=torch.optim.SGD,
+#             opter_config={"lr": 150, "momentum": 0},
+#             n_steps=200,
+#             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
+#             stim_loss_fn=SSIMLoss(
+#                 window=config["crop_win"],
+#                 log_loss=True,
+#                 inp_normalized=True,
+#                 inp_standardized=False,
+#             ),
+#             img_gauss_blur_config=None,
+#             img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 2},
+#             device=config["device"],
+#         ).to(config["device"]),
+#         "run_name": None,
+#     },
 
-    r"CNN-Conv (C $\rightarrow$ M-All)": {
-        "run_name": "2024-04-17_00-06-19",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_00-06-19", "decoder.pt"),
-    },
-    r"CNN-Conv (C $\rightarrow$ M-1)": {
-        "run_name": "2024-04-11_11-15-53",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_11-15-53", "decoder.pt"),
-    },
-    r"CNN-MEI (C $\rightarrow$ M-All)": {
-        "run_name": "2024-04-26_21-51-47",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "decoder.pt"),
-    },
-    r"CNN-MEI (C $\rightarrow$ M-1)": {
-        "run_name": "2024-04-26_21-54-43",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "decoder.pt"),
-    },
+#     r"CNN-Conv (C $\rightarrow$ M-All)": {
+#         "run_name": "2024-04-17_00-06-19",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_00-06-19", "decoder.pt"),
+#     },
+#     r"CNN-Conv (C $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-11_11-15-53",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_11-15-53", "decoder.pt"),
+#     },
+#     r"CNN-MEI (C $\rightarrow$ M-All)": {
+#         "run_name": "2024-04-26_21-51-47",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "decoder.pt"),
+#     },
+#     r"CNN-MEI (C $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-26_21-54-43",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "decoder.pt"),
+#     },
 
-    r"CNN-Conv (0% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-10_17-54-33",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
-    },
-    r"CNN-Conv (50% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-10_22-34-23",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-34-23", "decoder.pt"),
-    },
-    r"CNN-Conv (87.5% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-10_18-00-10",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_18-00-10", "decoder.pt"),
-    },
-    r"CNN-Conv (100% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-10_22-32-05",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-32-05", "decoder.pt"),
-    },
-    r"CNN-MEI (0% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-17_17-31-11",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_17-31-11", "decoder.pt"),
-    },
-    r"CNN-MEI (50% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-28_19-14-21",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-14-21", "decoder.pt"),
-    },
-    r"CNN-MEI (87.5% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-28_19-16-46",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-16-46", "decoder.pt"),
-    },
-    r"CNN-MEI (100% S-All $\rightarrow$ M-1)": {
-        "run_name": "2024-04-28_19-18-33",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-18-33", "decoder.pt"),
-    },
-    # r"CNN-MEI (C $\rightarrow$ M-1)*": {
-    #     "run_name": "2024-04-26_21-54-43",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "ckpt/decoder_75.pt"),
-    # },
-    # r"CNN-MEI (C $\rightarrow$ M-All)*": {
-    #     "run_name": "2024-04-26_21-51-47",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "ckpt/decoder_50.pt"),
-    # },
-    # r"GAN-MEI w/ EM (M-1)*": {
-    #     "run_name": "2024-04-23_13-46-11",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "ckpt/decoder_175.pt"),
-    # },
-    # r"GAN-MEI (M-1)*": {
-    #     "run_name": "2024-04-12_11-19-16",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
-    # },
-    # r"GAN-Conv (M-All $\rightarrow$ M-1)": {
-    #     "run_name": "2024-04-11_10-41-27",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_10-41-27", "decoder.pt"),
-    # },
-    # r"GAN-MEI w/ EM (M-1)": {
-    #     "run_name": "2024-04-23_13-46-11",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "decoder.pt"),
-    # },
-}
+#     r"CNN-Conv (0% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-10_17-54-33",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
+#     },
+#     r"CNN-Conv (50% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-10_22-34-23",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-34-23", "decoder.pt"),
+#     },
+#     r"CNN-Conv (87.5% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-10_18-00-10",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_18-00-10", "decoder.pt"),
+#     },
+#     r"CNN-Conv (100% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-10_22-32-05",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-32-05", "decoder.pt"),
+#     },
+#     r"CNN-MEI (0% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-17_17-31-11",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_17-31-11", "decoder.pt"),
+#     },
+#     r"CNN-MEI (50% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-28_19-14-21",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-14-21", "decoder.pt"),
+#     },
+#     r"CNN-MEI (87.5% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-28_19-16-46",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-16-46", "decoder.pt"),
+#     },
+#     r"CNN-MEI (100% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-28_19-18-33",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-18-33", "decoder.pt"),
+#     },
+    
+#     # r"CNN-MEI (C $\rightarrow$ M-1)*": {
+#     #     "run_name": "2024-04-26_21-54-43",
+#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "ckpt/decoder_75.pt"),
+#     # },
+#     # r"CNN-MEI (C $\rightarrow$ M-All)*": {
+#     #     "run_name": "2024-04-26_21-51-47",
+#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "ckpt/decoder_50.pt"),
+#     # },
+#     # r"GAN-MEI w/ EM (M-1)*": {
+#     #     "run_name": "2024-04-23_13-46-11",
+#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "ckpt/decoder_175.pt"),
+#     # },
+#     # r"GAN-MEI (M-1)*": {
+#     #     "run_name": "2024-04-12_11-19-16",
+#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
+#     # },
+#     # r"GAN-Conv (M-All $\rightarrow$ M-1)": {
+#     #     "run_name": "2024-04-11_10-41-27",
+#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_10-41-27", "decoder.pt"),
+#     # },
+#     # r"GAN-MEI w/ EM (M-1)": {
+#     #     "run_name": "2024-04-23_13-46-11",
+#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "decoder.pt"),
+#     # },
+# }
 
 
 if __name__ == "__main__":
