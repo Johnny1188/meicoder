@@ -32,6 +32,7 @@ from csng.losses import (
     EncoderPerceptualLoss,
     VGGPerceptualLoss,
 )
+from csng.comparison import load_decoder_from_ckpt
 from csng.data import MixedBatchLoader
 from csng.readins import MultiReadIn
 

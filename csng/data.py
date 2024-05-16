@@ -1,18 +1,9 @@
 import os
-from collections import OrderedDict, namedtuple
-import random
-import pickle
-
-import numpy as np
-import pandas as pd
+from collections import namedtuple
 import skimage.transform
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-import torchvision
 
-
-import torch
 
 class MixedBatchLoader:
     """
@@ -212,3 +203,40 @@ class MixedBatchLoader:
         if out[0] is None: # no more data
             raise StopIteration
         return out
+
+
+class RespGaussianNoise:
+    def __init__(self, noise_std, clip_min=None, dynamic_mul_factor=0., resp_fn="identity"):
+        self.noise_std = noise_std
+        self.clip_min = clip_min
+        self.dynamic_mul_factor = dynamic_mul_factor  # higher response of neuron => higher std noise
+        self.resp_fn = resp_fn  # "identity", "squared", "shifted_exp", "log", "shifted_exp_sqrt"
+
+    def _transform_resp(self, resp):
+        if self.resp_fn == "identity":
+            return resp
+        elif self.resp_fn == "squared":
+            return (resp ** 2) / 5
+        elif self.resp_fn == "shifted_exp":
+            return torch.exp(resp) - 1
+        elif self.resp_fn == "shifted_exp_sqrt":
+            return torch.exp(torch.sqrt(resp)) - 1
+        elif self.resp_fn == "log":
+            return torch.log(resp)
+        else:
+            raise NotImplementedError
+
+    def __call__(self, data):
+        noise_std = self.noise_std
+        if self.dynamic_mul_factor > 0:
+            noise_std = noise_std.unsqueeze(0).repeat(data.responses.size(0), 1)
+            noise_std += self.dynamic_mul_factor * self._transform_resp(data.responses)
+        noise = torch.randn_like(data.responses) * noise_std
+
+        return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
+            data.images,
+            data.responses + noise \
+             if self.clip_min is None \
+             else torch.clamp(data.responses + noise, min=self.clip_min),
+            data.pupil_center,
+        )

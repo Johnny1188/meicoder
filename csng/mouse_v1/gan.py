@@ -61,10 +61,10 @@ config["data"]["mouse_v1"] = {
             # os.path.join(DATA_PATH, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
             # os.path.join(DATA_PATH, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
             os.path.join(DATA_PATH, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+            # os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+            # os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+            # os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+            # os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
         ],
         "normalize": True,
         "scale": 0.25, # 256x144 -> 64x36
@@ -74,7 +74,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 7,
+        "batch_size": 16,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -159,41 +159,41 @@ config["decoder"] = {
                     #     "neuron_emb_dim": None,
                     # }),
 
-                    # (MEIReadIn, {
-                    #     "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
-                    #     "n_neurons": n_coords.shape[-2],
-                    #     "mei_resize_method": "resize",
-                    #     "mei_target_shape": (22, 36),
-                    #     "pointwise_conv_config": {
-                    #         "out_channels": 480,
-                    #         "bias": False,
-                    #         "batch_norm": True,
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "dropout": 0.1,
-                    #     },
-                    #     "ctx_net_config": {
-                    #         "in_channels": 3, # resp, x, y
-                    #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "out_act_fn": nn.Identity,
-                    #         "dropout": 0.1,
-                    #         "batch_norm": True,
-                    #     },
-                    #     "shift_coords": False,
-                    #     "device": config["device"],
-                    # }),
-
-                    (FCReadIn, {
-                        "in_shape": n_coords.shape[-2],
-                        "layers_config": [
-                            ("fc", 432),
-                            ("unflatten", 1, (3, 9, 16)),
-                        ],
-                        "act_fn": nn.LeakyReLU,
-                        "out_act_fn": nn.Identity,
-                        "batch_norm": True,
-                        "dropout": 0.15,
+                    (MEIReadIn, {
+                        "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
+                        "n_neurons": n_coords.shape[-2],
+                        "mei_resize_method": "resize",
+                        "mei_target_shape": (22, 36),
+                        "pointwise_conv_config": {
+                            "out_channels": 480,
+                            "bias": False,
+                            "batch_norm": True,
+                            "act_fn": nn.LeakyReLU,
+                            "dropout": 0.1,
+                        },
+                        "ctx_net_config": {
+                            "in_channels": 3, # resp, x, y
+                            "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.1,
+                            "batch_norm": True,
+                        },
+                        "shift_coords": False,
+                        "device": config["device"],
                     }),
+
+                    # (FCReadIn, {
+                    #     "in_shape": n_coords.shape[-2],
+                    #     "layers_config": [
+                    #         ("fc", 432),
+                    #         ("unflatten", 1, (3, 9, 16)),
+                    #     ],
+                    #     "act_fn": nn.LeakyReLU,
+                    #     "out_act_fn": nn.Identity,
+                    #     "batch_norm": True,
+                    #     "dropout": 0.15,
+                    # }),
 
                 ],
             } for data_key, n_coords in _dataloaders["mouse_v1"]["train"].neuron_coords.items()
@@ -201,23 +201,23 @@ config["decoder"] = {
         "core_cls": GAN,
         "core_config": {
             "G_kwargs": {
-                "in_shape": [3],
+                "in_shape": [480],
                 "layers": [
                     ### Conv/FC readin
-                    ("deconv", 480, 7, 2, 2),
-                    ("deconv", 256, 5, 1, 2),
-                    ("deconv", 256, 5, 1, 2),
-                    ("deconv", 128, 4, 1, 1),
-                    ("deconv", 64, 3, 1, 1),
-                    ("deconv", 1, 3, 1, 0),
+                    # ("deconv", 480, 7, 2, 3),
+                    # ("deconv", 256, 5, 1, 2),
+                    # ("deconv", 256, 5, 1, 2),
+                    # ("deconv", 128, 4, 1, 1),
+                    # ("deconv", 64, 3, 1, 1),
+                    # ("deconv", 1, 3, 1, 0),
 
                     ### MEI readin
-                    # ("conv", 480, 7, 1, 3),
-                    # ("conv", 256, 5, 1, 2),
-                    # ("conv", 256, 5, 1, 2),
-                    # ("conv", 128, 3, 1, 1),
-                    # ("conv", 64, 3, 1, 1),
-                    # ("conv", 1, 3, 1, 1),
+                    ("conv", 480, 7, 1, 3),
+                    ("conv", 256, 5, 1, 2),
+                    ("conv", 256, 5, 1, 2),
+                    ("conv", 128, 3, 1, 1),
+                    ("conv", 64, 3, 1, 1),
+                    ("conv", 1, 3, 1, 1),
                 ],
                 "act_fn": nn.ReLU,
                 "out_act_fn": nn.Identity,
@@ -256,9 +256,9 @@ config["decoder"] = {
         "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         "encoder": None,
         # "encoder": get_encoder(
+        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
         #     device=config["device"],
         #     eval_mode=True,
-        #     # use_shifter=False,
         #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         # ),
     },
@@ -274,16 +274,16 @@ config["decoder"] = {
     "D_fake_loss_mul": 0.5,
     "D_real_stim_labels_noise": 0.05,
     "D_fake_stim_labels_noise": 0.05,
-    "n_epochs": 80,
+    "n_epochs": 150,
     "load_ckpt": None,
     # "load_ckpt": {
-    #     "load_best": False,
-    #     "load_opter_state": True,
-    #     "reset_history": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_10-16-21", "ckpt", "decoder_65.pt"),
-    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-20_22-03-38", "decoder.pt"),
-    #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "bi3rv26y",
+    #     "load_best": True,
+    #     "load_opter_state": False,
+    #     "reset_history": True,
+    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_10-16-21", "ckpt", "decoder_65.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-19_08-08-05", "decoder.pt"),
+    #     "resume_checkpointing": False,
+    #     "resume_wandb_id": None,
     # },
     "save_run": True,
 }
@@ -469,7 +469,7 @@ if __name__ == "__main__":
             plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["decoder"]["save_run"] else None)
 
         ### save ckpt
-        if epoch % 5 == 0 and epoch > 0 and config["decoder"]["save_run"]:
+        if epoch % 3 == 0 and epoch > 0 and config["decoder"]["save_run"]:
             torch.save({
                 "decoder": decoder.state_dict(),
                 "history": history,

@@ -63,7 +63,7 @@ class SyntheticDataset(Dataset):
     def _load_encoder(self):
         """ Load pretrained encoder (predefined config) and return it. """
         print("Loading encoder...")
-        encoder = get_encoder(device=self.device, eval_mode=True)
+        encoder = get_encoder(ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"), device=self.device, eval_mode=True)
         return encoder.eval()
 
     def __len__(self):
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     random.seed(config["seed"])
 
     ### get encoder
-    encoder = get_encoder(device=config["device"], eval_mode=True)
+    encoder = get_encoder(ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"), device=config["device"], eval_mode=True)
 
     ### data
     dataloaders = dict()

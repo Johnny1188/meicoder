@@ -258,8 +258,8 @@ def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
         ### with rotatation of the xtick labels
         ax.set_xticklabels(
             [k for k in runs_to_compare.keys()],
-            rotation=20,
-            y=-0.17,
+            rotation=90,
+            y=-0.7,
             ha="right",
             va="baseline",
         )

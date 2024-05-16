@@ -114,11 +114,12 @@ def average_test_multitrial(dataloaders, config):
                 averaged_test_dataset = pickle.load(f)
             dataloaders[data_key] = DataLoader(
                 SamplesDataset(
-                    stims=averaged_test_dataset["stims"],
-                    resps=averaged_test_dataset["resps"],
-                    pupil_centers=averaged_test_dataset["pupil_centers"],
+                    stims=torch.from_numpy(averaged_test_dataset["stims"]),
+                    resps=torch.from_numpy(averaged_test_dataset["resps"]),
+                    pupil_centers=torch.from_numpy(averaged_test_dataset["pupil_centers"]),
                     stim_transform=lambda x: x,
                     resp_transform=lambda x: x,
+                    device=config["mouse_v1"]["device"],
                 ),
                 batch_size=config["mouse_v1"].get("test_batch_size", config["mouse_v1"]["dataset_config"]["batch_size"]),
                 shuffle=False,
@@ -144,11 +145,12 @@ def average_test_multitrial(dataloaders, config):
             p_centers = np.stack([repeats_p_centers[i].mean(0) for i in range(len(repeats_p_centers))])
             dataloaders[data_key] = DataLoader(
                 SamplesDataset(
-                    stims=stims,
-                    resps=resps,
-                    pupil_centers=p_centers,
+                    stims=torch.from_numpy(stims),
+                    resps=torch.from_numpy(resps),
+                    pupil_centers=torch.from_numpy(p_centers),
                     stim_transform=lambda x: x,
                     resp_transform=lambda x: x,
+                    device=config["mouse_v1"]["device"],
                 ),
                 batch_size=config["mouse_v1"]["dataset_config"]["batch_size"],
                 shuffle=False,
@@ -290,43 +292,6 @@ class DataloaderWrapper:
 
     def __len__(self):
         return len(self.dataloader)
-
-
-class RespGaussianNoise:
-    def __init__(self, noise_std, clip_min=None, dynamic_mul_factor=0., resp_fn="identity"):
-        self.noise_std = noise_std
-        self.clip_min = clip_min
-        self.dynamic_mul_factor = dynamic_mul_factor  # higher response of neuron => higher std noise
-        self.resp_fn = resp_fn  # "identity", "squared", "shifted_exp", "log", "shifted_exp_sqrt"
-
-    def _transform_resp(self, resp):
-        if self.resp_fn == "identity":
-            return resp
-        elif self.resp_fn == "squared":
-            return (resp ** 2) / 5
-        elif self.resp_fn == "shifted_exp":
-            return torch.exp(resp) - 1
-        elif self.resp_fn == "shifted_exp_sqrt":
-            return torch.exp(torch.sqrt(resp)) - 1
-        elif self.resp_fn == "log":
-            return torch.log(resp)
-        else:
-            raise NotImplementedError
-
-    def __call__(self, data):
-        noise_std = self.noise_std
-        if self.dynamic_mul_factor > 0:
-            noise_std = noise_std.unsqueeze(0).repeat(data.responses.size(0), 1)
-            noise_std += self.dynamic_mul_factor * self._transform_resp(data.responses)
-        noise = torch.randn_like(data.responses) * noise_std
-
-        return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
-            data.images,
-            data.responses + noise \
-             if self.clip_min is None \
-             else torch.clamp(data.responses + noise, min=self.clip_min),
-            data.pupil_center,
-        )
 
 
 class MixedBatchLoader:
@@ -566,12 +531,13 @@ class MixedBatchLoader:
 
 
 class SamplesDataset(Dataset):
-    def __init__(self, stims, resps, pupil_centers=None, stim_transform=None, resp_transform=None):
+    def __init__(self, stims, resps, pupil_centers=None, stim_transform=None, resp_transform=None, device="cpu"):
         self.stims = stims
         self.resps = resps
         self.pupil_centers = pupil_centers
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
         self.resp_transform = resp_transform if resp_transform is not None else NumpyToTensor()
+        self.device = device
 
     def __len__(self):
         return len(self.stims)
@@ -585,9 +551,9 @@ class SamplesDataset(Dataset):
             responses = self.resp_transform(responses)
 
         if self.pupil_centers is None:
-            return namedtuple("Datapoint", ["images", "responses"])(stimuli, responses)
+            return namedtuple("Datapoint", ["images", "responses"])(stimuli.to(self.device), responses.to(self.device))
         else:
-            return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(stimuli, responses, self.pupil_centers[idx])
+            return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(stimuli.to(self.device), responses.to(self.device), self.pupil_centers[idx].to(self.device))
 
 
 class PerSampleStoredDataset(Dataset):

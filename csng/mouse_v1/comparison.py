@@ -93,14 +93,14 @@ config["data"]["mouse_v1"] = {
 config["comparison"] = {
     "load_best": False,
     # "load_best": True,
-    # "eval_all_ckpts": True,
-    "eval_all_ckpts": False,
-    "find_best_ckpt_according_to": None,
-    # "find_best_ckpt_according_to": "SSIML-PL",
+    "eval_all_ckpts": True,
+    # "eval_all_ckpts": False,
+    # "find_best_ckpt_according_to": None,
+    "find_best_ckpt_according_to": "SSIML-PL",
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "s_pretraining",
+        "table_04_test",
     ),
     "loaded_ckpts_overwrite": True,
     # "load_ckpts": None,
@@ -108,8 +108,8 @@ config["comparison"] = {
         {
             "path": os.path.join(
                 "results",
-                "table_04",
-                "2024-05-02_22-06-09.pt",
+                "table_04_test",
+                "2024-05-13_19-22-14.pt",
             ),
             "load_only": None, # load all
             # "load_only": [
@@ -236,12 +236,12 @@ config["comparison"] = {
 # config["comparison"]["to_compare"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
-#             encoder=get_encoder(
-#                 device=config["device"],
-#                 eval_mode=True,
-#                 # use_shifter=False,
-#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
-#             ),
+#            encoder=get_encoder(
+#                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+#                device=config["device"],
+#                eval_mode=True,
+#                # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#            ),
 #             img_dims=(1, 36, 64),
 #             stim_pred_init="zeros",
 #             opter_cls=torch.optim.SGD,
@@ -284,9 +284,9 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # use_shifter=False,
 #                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
@@ -395,9 +395,9 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # use_shifter=False,
 #                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
@@ -507,9 +507,9 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # use_shifter=False,
 #                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
@@ -619,9 +619,9 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # use_shifter=False,
 #                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
@@ -692,7 +692,40 @@ config["comparison"] = {
 #         "run_name": "2024-04-28_19-18-33",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-18-33", "decoder.pt"),
 #     },
-    
+
+#     r"GAN-Conv (0% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-04-11_10-41-27",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_10-41-27", "decoder.pt"),
+#     },
+#     r"GAN-Conv (50% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_07-38-17",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-38-17", "decoder.pt"),
+#     },
+#     r"GAN-Conv (87.5% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_07-40-05",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-40-05", "decoder.pt"),
+#     },
+#     r"GAN-Conv (100% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_07-42-24",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-42-24", "decoder.pt"),
+#     },
+#     r"GAN-MEI (0% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_09-30-53",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-30-53", "decoder.pt"),
+#     },
+#     r"GAN-MEI (50% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_09-32-21",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-32-21", "decoder.pt"),
+#     },
+#     r"GAN-MEI (87.5% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_09-33-48",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-33-48", "decoder.pt"),
+#     },
+#     r"GAN-MEI (100% S-All $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-13_09-35-03",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-35-03", "decoder.pt"),
+#     },
+
 #     # r"CNN-MEI (C $\rightarrow$ M-1)*": {
 #     #     "run_name": "2024-04-26_21-54-43",
 #     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "ckpt/decoder_75.pt"),
@@ -708,14 +741,6 @@ config["comparison"] = {
 #     # r"GAN-MEI (M-1)*": {
 #     #     "run_name": "2024-04-12_11-19-16",
 #     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
-#     # },
-#     # r"GAN-Conv (M-All $\rightarrow$ M-1)": {
-#     #     "run_name": "2024-04-11_10-41-27",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_10-41-27", "decoder.pt"),
-#     # },
-#     # r"GAN-MEI w/ EM (M-1)": {
-#     #     "run_name": "2024-04-23_13-46-11",
-#     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "decoder.pt"),
 #     # },
 # }
 

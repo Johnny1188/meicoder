@@ -64,10 +64,9 @@ def generate_meis():
 
     ### load encoder
     encoder = get_encoder(
+        ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
         device=config["device"],
         eval_mode=True,
-        use_shifter=False,
-        ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
     )
     config["n_cells"] = encoder.readout[config["data_key"]].outdims
     with open(os.path.join(save_dir, "config.json"), "w") as f:
