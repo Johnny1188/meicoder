@@ -21,9 +21,9 @@ config = {
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "crop_win": (22, 36),
     "seed": 0,
-    "save_path": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
+    "save_path": os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
     "load_ckpt": None,
-    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_sens22_m1.pth"),
+    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_80.pth"),
     "only_eval": False,
 }
 
@@ -86,7 +86,7 @@ config["model_config"] = {
     "init_sigma": 0.1,
     "init_mu_range": 0.3,
     "gauss_type": "full",
-    "shifter": False,
+    "shifter": True,
     "stack": -1,
     # "mean_activity_dict": { # todo: implement
     #     data_key: torch.load(

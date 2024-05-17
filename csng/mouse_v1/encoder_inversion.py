@@ -30,6 +30,7 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
+        "max_training_batches": None,
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
@@ -43,10 +44,10 @@ config["data"]["mouse_v1"] = {
             # os.path.join(DATA_PATH, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
             # os.path.join(DATA_PATH, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
             os.path.join(DATA_PATH, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            # os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            # os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            # os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            # os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+            os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+            os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+            os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+            os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
         ],
         "normalize": True,
         "scale": 0.25, # 256x144 -> 64x36
@@ -56,7 +57,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 128,
+        "batch_size": 32,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -74,7 +75,7 @@ config["data"]["mouse_v1"] = {
 config["enc_inv"] = {
     "model": {
         "encoder": get_encoder(
-            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_m1_no_shifter.pth"),
+            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
             eval_mode=True,
             device=config["device"],
         ),
