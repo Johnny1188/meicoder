@@ -42,6 +42,7 @@ from csng.readins import (
     MEIReadIn,
 )
 from csng.data import RespGaussianNoise
+from csng.comparison import get_metrics
 
 from encoder import get_encoder
 from cnn_decoder_utils import train, val, get_all_data
@@ -55,6 +56,7 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
+        "max_training_batches": None,
         "mouse_v1": None,
         "syn_dataset_config": None,
         "data_augmentation": None,
@@ -108,19 +110,21 @@ config["data"]["mouse_v1"] = {
 # config["data"]["syn_dataset_config"] = {
 #     "data_keys": [
 #         "21067-10-18",
-#         "22846-10-16",
-#         "23343-5-17",
-#         "23656-14-22",
-#         "23964-4-22",
+#         # "22846-10-16",
+#         # "23343-5-17",
+#         # "23656-14-22",
+#         # "23964-4-22",
 #     ],
-#     "batch_size": 7,
+#     "batch_size": 14,
+#     "responses_shift_mean": True,
+#     "responses_clip_min": None,
+#     "responses_clip_max": None,
 #     "append_data_parts": ["train"],
-#     # "data_key_prefix": "syn",
 #     "data_key_prefix": None, # the same data key as the original (real) data
 #     "dir_name": "synthetic_data_mouse_v1_encoder_new_stimuli",
 #     "device": config["device"],
 # }
-# _dataloaders, _ = get_all_data(config=config)
+_dataloaders, _ = get_all_data(config=config)
 
 ### data augmentation config
 # config["data"]["data_augmentation"] = {
@@ -136,7 +140,7 @@ config["data"]["mouse_v1"] = {
 #     "force_same_order": True,
 #     "seed": config["seed"],
 # }
-_dataloaders, _ = get_all_data(config=config)
+# _dataloaders, _ = get_all_data(config=config)
 
 ### decoder config
 config["decoder"] = {
@@ -248,12 +252,7 @@ config["decoder"] = {
         "weight_decay": 0.03,
     },
     "loss": {
-        "loss_fn": SSIMLoss(
-            window=config["crop_win"],
-            log_loss=True,
-            inp_normalized=True,
-            inp_standardized=False,
-        ),
+        "loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         "l1_reg_mul": 0,
         "l2_reg_mul": 0, # 1e-5
         "con_reg_mul": 0,
@@ -267,6 +266,7 @@ config["decoder"] = {
         # ),
     },
     "val_loss": None,
+    "val_loss": get_metrics(config)["SSIML-PL"],
     # "val_loss": {
     #     "loss_fn": CroppedLoss(
     #         window=config["crop_win"],
@@ -290,10 +290,11 @@ config["decoder"] = {
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-04-20_11-09-52", "decoder.pt"),
     #         # DATA_PATH, "models", "cnn", "2024-04-01_11-16-55", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "ckpt", "decoder_40.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-05-16_22-38-59", "ckpt", "decoder_90.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "6rp5n9vz",
+    #     "resume_wandb_id": "yoll79zj",
     # },
+    "ckpt_freq": 5,
     "save_run": True,
 }
 print(
@@ -353,13 +354,18 @@ if __name__ == "__main__":
 
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
             if config["decoder"]["load_ckpt"]["load_best"]:
-                decoder.load_state_dict(ckpt["best"]["model"])
+                print("[INFO] Loading the best model")
+                decoder._load_state_dict(ckpt["best"]["model"])
             else:
-                decoder.load_state_dict(ckpt["decoder"])
+                print("[INFO] Loading the latest model")
+                decoder._load_state_dict(ckpt["decoder"])
 
             opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
             if config["decoder"]["load_ckpt"]["load_opter_state"]:
+                print("[INFO] Loading the optimizer's state")
                 opter.load_state_dict(ckpt["opter"])
+            else:
+                print("[INFO] Not loading the optimizer's state")
             loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
     else:
         print("[INFO] Initializing the model from scratch...")
@@ -433,9 +439,8 @@ if __name__ == "__main__":
         wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config, id=config["decoder"]["load_ckpt"]["resume_wandb_id"], resume="must")
 
     ### setup loss for model selection
-    if config["decoder"]["val_loss"] is not None:
-        val_loss_fn = Loss(model=decoder, config=config["decoder"]["val_loss"])
-    else:
+    val_loss_fn = config["decoder"]["val_loss"]
+    if val_loss_fn is None:
         val_loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
 
     ### eval before training
@@ -448,7 +453,7 @@ if __name__ == "__main__":
     fig = plot_comparison(
         target=crop(stim[:8], config["crop_win"]).cpu(),
         pred=crop(stim_pred[:8], config["crop_win"]).cpu(),
-        save_to=os.path.join(config["dir"], "stim_comparison_before_finetuning.png") if config["decoder"]["save_run"] else None
+        save_to=os.path.join(config["dir"], "stim_comparison_before_training.png") if config["decoder"]["save_run"] else None
     )
     dls, neuron_coords = get_all_data(config=config)
     val_loss_curr = val(
@@ -510,7 +515,7 @@ if __name__ == "__main__":
             plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["decoder"]["save_run"] else None)
 
         ### save ckpt
-        if config["decoder"]["save_run"]:
+        if config["decoder"]["save_run"] and epoch > 0 and epoch % config["decoder"]["ckpt_freq"] == 0:
             torch.save({
                 "decoder": decoder.state_dict(),
                 "opter": opter.state_dict(),

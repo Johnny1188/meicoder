@@ -26,6 +26,7 @@ def get_mouse_v1_data(config):
                 dataloaders=[_dataloaders["train"][data_key] for data_key in _dataloaders["train"].keys()],
                 neuron_coords=None,  # added below
                 mixing_strategy=config["mixing_strategy"],
+                max_batches=config.get("max_training_batches"),
                 data_keys=list(_dataloaders["train"].keys()),
                 return_data_key=True,
                 return_pupil_center=True,
@@ -202,7 +203,10 @@ def append_syn_dataloaders(dataloaders, config):
     DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
     for data_key in config["data_keys"]:
         ### divide by the per neuron std if the std is greater than 1% of the mean std (to avoid division by 0)
-        resp_mean = torch.from_numpy(np.load(os.path.join(DATA_PATH, config["dir_name"], data_key, f"responses_mean_original.npy"))).float()
+        if config.get("responses_shift_mean", True):
+            resp_mean = torch.from_numpy(np.load(os.path.join(DATA_PATH, config["dir_name"], data_key, f"responses_mean_original.npy"))).float()
+        else:
+            resp_mean = 0
         resp_std = torch.from_numpy(np.load(os.path.join(DATA_PATH, config["dir_name"], data_key, f"responses_std_original.npy"))).float()
         div_by = resp_std.clone()
         thres = 0.01 * resp_std.mean()
@@ -223,14 +227,12 @@ def append_syn_dataloaders(dataloaders, config):
                 PerSampleStoredDataset(
                     dataset_dir=os.path.join(DATA_PATH, config["dir_name"], data_key, data_part),
                     stim_transform=lambda x: x,
-                    # resp_transform=lambda x: x,
                     resp_transform=csng.utils.Normalize(
-                        # mean=0,
                         mean=resp_mean,
                         std=div_by,
                         center_data=False, # keep the same mean, just scale
-                        clip_min=None,
-                        clip_max=None,
+                        clip_min=config.get("responses_clip_min", None),
+                        clip_max=config.get("responses_clip_max", None),
                     ),
                     device=config.get("device", "cpu"),
                 ),
@@ -329,6 +331,7 @@ class MixedBatchLoader:
         dataloaders,
         neuron_coords=None,
         mixing_strategy="sequential",
+        max_batches=None,
         data_keys=None,
         return_data_key=True,
         return_pupil_center=True,
@@ -349,6 +352,7 @@ class MixedBatchLoader:
         self.dataloaders_left = list(self.dataloader_iters.keys())
         self.n_dataloaders = len(self.dataloader_iters)
         self.mixing_strategy = mixing_strategy
+        self.max_batches = max_batches
         
         self.return_data_key = return_data_key
         self.return_pupil_center = return_pupil_center
@@ -363,6 +367,8 @@ class MixedBatchLoader:
             self.n_batches = max([len(dataloader) for dataloader in dataloaders]) if len(dataloaders) > 0 else 0
         elif self.mixing_strategy == "parallel_min":
             self.n_batches = min([len(dataloader) for dataloader in dataloaders]) if len(dataloaders) > 0 else 0
+        if self.max_batches is not None:
+            self.n_batches = min(self.n_batches, self.max_batches)
 
         self.datasets = []
         for dl in dataloaders:
@@ -524,7 +530,7 @@ class MixedBatchLoader:
         else:
             raise NotImplementedError
 
-        if len(out) == 0: # no more data
+        if len(out) == 0 or (self.max_batches is not None and self.batch_idx > self.max_batches):
             raise StopIteration
 
         return out
