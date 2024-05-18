@@ -256,10 +256,10 @@ config["decoder"] = {
         "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         "encoder": None,
         # "encoder": get_encoder(
-        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
         #     device=config["device"],
         #     eval_mode=True,
-        #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+        #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
         # ),
     },
     "G_opter_cls": torch.optim.AdamW,

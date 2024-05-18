@@ -82,8 +82,8 @@ config["enc_inv"] = {
         "img_dims": (1, 36, 64),
         "stim_pred_init": "zeros",
         "opter_cls": torch.optim.SGD,
-        "opter_config": {"lr": 150},
-        "n_steps": 200,
+        "opter_config": {"lr": 50},
+        "n_steps": 500,
         "resp_loss_fn": lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
         "stim_loss_fn": None, # set below
         "img_gauss_blur_config": None,

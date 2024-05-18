@@ -237,16 +237,16 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #            encoder=get_encoder(
-#                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+#                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
 #                device=config["device"],
 #                eval_mode=True,
-#                # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#                # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
 #            ),
 #             img_dims=(1, 36, 64),
 #             stim_pred_init="zeros",
 #             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 150, "momentum": 0},
-#             n_steps=200,
+#             opter_config={"lr": 50, "momentum": 0},
+#             n_steps=500,
 #             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
 #             stim_loss_fn=SSIMLoss(
 #                 window=config["crop_win"],
@@ -284,16 +284,16 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
-#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
 #             stim_pred_init="zeros",
 #             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 150, "momentum": 0},
-#             n_steps=200,
+#             opter_config={"lr": 50, "momentum": 0},
+#             n_steps=500,
 #             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
 #             stim_loss_fn=SSIMLoss(
 #                 window=config["crop_win"],
@@ -395,16 +395,16 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
-#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
 #             stim_pred_init="zeros",
 #             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 150, "momentum": 0},
-#             n_steps=200,
+#             opter_config={"lr": 50, "momentum": 0},
+#             n_steps=500,
 #             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
 #             stim_loss_fn=SSIMLoss(
 #                 window=config["crop_win"],
@@ -507,16 +507,16 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
-#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
 #             stim_pred_init="zeros",
 #             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 150, "momentum": 0},
-#             n_steps=200,
+#             opter_config={"lr": 50, "momentum": 0},
+#             n_steps=500,
 #             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
 #             stim_loss_fn=SSIMLoss(
 #                 window=config["crop_win"],
@@ -619,16 +619,16 @@ config["comparison"] = {
 #     "Inverted Encoder": {
 #         "decoder": InvertedEncoder(
 #             encoder=get_encoder(
-#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
 #                 device=config["device"],
 #                 eval_mode=True,
-#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
 #             ),
 #             img_dims=(1, 36, 64),
 #             stim_pred_init="zeros",
 #             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 150, "momentum": 0},
-#             n_steps=200,
+#             opter_config={"lr": 50, "momentum": 0},
+#             n_steps=500,
 #             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
 #             stim_loss_fn=SSIMLoss(
 #                 window=config["crop_win"],

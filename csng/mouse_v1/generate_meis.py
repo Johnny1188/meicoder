@@ -64,7 +64,7 @@ def generate_meis():
 
     ### load encoder
     encoder = get_encoder(
-        ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_no_shifter.pth"),
+        ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
         device=config["device"],
         eval_mode=True,
     )

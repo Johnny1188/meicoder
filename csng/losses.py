@@ -788,7 +788,7 @@ class VGGPerceptualLoss(torch.nn.Module):
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1))
 
     def _loss_fn(self, y_hat, y):
-        if self.reduction == "per_sample_mean":
+        if self.reduction == "none" or self.reduction == "per_sample_mean":
             loss = torch.nn.functional.l1_loss(y_hat, y, reduction="none")
             loss = loss.mean(dim=[1, 2, 3])
         elif self.reduction == "per_sample_mean_sum":
