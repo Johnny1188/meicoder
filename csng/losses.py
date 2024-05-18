@@ -2,7 +2,6 @@
 # All rights reserved.
 
 # source: https://github.com/VainF/pytorch-msssim/blob/master/pytorch_msssim/ssim.py
-
 import warnings
 from typing import List, Optional, Tuple, Union
 
@@ -12,7 +11,6 @@ import torch.nn.functional as F
 from torch import Tensor
 import torchvision
 import torchmetrics
-# from torchmetrics.image import StructuralSimilarityIndexMeasure as _SSIM
 
 from csng.utils import standardize, normalize, crop
 
@@ -23,6 +21,10 @@ class Loss:
         self.loss_fn = config["loss_fn"]() if type(config["loss_fn"]) == type else config["loss_fn"]
         self.l1_reg_mul = config.get("l1_reg_mul", 0.)
         self.l2_reg_mul = config.get("l2_reg_mul", 0.)
+        self.standardize = config.get("standardize", False)
+        self.normalize = config.get("normalize", False)
+        self.window = config.get("window", None)
+        
         self.con_reg_mul = config.get("con_reg_mul", 0.)
         if self.con_reg_mul > 0.:
             assert "encoder" in config, "Encoder model is needed for contrastive regularization"
@@ -42,6 +44,24 @@ class Loss:
 
     def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
         assert phase in ("train", "val"), f"phase {phase} not recognized"
+
+        ### contrastive regularization (do before cropping and normalization)
+        if self.con_reg_mul > 0. and phase == "train":
+            con_reg_loss = self._con_reg_loss_fn(stim_pred, stim, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
+
+        ### crop only window
+        if self.window is not None:
+            stim_pred = crop(stim_pred, win=self.window)
+            stim = crop(stim, win=self.window)
+
+        ### standardize and/or normalize
+        if self.normalize:
+            stim_pred = normalize(stim_pred)
+            stim = normalize(stim)
+
+        if self.standardize:
+            stim_pred = standardize(stim_pred)
+            stim = standardize(stim)
 
         if phase == "val":
             if hasattr(self.loss_fn, "reduction"):
@@ -66,9 +86,8 @@ class Loss:
                          if p.requires_grad and "weight" in n and (data_key is None or data_key in n))
             loss += self.l2_reg_mul * l2_reg
 
-        ### contrastive regularization
+        ### contrastive regularization (add previously computed loss)
         if self.con_reg_mul > 0. and phase == "train":
-            con_reg_loss = self._con_reg_loss_fn(stim_pred, stim, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
             loss += self.con_reg_mul * con_reg_loss
 
         return loss
@@ -98,22 +117,22 @@ class CroppedLoss(torch.nn.Module):
         return self.loss_fn(pred, target)
 
 
-class MSELossWithCrop(torch.nn.Module):
-    def __init__(self, window=None, standardize=False):
-        super().__init__()
-        self.window = window # (x1, x2, y1, y2) or (slice, slice)
-        self.standardize = standardize
+# class MSELossWithCrop(torch.nn.Module):
+#     def __init__(self, window=None, standardize=False):
+#         super().__init__()
+#         self.window = window # (x1, x2, y1, y2) or (slice, slice)
+#         self.standardize = standardize
 
-    def forward(self, pred: Tensor, target: Tensor) -> Tensor:
-        if self.window is not None:
-            pred = crop(pred, win=self.window)
-            target = crop(target, win=self.window)
+#     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+#         if self.window is not None:
+#             pred = crop(pred, win=self.window)
+#             target = crop(target, win=self.window)
 
-        if self.standardize:
-            pred = standardize(pred)
-            target = standardize(target)
+#         if self.standardize:
+#             pred = standardize(pred)
+#             target = standardize(target)
 
-        return F.mse_loss(pred, target)
+#         return F.mse_loss(pred, target)
 
 
 def _fspecial_gauss_1d(size: int, sigma: float) -> Tensor:
