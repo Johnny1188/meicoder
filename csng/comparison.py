@@ -28,90 +28,6 @@ from csng.losses import (
 )
 
 
-# def get_metrics(config):
-#     metrics = {
-#         "SSIM": CroppedLoss(
-#             window=config["crop_win"],
-#             normalize=False,
-#             standardize=True,
-#             loss_fn=SSIM(reduction="sum"),
-#         ),
-#         "Log SSIML": SSIMLoss(
-#             window=config["crop_win"],
-#             log_loss=True,
-#             inp_normalized=True,
-#             inp_standardized=False,
-#             reduction="sum",
-#         ),
-#         # "Log MultiSSIM Loss": MultiSSIMLoss(
-#         #     window=config["crop_win"],
-#         #     log_loss=True,
-#         #     inp_normalized=True,
-#         #     inp_standardized=False,
-#         #     reduction="sum",
-#         # ),
-#         "SSIML": SSIMLoss(
-#             window=config["crop_win"],
-#             log_loss=False,
-#             inp_normalized=True,
-#             inp_standardized=False,
-#             reduction="sum",
-#         ),
-#         # "MultiSSIM Loss": MultiSSIMLoss(
-#         #     window=config["crop_win"],
-#         #     log_loss=False,
-#         #     inp_normalized=True,
-#         #     inp_standardized=False,
-#         #     reduction="sum",
-#         # ),
-#         "PL": CroppedLoss(
-#             window=config["crop_win"],
-#             normalize=False,
-#             standardize=True,
-#             loss_fn=VGGPerceptualLoss(
-#                 resize=False,
-#                 device=config["device"],
-#             ),
-#         ),
-#         "FFL": CroppedLoss(
-#             window=config["crop_win"],
-#             normalize=False,
-#             standardize=True,
-#             loss_fn=FFL(loss_weight=1, alpha=1.0),
-#         ),
-#         "MSE": lambda x_hat, x: F.mse_loss(
-#             standardize(crop(x_hat, config["crop_win"])),
-#             standardize(crop(x, config["crop_win"])),
-#             reduction="none",
-#         ).mean((1,2,3)).sum(),
-#         "MAE": lambda x_hat, x: F.l1_loss(
-#             standardize(crop(x_hat, config["crop_win"])),
-#             standardize(crop(x, config["crop_win"])),
-#             reduction="none",
-#         ).mean((1,2,3)).sum(),
-#     }
-#     metrics["SSIML-PL"] = CroppedLoss(
-#         window=config["crop_win"],
-#         normalize=False,
-#         standardize=False,
-#         loss_fn=lambda y_hat, y: metrics["SSIML"](y_hat, y) + metrics["PL"](y_hat, y)
-#     )
-
-#     ### wrap
-#     for k in metrics.keys():
-#         metrics[k] = Loss(
-#             model=None,
-#             config={
-#                 "loss_fn": metrics[k],
-#                 "l1_reg_mul": 0,
-#                 "l2_reg_mul": 0,
-#                 "con_reg_mul": 0,
-#             }
-#         )
-
-#     return metrics
-
-
 def get_metrics(config):
     metrics = {
         "SSIM": Loss(config=dict(
@@ -148,16 +64,6 @@ def get_metrics(config):
             window=config["crop_win"],
             standardize=True,
         )),
-        # "MSE": lambda x_hat, x: F.mse_loss(
-        #     standardize(crop(x_hat, config["crop_win"])),
-        #     standardize(crop(x, config["crop_win"])),
-        #     reduction="none",
-        # ).mean((1,2,3)).sum(),
-        # "MAE": lambda x_hat, x: F.l1_loss(
-        #     standardize(crop(x_hat, config["crop_win"])),
-        #     standardize(crop(x, config["crop_win"])),
-        #     reduction="none",
-        # ).mean((1,2,3)).sum(),
         "MSE": Loss(config=dict(
             loss_fn=lambda x_hat, x: F.mse_loss(
                 standardize(crop(x_hat, config["crop_win"])),
@@ -175,12 +81,6 @@ def get_metrics(config):
             window=config["crop_win"],
         )),
     }
-    # metrics["SSIML-PL"] = CroppedLoss(
-    #     window=config["crop_win"],
-    #     normalize=False,
-    #     standardize=False,
-    #     loss_fn=lambda y_hat, y: metrics["SSIML"](y_hat, y) + metrics["PL"](y_hat, y)
-    # )
     metrics["SSIML-PL"] = Loss(config=dict(
         loss_fn=lambda y_hat, y, **kwargs: metrics["SSIML"](y_hat, y, **kwargs) + metrics["PL"](y_hat, y, **kwargs),
         window=config["crop_win"],
