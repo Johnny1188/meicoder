@@ -1,37 +1,7 @@
 import os
-import random
-import numpy as np
-import matplotlib.pyplot as plt
-import json
-import pandas as pd
-from datetime import datetime
-from copy import deepcopy
-import dill
 import torch
-from torch import nn
-from torch.utils.data import Dataset, DataLoader
-import torch.nn.functional as F
-from torchvision import transforms
-import lovely_tensors as lt
+from data import MixedBatchLoader
 
-import csng
-from csng.CNN_Decoder import CNN_Decoder
-from csng.utils import plot_losses, plot_comparison, standardize, normalize, get_mean_and_std, count_parameters, crop
-from csng.losses import SSIMLoss, MSELossWithCrop, Loss
-from csng.readins import MultiReadIn, FCReadIn, ConvReadIn
-
-from cat_v1_spiking_model.dataset_50k.data import (
-    prepare_v1_dataloaders,
-    SyntheticDataset,
-    BatchPatchesDataLoader,
-    MixedBatchLoader,
-    PerSampleStoredDataset,
-)
-
-lt.monkey_patch()
-
-DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
-print(f"{DATA_PATH=}")
 
 def train(model, dataloader, opter, loss_fn, config, verbose=True):
     model.train()

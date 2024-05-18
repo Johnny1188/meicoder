@@ -18,11 +18,11 @@ import wandb
 import csng
 from csng.CNN_Decoder import CNN_Decoder
 from csng.utils import plot_losses, plot_comparison, standardize, normalize, get_mean_and_std, count_parameters, crop
-from csng.losses import SSIMLoss, MSELossWithCrop, Loss, CroppedLoss
+from csng.losses import SSIMLoss, Loss, CroppedLoss
 from csng.readins import MultiReadIn, FCReadIn, ConvReadIn
 
-from cat_v1_spiking_model.dataset_50k.encoder import get_encoder
-from cat_v1_spiking_model.dataset_50k.data import (
+from encoder import get_encoder
+from data import (
     prepare_v1_dataloaders,
     SyntheticDataset,
     BatchPatchesDataLoader,
@@ -40,7 +40,7 @@ from csng.readins import (
     LocalizedFCReadIn,
     MEIReadIn,
 )
-from cat_v1_spiking_model.dataset_50k.multireadin_decoder_utils import train, val, get_dataloaders
+from multireadin_decoder_utils import train, val, get_dataloaders
 
 lt.monkey_patch()
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
@@ -63,6 +63,7 @@ config = {
         "group": "cat_v1_50k",
     },
 }
+### cat v1 data
 config["data"]["cat_v1"] = {
     "train_path": os.path.join(DATA_PATH, "datasets", "train"),
     "val_path": os.path.join(DATA_PATH, "datasets", "val"),
@@ -208,28 +209,28 @@ config["decoder"] = {
         ),
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
-        # "con_reg_mul": 0,
-        "con_reg_mul": 1,
+        "con_reg_mul": 0,
+        # "con_reg_mul": 1,
         "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
-        # "encoder": None,
-        "encoder": get_encoder(
-            device=config["device"],
-            eval_mode=True,
-            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
-        ),
+        "encoder": None,
+        # "encoder": get_encoder(
+        #     device=config["device"],
+        #     eval_mode=True,
+        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
+        # ),
     },
     "n_epochs": 80,
     "load_ckpt": None,
-    "load_ckpt": {
-        "load_only_core": False,
-        # "load_only_core": True,
-        "ckpt_path": os.path.join(
-            # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-            DATA_PATH, "models", "cnn", "2024-04-26_22-13-19", "ckpt", "decoder_50.pt"),
-            # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
-        "resume_checkpointing": True,
-        "resume_wandb_id": "ywu43ow3",
-    },
+    # "load_ckpt": {
+    #     "load_only_core": False,
+    #     # "load_only_core": True,
+    #     "ckpt_path": os.path.join(
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-04-26_22-13-19", "ckpt", "decoder_50.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "ywu43ow3",
+    # },
     "save_run": True,
 }
 
@@ -247,7 +248,7 @@ if __name__ == "__main__":
 
     ### sample data
     sample_data_key = "cat_v1"
-    datapoint = next(iter(dataloaders["cat_v1"]["test"]))
+    datapoint = next(iter(dataloaders["cat_v1"]["val"]))
     stim, resp, neuron_coords = datapoint.images, datapoint.responses, datapoint.neuron_coords.float().to(config["device"])
 
     ### decoder

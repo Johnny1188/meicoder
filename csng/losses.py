@@ -40,7 +40,12 @@ class Loss:
         else:
             enc_resp = self.encoder(stim, data_key=data_key).detach()
         stim_pred_from_enc_resp = self.model(enc_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp)
-        return self.con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
+
+        con_reg_stim_loss_fn = self.con_reg_stim_loss_fn
+        if type(con_reg_stim_loss_fn) == dict:
+            con_reg_stim_loss_fn = con_reg_stim_loss_fn[data_key]
+
+        return con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
 
     def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
         assert phase in ("train", "val"), f"phase {phase} not recognized"
@@ -58,21 +63,24 @@ class Loss:
         if self.normalize:
             stim_pred = normalize(stim_pred)
             stim = normalize(stim)
-
         if self.standardize:
             stim_pred = standardize(stim_pred)
             stim = standardize(stim)
 
+        ### compute loss
+        loss_fn = self.loss_fn
+        if type(loss_fn) == dict: # different loss functions for different data keys
+            loss_fn = loss_fn[data_key]
         if phase == "val":
-            if hasattr(self.loss_fn, "reduction"):
-                before_red = self.loss_fn.reduction
-                self.loss_fn.reduction = "none"
-                loss = self.loss_fn(stim_pred, stim).sum(0).mean()
-                self.loss_fn.reduction = before_red
+            if hasattr(loss_fn, "reduction"):
+                before_red = loss_fn.reduction
+                loss_fn.reduction = "none"
+                loss = loss_fn(stim_pred, stim).sum(0).mean()
+                loss_fn.reduction = before_red
             else:
-                loss = sum(self.loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:]) for i in range(stim_pred.shape[0]))
+                loss = sum(loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:]) for i in range(stim_pred.shape[0]))
         else:
-            loss = self.loss_fn(stim_pred, stim)
+            loss = loss_fn(stim_pred, stim)
 
         ### L1 regularization
         if self.l1_reg_mul != 0 and phase == "train":
