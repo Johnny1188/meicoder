@@ -33,7 +33,7 @@ from comparison_utils import (
     find_best_ckpt,
     eval_decoder,
     get_all_data,
-    plot_over_training,
+    plot_over_ckpts,
 )
 
 lt.monkey_patch()
@@ -100,7 +100,7 @@ config["comparison"] = {
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "table_04_test",
+        "table_04_c_and_m-1",
     ),
     "loaded_ckpts_overwrite": True,
     "load_ckpts": None,
@@ -108,19 +108,22 @@ config["comparison"] = {
     #     {
     #         "path": os.path.join(
     #             "results",
-    #             "table_04_test",
+    #             "table_04",
     #             "2024-05-13_19-22-14.pt",
     #         ),
     #         "load_only": None, # load all
     #         # "load_only": [
     #         #     "Inverted Encoder",
     #         #     # "CNN-FC (M-All)",
-    #         #     "CNN-Conv (25%)",
-    #         #     # "CNN-MEI (M-All)",
-    #         #     # "GAN-Conv (M-All)",
-    #         #     # "GAN-MEI (M-All)",
     #         # ],
     #         "remap": None,
+    #         # "remap": {
+    #         #     "CNN-Conv (100% M-1 + 0% S-1)": "0% S-1",
+    #         #     "CNN-Conv (75% M-1 + 25% S-1)": "25% S-1",
+    #         #     "CNN-Conv (50% M-1 + 50% S-1)": "50% S-1",
+    #         #     "CNN-Conv (12.5% M-1 + 87.5% S-1)": "87.5% S-1",
+    #         #     "CNN-Conv (0% M-1 + 100% S-1)": "100% S-1",
+    #         # },
     #         # "remap": {
     #         #     "CNN-Conv (0%)": "CNN-Conv (100% M-1 + 0% S-1)",
     #         #     "CNN-Conv (25%)": "CNN-Conv (75% M-1 + 25% S-1)",
@@ -230,54 +233,14 @@ config["comparison"] = {
     #         },
     #     },
     # },
+    "plot_over_ckpts": None,
+    # "plot_over_ckpts": {
+    #     "to_plot": "SSIML",
+    #     "max_epochs": 100,
+    #     "conv_win": 3,
+    # },
 }
 
-### Fig 7.6
-# config["comparison"]["to_compare"] = {
-#     "Inverted Encoder": {
-#         "decoder": InvertedEncoder(
-#            encoder=get_encoder(
-#                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
-#                device=config["device"],
-#                eval_mode=True,
-#                # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
-#            ),
-#             img_dims=(1, 36, 64),
-#             stim_pred_init="zeros",
-#             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 50, "momentum": 0},
-#             n_steps=500,
-#             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
-#             stim_loss_fn=SSIMLoss(
-#                 window=config["crop_win"],
-#                 log_loss=True,
-#                 inp_normalized=True,
-#                 inp_standardized=False,
-#             ),
-#             img_gauss_blur_config=None,
-#             img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 2},
-#             device=config["device"],
-#         ).to(config["device"]),
-#         "run_name": None,
-#     },
-
-#     "CNN-Conv (25% S-1)": {
-#         "run_name": "...",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "...", "decoder.pt"),
-#     },
-#     "CNN-Conv (87.5% S-All)": {
-#         "run_name": "...",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "...", "decoder.pt"),
-#     },
-#     "GAN-Conv (25% S-All)": {
-#         "run_name": "...",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "...", "decoder.pt"),
-#     },
-#     "GAN-MEI (50% S-All)": {
-#         "run_name": "...",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "...", "decoder.pt"),
-#     },
-# }
 
 ### Table 1
 # config["comparison"]["to_compare"] = {
@@ -420,22 +383,27 @@ config["comparison"] = {
 #     },
 
 #     "CNN-Conv (100% M-1 + 0% S-1)": {
+#     # "0% S-1": {
 #         "run_name": "2024-03-27_11-35-11",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_11-35-11", "decoder.pt"),
 #     },
 #     "CNN-Conv (75% M-1 + 25% S-1)": {
+#     # "25% S-1": {
 #         "run_name": "2024-03-27_23-16-33",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_23-16-33", "decoder.pt"),
 #     },
 #     "CNN-Conv (50% M-1 + 50% S-1)": {
+#     # "50% S-1": {
 #         "run_name": "2024-03-27_18-15-44",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_18-15-44", "decoder.pt"),
 #     },
 #     "CNN-Conv (12.5% M-1 + 87.5% S-1)": {
+#     # "87.5% S-1": {
 #         "run_name": "2024-04-08_21-11-50",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_21-11-50", "decoder.pt"),
 #     },
 #     "CNN-Conv (0% M-1 + 100% S-1)": {
+#     # "100% S-1": {
 #         "run_name": "2024-04-08_21-09-33",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-08_21-09-33", "decoder.pt"),
 #     },
@@ -651,6 +619,14 @@ config["comparison"] = {
 #         "run_name": "2024-04-11_11-15-53",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_11-15-53", "decoder.pt"),
 #     },
+#     r"CNN-Conv (C + 10% M-1 $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-19_11-02-33",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_11-02-33", "decoder.pt"),
+#     },
+#     r"CNN-Conv (C + 50% M-1 $\rightarrow$ M-1)": {
+#         "run_name": "2024-05-19_13-27-50",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_13-27-50", "decoder.pt"),
+#     },
 #     r"CNN-MEI (C $\rightarrow$ M-All)": {
 #         "run_name": "2024-04-26_21-51-47",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "decoder.pt"),
@@ -819,7 +795,9 @@ if __name__ == "__main__":
             ### find best ckpt according to some metric
             if config["comparison"]["find_best_ckpt_according_to"] is not None:
                 print(f"  Finding the best ckpt according to {config['comparison']['find_best_ckpt_according_to']}...")
-                run_dict["ckpt_paths"] = [find_best_ckpt(config=config, ckpt_paths=run_dict["ckpt_paths"], metrics=metrics)[0]]
+                best_ckpt_path, _, all_ckpts_losses = find_best_ckpt(config=config, ckpt_paths=run_dict["ckpt_paths"], metrics=metrics)
+                run_dict["all_ckpts_losses"] = all_ckpts_losses
+                run_dict["ckpt_paths"] = [best_ckpt_path]
 
         ### eval ckpts
         print(f"  Evaluating ckpts on the test set...")
@@ -909,5 +887,17 @@ if __name__ == "__main__":
                 mean_line_kwargs=config["comparison"]["syn_data_loss_curve"]["mean_line_kwargs"],
                 xlabel="% of synthetic data",
                 save_to=os.path.join(config["comparison"]["save_dir"], f"syn_data_loss_curve.{f_type}") \
+                    if config["comparison"]["save_dir"] else None,
+            )
+
+    # plot perfomrance over ckpts
+    if "plot_over_ckpts" in config["comparison"] and config["comparison"]["plot_over_ckpts"] is not None:
+        for f_type in ("png", "pdf"):
+            plot_over_ckpts(
+                runs=runs_to_compare,
+                to_plot=config["comparison"]["plot_over_ckpts"]["to_plot"],
+                max_epochs=config["comparison"]["plot_over_ckpts"]["max_epochs"],
+                conv_win=config["comparison"]["plot_over_ckpts"]["conv_win"],
+                save_to=os.path.join(config["comparison"]["save_dir"], f"{config['comparison']['plot_over_ckpts']['to_plot']}_over_ckpts.{f_type}") \
                     if config["comparison"]["save_dir"] else None,
             )

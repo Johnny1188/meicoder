@@ -9,6 +9,7 @@ import pandas as pd
 from datetime import datetime
 from copy import deepcopy
 import dill
+import re
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
@@ -174,51 +175,30 @@ def get_all_data(config):
 
 def find_best_ckpt(config, ckpt_paths, metrics):
     best_ckpt_path, best_loss = None, np.inf
+    all_results = []
     for ckpt_path in ckpt_paths:
-        # ckpt = torch.load(ckpt_path, map_location=config["device"], pickle_module=dill)
-        # ckpt_config = ckpt["config"]
-        # ### TODO: remove (quick fix)
-        # if "meis_path" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1] \
-        #     and not os.path.exists(ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]):
-        #     # and "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]:
-        #     for rc in ckpt_config["decoder"]["model"]["readins_config"]:
-        #         rc["layers"][0][1]["meis_path"] = rc["layers"][0][1]["meis_path"].replace(
-        #             "/media/jsobotka/ext_ssd/csng_data/mouse_v1_sensorium22/meis/",
-        #             "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/",
-        #         )
-        # decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(config["device"])
-        # decoder._load_state_dict(ckpt["decoder"])
         decoder, _ = load_decoder_from_ckpt(config=config, ckpt_path=ckpt_path)
         decoder.eval()
         
         ### eval
         dls, neuron_coords = get_all_data(config=config)
-        val_loss = eval_decoder(
+        val_losses = eval_decoder(
             model=decoder,
             dataloader=dls["mouse_v1"]["val"],
-            loss_fns={config["comparison"]["find_best_ckpt_according_to"]: metrics[config["comparison"]["find_best_ckpt_according_to"]]},
+            loss_fns=metrics,
             normalize_decoded=False,
             config=config,
-        )[config["comparison"]["find_best_ckpt_according_to"]]["total"]
+        )
+        all_results.append({
+            "ckpt_path": ckpt_path,
+            "val_losses": val_losses,
+        })
         
-        # print(f"{ckpt_path}:\n  {val_loss}")
-        # sample_data_key = dls["mouse_v1"]["val"].data_keys[0]
-        # datapoint = next(iter(dls["mouse_v1"]["val"].dataloaders[0]))
-        # stim, resp, pupil_center = datapoint.images.to(config["device"]), datapoint.responses.to(config["device"]), datapoint.pupil_center.to(config["device"])
-        # stim_pred = decoder(resp, data_key=sample_data_key, neuron_coords=neuron_coords[sample_data_key], pupil_center=pupil_center).detach().cpu()
-        # fig = plt.figure()
-        # plt.imshow(crop(stim_pred, config["crop_win"])[2].permute(1,2,0), "gray")
-        # from pathlib import Path
-        # fig.savefig(f"{Path(ckpt_path).stem}.png")
-
-        # fig = plt.figure()
-        # plt.imshow(crop(stim.cpu(), config["crop_win"])[2].permute(1,2,0), "gray")
-        # fig.savefig(f"{Path(ckpt_path).stem}_target_{metrics[config['comparison']['find_best_ckpt_according_to']](stim_pred[2].unsqueeze(0).cuda(), stim[2].unsqueeze(0).cuda(),data_key=sample_data_key,phase='val'):.3f}.png")
-
+        val_loss = val_losses[config["comparison"]["find_best_ckpt_according_to"]]["total"]
         if val_loss < best_loss:
             best_loss = val_loss
             best_ckpt_path = ckpt_path
-    return best_ckpt_path, best_loss
+    return best_ckpt_path, best_loss, all_results
 
 
 def plot_decoding_history(decoding_history, save_to=None, show=True):
@@ -547,6 +527,81 @@ def plot_over_training(runs_to_compare, to_plot="val_loss", conv_win=10, ckpt_id
     ax.spines["right"].set_visible(False)
 
     plt.show()
+
+
+def plot_over_ckpts(runs, to_plot="SSIML", max_epochs=None, conv_win=None, plot_over_ckpt_epochs=True, save_to=None,):
+    ### plot
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(111)
+
+    for k, run_dict in runs.items():
+        if "all_ckpts_losses" not in run_dict:
+            print(f"Skipping {k} bcs 'all_ckpts_losses' not present in run_dict...")
+            continue
+
+        ### collect loss to_plot from each ckpt
+        xs, ys = [], []
+        for ckpt_dict in run_dict["all_ckpts_losses"]:
+            ckpt_path = ckpt_dict["ckpt_path"]
+            if plot_over_ckpt_epochs:
+                ### extract the epoch num as the last number
+                epoch_num = int(re.findall(r"\d+", ckpt_path)[-1])
+                if max_epochs is not None and epoch_num > max_epochs:
+                    break
+                xs.append(epoch_num)
+            else:
+                raise NotImplementedError
+            ys.append(ckpt_dict["val_losses"][to_plot]["total"])
+
+        ### conv losses
+        if conv_win is not None and conv_win > 1:
+            old_ys = ys
+            ys = np.convolve(ys, np.ones(conv_win) / conv_win, mode="valid")
+            ys = [old_ys[0], *ys, old_ys[-1]]
+
+        ax.plot(
+            xs,
+            ys,
+            label=k,
+            linewidth=3,
+        )
+
+    ax.set_ylabel(to_plot, fontsize=15, labelpad=20)
+
+    if plot_over_ckpt_epochs:
+        ax.set_xlabel("Epoch", fontsize=15, labelpad=20)
+    else:
+        raise NotImplementedError
+    # ax.set_ylim(1.3, 1.75)
+    ax.legend(
+        loc="upper right",
+        # loc="upper center",
+        # loc="lower left",
+        # loc="lower center",
+        fontsize=14,
+        frameon=False,
+        # bbox_to_anchor=(1.16, 1),
+        bbox_transform=ax.transAxes,
+        # title="",
+        title_fontsize=15,
+        ncol=1,
+    )
+    # increase width of legend lines
+    leg = ax.get_legend()
+    for legobj in leg.legendHandles:
+        legobj.set_linewidth(4.0)
+
+    # set larger font for x and y ticks
+    ax.tick_params(axis="both", which="major", labelsize=14)
+
+    # remove top and right spines
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    plt.show()
+
+    if save_to is not None:
+        fig.savefig(save_to, bbox_inches="tight")
 
 
 # def plot_metrics_publication(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
