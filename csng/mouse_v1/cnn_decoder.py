@@ -253,6 +253,7 @@ config["decoder"] = {
     },
     "loss": {
         "loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
+        # "loss_fn": get_metrics(config)["SSIML-PL"],
         "l1_reg_mul": 0,
         "l2_reg_mul": 0, # 1e-5
         "con_reg_mul": 0,
@@ -260,7 +261,7 @@ config["decoder"] = {
         "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         "encoder": None,
         # "encoder": get_encoder(
-        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22.pth"),
+        #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
         #     device=config["device"],
         #     eval_mode=True,
         # ),
@@ -281,18 +282,18 @@ config["decoder"] = {
     #     "l2_reg_mul": 0,
     #     "con_reg_mul": 0,
     # },
-    "n_epochs": 120,
+    "n_epochs": 160,
     "load_ckpt": None,
     # "load_ckpt": {
-    #     "load_only_core": False,
-    #     "load_best": False,
-    #     "load_opter_state": True,
+    #     "load_only_core": True,
+    #     "load_best": True,
+    #     "load_opter_state": False,
     #     "ckpt_path": os.path.join(
-    #         # DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-04-20_11-09-52", "decoder.pt"),
+    #         DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-05-18_20-17-06", "decoder.pt"),
     #         # DATA_PATH, "models", "cnn", "2024-04-01_11-16-55", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-05-16_22-38-59", "ckpt", "decoder_90.pt"),
-    #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "yoll79zj",
+    #         # DATA_PATH, "models", "cnn", "2024-05-17_23-00-32", "ckpt", "decoder_130.pt"),
+    #     "resume_checkpointing": False,
+    #     "resume_wandb_id": None,
     # },
     "ckpt_freq": 5,
     "save_run": True,
@@ -317,8 +318,8 @@ if __name__ == "__main__":
     dataloaders, neuron_coords = get_all_data(config=config)
 
     ### sample data
-    sample_data_key = dataloaders["mouse_v1"]["test"].data_keys[0]
-    datapoint = next(iter(dataloaders["mouse_v1"]["test"].dataloaders[0]))
+    sample_data_key = dataloaders["mouse_v1"]["val"].data_keys[0]
+    datapoint = next(iter(dataloaders["mouse_v1"]["val"].dataloaders[0]))
     stim, resp, pupil_center = datapoint.images, datapoint.responses, datapoint.pupil_center
 
     ### decoder
