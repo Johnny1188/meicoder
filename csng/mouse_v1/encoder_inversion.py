@@ -183,8 +183,8 @@ if __name__ == "__main__":
 
     ### get data samples for plotting
     dataloaders, neuron_coords = get_mouse_v1_data(config["data"])
-    sample_data_key = dataloaders["mouse_v1"]["test"].data_keys[0]
-    datapoint = next(iter(dataloaders["mouse_v1"]["test"].dataloaders[0]))
+    sample_data_key = dataloaders["mouse_v1"]["val"].data_keys[0]
+    datapoint = next(iter(dataloaders["mouse_v1"]["val"].dataloaders[0]))
     stim, resp, pupil_center = datapoint.images.to(config["device"]), datapoint.responses.to(config["device"]), datapoint.pupil_center.to(config["device"])
 
     ### prepare config_updates
