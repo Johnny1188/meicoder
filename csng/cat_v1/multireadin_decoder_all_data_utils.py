@@ -31,16 +31,17 @@ def train(model, dataloaders, opter, loss_fn, config, verbose=True):
 
     ### run
     batch_idx = 0
-    n_stopped, n_dls = 0, len(dataloaders)
-    while n_stopped < n_dls:
+    while len(dataloaders) > 0:
         ### next batch
         opter.zero_grad()
         loss, n_dps = 0, 0
-        for k, dl in dataloaders.items():
+        dl_ks = list(dataloaders.keys())
+        for k in dl_ks:
+            dl = dataloaders[k]
             try:
                 b = next(dl)
             except StopIteration:
-                n_stopped += 1
+                del dataloaders[k]
                 continue
 
             ### combine from all data keys
@@ -198,6 +199,7 @@ def get_dataloaders(config):
         ### assign neuron_coords to dataloaders
         for dl_type in ["train", "val", "test", "test_no_resp"]:
             m_dls["mouse_v1"][dl_type].neuron_coords = _neuron_coords
+        neuron_coords["mouse_v1"] = _neuron_coords
 
         ### mouse v1 - synthetic data
         if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:

@@ -50,7 +50,7 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_s
 config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
-        "max_training_batches": 560,
+        "max_training_batches": None,
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
@@ -70,7 +70,7 @@ config["data"]["cat_v1"] = {
         "test_path": os.path.join(DATA_PATH, "datasets", "test"),
         "image_size": [50, 50],
         "crop": False,
-        "batch_size": 16,
+        "batch_size": 72,
         "stim_keys": ("stim",),
         "resp_keys": ("exc_resp", "inh_resp"),
         "return_coords": True,
@@ -109,7 +109,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 16,
+        "batch_size": 8,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -254,13 +254,12 @@ config["decoder"] = {
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
-    #     # "load_only_core": True,
     #     "ckpt_path": os.path.join(
     #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-05-18_17-28-08", "ckpt", "decoder_10.pt"),
-    #         # DATA_PATH, "models", "cnn", "2024-03-27_10-39-16", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-05-18_23-39-59", "ckpt", "decoder_60.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-05-18_23-39-59", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": None,
+    #     "resume_wandb_id": "c731qaz4",
     # },
     "save_run": True,
 }
@@ -361,6 +360,9 @@ if __name__ == "__main__":
     sample_dataset = "cat_v1"
     c_dp = next(iter(dls["val"][sample_dataset]))
     stim, resp, sample_data_key = c_dp[0]["stim"], c_dp[0]["resp"], c_dp[0]["data_key"]
+    m_sample_dataset = "mouse_v1"
+    m_dp = next(iter(dls["val"][m_sample_dataset]))
+    m_stim, m_resp, m_sample_data_key, m_pupil_center = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
 
     ### decoder
     ### initialize (and load ckpt if needed)
@@ -495,7 +497,9 @@ if __name__ == "__main__":
 
         ### plot reconstructions
         stim_pred = decoder(resp[:8].to(config["device"]), neuron_coords=neuron_coords[sample_dataset], data_key=sample_data_key).detach()
-        fig = plot_comparison(target=crop(stim[:8], config["data"][sample_dataset]["crop_win"]).cpu(), pred=crop(stim_pred[:8], config["data"][sample_dataset]["crop_win"]).cpu(), save_to=make_sample_path(epoch, ""), show=False)
+        m_stim_pred = decoder(m_resp[:8].to(config["device"]), neuron_coords=neuron_coords[m_sample_dataset][m_sample_data_key], pupil_center=m_pupil_center[:8].to(config["device"]), data_key=m_sample_data_key).detach()
+        fig = plot_comparison(target=crop(stim[:8], config["data"][sample_dataset]["crop_win"]).cpu(), pred=crop(stim_pred[:8], config["data"][sample_dataset]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "c_"), show=False)
+        fig = plot_comparison(target=crop(m_stim[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(), pred=crop(m_stim_pred[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "m_"), show=False)
         if config["wandb"]: wdb_run.log({"val_stim_reconstruction": fig})
 
         ### plot losses
@@ -554,11 +558,18 @@ if __name__ == "__main__":
 
     ### plot reconstructions of the final model
     stim_pred_best = decoder(resp[:8].to(config["device"]), neuron_coords=neuron_coords[sample_dataset], data_key=sample_data_key).detach().cpu()
+    m_stim_pred_best = decoder(m_resp[:8].to(config["device"]), neuron_coords=neuron_coords[m_sample_dataset][m_sample_data_key], pupil_center=m_pupil_center[:8].to(config["device"]), data_key=m_sample_data_key).detach().cpu()
     fig = plot_comparison(
         target=crop(stim[:8], config["data"][sample_dataset]["crop_win"]).cpu(),
         pred=crop(stim_pred_best[:8], config["data"][sample_dataset]["crop_win"]).cpu(),
         show=False,
-        save_to=os.path.join(config["dir"], "stim_comparison_best.png") if config["decoder"]["save_run"] else None,
+        save_to=os.path.join(config["dir"], "c_stim_comparison_best.png") if config["decoder"]["save_run"] else None,
+    )
+    fig = plot_comparison(
+        target=crop(m_stim[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(),
+        pred=crop(m_stim_pred_best[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(),
+        show=False,
+        save_to=os.path.join(config["dir"], "m_stim_comparison_best.png") if config["decoder"]["save_run"] else None,
     )
 
     ### log
