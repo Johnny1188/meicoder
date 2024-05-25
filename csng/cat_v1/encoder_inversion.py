@@ -17,8 +17,8 @@ import dill
 import csng
 from csng.InvertedEncoder import InvertedEncoder
 from csng.utils import crop, plot_comparison, dict_to_str, standardize, normalize, get_mean_and_std, count_parameters
-from encoder import get_encoder
-from comparison_utils import eval_decoder, get_metrics, get_dataloaders
+from csng.cat_v1.encoder import get_encoder
+from csng.cat_v1.comparison_utils import eval_decoder, get_metrics, get_dataloaders
 
 lt.monkey_patch()
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")

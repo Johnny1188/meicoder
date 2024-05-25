@@ -32,8 +32,7 @@ from csng.losses import (
     VGGPerceptualLoss,
 )
 from csng.readins import MultiReadIn, FCReadIn, ConvReadIn
-
-from cat_v1_spiking_model.dataset_50k.data import (
+from csng.cat_v1.data import (
     prepare_v1_dataloaders,
     SyntheticDataset,
     BatchPatchesDataLoader,
@@ -41,9 +40,7 @@ from cat_v1_spiking_model.dataset_50k.data import (
     PerSampleStoredDataset,
 )
 
-
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
-print(f"{DATA_PATH=}")
 
 
 # def load_decoder_from_ckpt(config, ckpt_path):
@@ -204,45 +201,42 @@ def find_best_ckpt(config, ckpt_paths, metrics):
     return best_ckpt_path, best_loss
 
 
-def eval_decoder(model, dataloader, loss_fns, config, max_batches=None):
+def eval_decoder(model, dataloaders, loss_fns, config, max_batches=None):
     model.eval()
     val_losses = {loss_fn_name: {"total": 0} for loss_fn_name in loss_fns.keys()}
     num_samples = 0
     denom_data_keys = {}
 
-    for b_idx, b in enumerate(dataloader):
-        ### combine from all data keys
-        for data_key, (stim, resp, neuron_coords) in b.items():
-            stim = stim.to(config["device"])
-            resp = resp.to(config["device"])
-            neuron_coords = neuron_coords.float().to(config["device"])
+    for k, dl in dataloaders.items():
+        for batch_idx, b in enumerate(dl):
+            ### combine from all data keys
+            for dp in b:
+                ### get predictions
+                if model.__class__.__name__ == "InvertedEncoder":
+                    stim_pred, _, _ = model(
+                        resp_target=dp["resp"],
+                        stim_target=None,
+                        additional_encoder_inp={
+                            "data_key": dp["data_key"],
+                        }
+                    )
+                else:
+                    stim_pred = model(
+                        dp["resp"],
+                        data_key=dp["data_key"],
+                        neuron_coords=dp["neuron_coords"],
+                    )
 
-            ### get predictions
-            if model.__class__.__name__ == "InvertedEncoder":
-                stim_pred, _, _ = model(
-                    resp_target=resp,
-                    stim_target=None,
-                    additional_encoder_inp={
-                        "data_key": data_key,
-                    }
-                )
-            else:
-                stim_pred = model(
-                    resp,
-                    data_key=data_key,
-                    neuron_coords=neuron_coords,
-                )
+                for loss_fn_name, loss_fn in loss_fns.items():
+                    loss = loss_fn(stim_pred, dp["stim"], data_key=dp["data_key"], phase="val").item()
+                    val_losses[loss_fn_name]["total"] += loss
+                    val_losses[loss_fn_name][dp["data_key"]] = loss if dp["data_key"] not in val_losses[loss_fn_name] else val_losses[loss_fn_name][dp["data_key"]] + loss
 
-            for loss_fn_name, loss_fn in loss_fns.items():
-                loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
-                val_losses[loss_fn_name]["total"] += loss
-                val_losses[loss_fn_name][data_key] = loss if data_key not in val_losses[loss_fn_name] else val_losses[loss_fn_name][data_key] + loss
-            
-            num_samples += stim.shape[0]
-            denom_data_keys[data_key] = denom_data_keys[data_key] + stim.shape[0] if data_key in denom_data_keys else stim.shape[0]
+                num_samples += dp["stim"].shape[0]
+                denom_data_keys[dp["data_key"]] = denom_data_keys[dp["data_key"]] + dp["stim"].shape[0] if dp["data_key"] in denom_data_keys else dp["stim"].shape[0]
 
-        if max_batches is not None and b_idx + 1 >= max_batches:
-            break
+            if max_batches is not None and b_idx + 1 >= max_batches:
+                break
 
     for loss_name in val_losses:
         val_losses[loss_name]["total"] /= num_samples
@@ -250,6 +244,54 @@ def eval_decoder(model, dataloader, loss_fns, config, max_batches=None):
             val_losses[loss_name][k] /= denom_data_keys[k]
 
     return val_losses
+
+
+# def _eval_decoder(model, dataloader, loss_fns, config, max_batches=None):
+#     model.eval()
+#     val_losses = {loss_fn_name: {"total": 0} for loss_fn_name in loss_fns.keys()}
+#     num_samples = 0
+#     denom_data_keys = {}
+
+#     for b_idx, b in enumerate(dataloader):
+#         ### combine from all data keys
+#         for data_key, (stim, resp, neuron_coords) in b.items():
+#             stim = stim.to(config["device"])
+#             resp = resp.to(config["device"])
+#             neuron_coords = neuron_coords.float().to(config["device"])
+
+#             ### get predictions
+#             if model.__class__.__name__ == "InvertedEncoder":
+#                 stim_pred, _, _ = model(
+#                     resp_target=resp,
+#                     stim_target=None,
+#                     additional_encoder_inp={
+#                         "data_key": data_key,
+#                     }
+#                 )
+#             else:
+#                 stim_pred = model(
+#                     resp,
+#                     data_key=data_key,
+#                     neuron_coords=neuron_coords,
+#                 )
+
+#             for loss_fn_name, loss_fn in loss_fns.items():
+#                 loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
+#                 val_losses[loss_fn_name]["total"] += loss
+#                 val_losses[loss_fn_name][data_key] = loss if data_key not in val_losses[loss_fn_name] else val_losses[loss_fn_name][data_key] + loss
+            
+#             num_samples += stim.shape[0]
+#             denom_data_keys[data_key] = denom_data_keys[data_key] + stim.shape[0] if data_key in denom_data_keys else stim.shape[0]
+
+#         if max_batches is not None and b_idx + 1 >= max_batches:
+#             break
+
+#     for loss_name in val_losses:
+#         val_losses[loss_name]["total"] /= num_samples
+#         for k in denom_data_keys:
+#             val_losses[loss_name][k] /= denom_data_keys[k]
+
+#     return val_losses
 
 
 ##### Plotting utils #####

@@ -18,7 +18,7 @@ import wandb
 import csng
 from csng.CNN_Decoder import CNN_Decoder
 from csng.utils import plot_losses, plot_comparison, standardize, normalize, count_parameters, crop
-from csng.losses import SSIMLoss, MSELossWithCrop, Loss, CroppedLoss
+from csng.losses import SSIMLoss, Loss, CroppedLoss
 from csng.readins import (
     MultiReadIn,
     HypernetReadIn,
@@ -32,13 +32,13 @@ from csng.readins import (
 )
 from csng.GAN import GAN
 
-from cat_v1_spiking_model.dataset_50k.encoder import get_encoder
-from gan_utils import (
+from csng.cat_v1.encoder import get_encoder
+from csng.cat_v1.gan_utils import (
     train,
     val,
     get_dataloaders,
 )
-from cat_v1_spiking_model.dataset_50k.data import (
+from csng.cat_v1.data import (
     prepare_v1_dataloaders,
     SyntheticDataset,
     BatchPatchesDataLoader,

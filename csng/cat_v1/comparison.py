@@ -17,8 +17,8 @@ from csng.utils import crop, plot_comparison, standardize, normalize
 from csng.comparison import load_decoder_from_ckpt, get_metrics, plot_reconstructions, plot_metrics
 
 
-from encoder import get_encoder
-from comparison_utils import (
+from csng.cat_v1.encoder import get_encoder
+from csng.cat_v1.comparison_utils import (
     # load_decoder_from_ckpt,
     # get_metrics,
     find_best_ckpt,

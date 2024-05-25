@@ -50,7 +50,6 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_s
 config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
-        "max_training_batches": None,
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
@@ -70,7 +69,7 @@ config["data"]["cat_v1"] = {
         "test_path": os.path.join(DATA_PATH, "datasets", "test"),
         "image_size": [50, 50],
         "crop": False,
-        "batch_size": 72,
+        "batch_size": 35,
         "stim_keys": ("stim",),
         "resp_keys": ("exc_resp", "inh_resp"),
         "return_coords": True,
@@ -85,6 +84,7 @@ config["data"]["cat_v1"] = {
         "resp_normalize_std": torch.load(
             os.path.join(DATA_PATH, "responses_std.pt")
         ),
+        # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
     },
 }
 
@@ -96,10 +96,10 @@ config["data"]["mouse_v1"] = {
             # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
             # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
             os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
         ],
         "normalize": True,
         "scale": 0.25, # 256x144 -> 64x36
@@ -109,7 +109,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 8,
+        "batch_size": 7,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -132,35 +132,36 @@ config["decoder"] = {
                 "in_shape": 46875,
                 "decoding_objective_config": None,
                 "layers": [
-                    (ConvReadIn, {
-                        "H": 10,
-                        "W": 10,
-                        "shift_coords": False,
-                        "learn_grid": True,
-                        "grid_l1_reg": 8e-3,
-                        "in_channels_group_size": 1,
-                        "grid_net_config": {
-                            "in_channels": 3, # x, y, resp
-                            "layers_config": [("fc", 64), ("fc", 128), ("fc", 10*10)],
-                            "act_fn": nn.LeakyReLU,
-                            "out_act_fn": nn.Identity,
-                            "dropout": 0.15,
-                            "batch_norm": False,
-                        },
-                        "pointwise_conv_config": {
-                            "in_channels": 46875,
-                            "out_channels": 480,
-                            "act_fn": nn.Identity,
-                            "bias": False,
-                            "batch_norm": True,
-                            "dropout": 0.1,
-                        },
-                        "gauss_blur": False,
-                        "gauss_blur_kernel_size": 7,
-                        "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
-                        "gauss_blur_sigma_init": 1.5,
-                        "neuron_emb_dim": None,
-                    }),
+                    # (ConvReadIn, {
+                    #     "H": 10,
+                    #     "W": 10,
+                    #     "shift_coords": False,
+                    #     "learn_grid": True,
+                    #     "grid_l1_reg": 8e-3,
+                    #     "in_channels_group_size": 1,
+                    #     "grid_net_config": {
+                    #         "in_channels": 3, # x, y, resp
+                    #         "layers_config": [("fc", 64), ("fc", 128), ("fc", 10*10)],
+                    #         "act_fn": nn.LeakyReLU,
+                    #         "out_act_fn": nn.Identity,
+                    #         "dropout": 0.15,
+                    #         "batch_norm": False,
+                    #     },
+                    #     "pointwise_conv_config": {
+                    #         "in_channels": 46875,
+                    #         "out_channels": 480,
+                    #         "act_fn": nn.Identity,
+                    #         "bias": False,
+                    #         "batch_norm": True,
+                    #         "dropout": 0.1,
+                    #     },
+                    #     "gauss_blur": False,
+                    #     "gauss_blur_kernel_size": 7,
+                    #     "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
+                    #     "gauss_blur_sigma_init": 1.5,
+                    #     "neuron_emb_dim": None,
+                    #     # "neuron_idxs": np.random.choice(46875, size=234, replace=False),
+                    # }),
 
                     # (FCReadIn, {
                     #     "in_shape": 46875,
@@ -175,29 +176,29 @@ config["decoder"] = {
                     #     "out_channels": 8,
                     # }),
 
-                    # (MEIReadIn, {
-                    #     "meis_path": os.path.join(DATA_PATH, "meis", "cat_v1",  "meis.pt"),
-                    #     "n_neurons": 46875,
-                    #     "mei_resize_method": "resize",
-                    #     "mei_target_shape": (20, 20),
-                    #     "pointwise_conv_config": {
-                    #         "out_channels": 480,
-                    #         "bias": False,
-                    #         "batch_norm": True,
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "dropout": 0.15,
-                    #     },
-                    #     "ctx_net_config": {
-                    #         "in_channels": 3, # resp, x, y
-                    #         "layers_config": [("fc", 64), ("fc", 128), ("fc", 20*20)],
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "out_act_fn": nn.Identity,
-                    #         "dropout": 0.15,
-                    #         "batch_norm": True,
-                    #     },
-                    #     "shift_coords": False,
-                    #     "device": config["device"],
-                    # }),
+                    (MEIReadIn, {
+                        "meis_path": os.path.join(DATA_PATH, "meis", "cat_v1",  "meis.pt"),
+                        "n_neurons": 46875,
+                        "mei_resize_method": "resize",
+                        "mei_target_shape": (20, 20),
+                        "pointwise_conv_config": {
+                            "out_channels": 480,
+                            "bias": False,
+                            "batch_norm": True,
+                            "act_fn": nn.LeakyReLU,
+                            "dropout": 0.15,
+                        },
+                        "ctx_net_config": {
+                            "in_channels": 3, # resp, x, y
+                            "layers_config": [("fc", 64), ("fc", 128), ("fc", 20*20)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.15,
+                            "batch_norm": True,
+                        },
+                        "shift_coords": False,
+                        "device": config["device"],
+                    }),
                 ],
             }
         ] if "cat_v1" in config["data"] else [],
@@ -206,20 +207,20 @@ config["decoder"] = {
             "resp_shape": (480,),
             "layers": [
                 ### Conv/FC readin
-                ("deconv", 480, 7, 2, 2),
-                ("deconv", 256, 5, 1, 2),
-                ("deconv", 256, 5, 1, 2),
-                ("deconv", 128, 4, 1, 1),
-                ("deconv", 64, 3, 1, 1),
-                ("deconv", 1, 3, 1, 0),
+                # ("deconv", 480, 7, 2, 2),
+                # ("deconv", 256, 5, 1, 2),
+                # ("deconv", 256, 5, 1, 2),
+                # ("deconv", 128, 4, 1, 1),
+                # ("deconv", 64, 3, 1, 1),
+                # ("deconv", 1, 3, 1, 0),
 
                 ### MEI readin
-                # ("conv", 480, 7, 1, 3),
-                # ("conv", 256, 5, 1, 2),
-                # ("conv", 256, 5, 1, 2),
-                # ("conv", 128, 3, 1, 1),
-                # ("conv", 64, 3, 1, 1),
-                # ("conv", 1, 3, 1, 1),
+                ("conv", 480, 7, 1, 3),
+                ("conv", 256, 5, 1, 2),
+                ("conv", 256, 5, 1, 2),
+                ("conv", 128, 3, 1, 1),
+                ("conv", 64, 3, 1, 1),
+                ("conv", 1, 3, 1, 1),
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
@@ -250,17 +251,17 @@ config["decoder"] = {
         #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
         # ),
     },
-    "n_epochs": 100,
+    "n_epochs": 90,
     "load_ckpt": None,
-    # "load_ckpt": {
-    #     "load_only_core": False,
-    #     "ckpt_path": os.path.join(
-    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-05-18_23-39-59", "ckpt", "decoder_60.pt"),
-    #         # DATA_PATH, "models", "cnn", "2024-05-18_23-39-59", "decoder.pt"),
-    #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "c731qaz4",
-    # },
+    "load_ckpt": {
+        "load_only_core": False,
+        "ckpt_path": os.path.join(
+            # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+            # DATA_PATH, "models", "cnn", "2024-05-23_14-21-08", "ckpt", "decoder_65.pt"),
+            DATA_PATH, "models", "cnn", "2024-05-23_14-18-12", "decoder.pt"),
+        "resume_checkpointing": True,
+        "resume_wandb_id": "04edvzmf",
+    },
     "save_run": True,
 }
 
@@ -273,35 +274,35 @@ if "mouse_v1" in config["data"]:
             "in_shape": n_coords.shape[-2],
             "decoding_objective_config": None,
             "layers": [
-                (ConvReadIn, {
-                    "H": 10,
-                    "W": 18,
-                    "shift_coords": False,
-                    "learn_grid": True,
-                    "grid_l1_reg": 8e-3,
-                    "in_channels_group_size": 1,
-                    "grid_net_config": {
-                        "in_channels": 3, # x, y, resp
-                        "layers_config": [("fc", 32), ("fc", 86), ("fc", 18*10)],
-                        "act_fn": nn.LeakyReLU,
-                        "out_act_fn": nn.Identity,
-                        "dropout": 0.1,
-                        "batch_norm": False,
-                    },
-                    "pointwise_conv_config": {
-                        "in_channels": n_coords.shape[-2],
-                        "out_channels": 480,
-                        "act_fn": nn.Identity,
-                        "bias": False,
-                        "batch_norm": True,
-                        "dropout": 0.1,
-                    },
-                    "gauss_blur": False,
-                    "gauss_blur_kernel_size": 7,
-                    "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
-                    "gauss_blur_sigma_init": 1.5,
-                    "neuron_emb_dim": None,
-                }),
+                # (ConvReadIn, {
+                #     "H": 10,
+                #     "W": 18,
+                #     "shift_coords": False,
+                #     "learn_grid": True,
+                #     "grid_l1_reg": 8e-3,
+                #     "in_channels_group_size": 1,
+                #     "grid_net_config": {
+                #         "in_channels": 3, # x, y, resp
+                #         "layers_config": [("fc", 32), ("fc", 86), ("fc", 18*10)],
+                #         "act_fn": nn.LeakyReLU,
+                #         "out_act_fn": nn.Identity,
+                #         "dropout": 0.1,
+                #         "batch_norm": False,
+                #     },
+                #     "pointwise_conv_config": {
+                #         "in_channels": n_coords.shape[-2],
+                #         "out_channels": 480,
+                #         "act_fn": nn.Identity,
+                #         "bias": False,
+                #         "batch_norm": True,
+                #         "dropout": 0.1,
+                #     },
+                #     "gauss_blur": False,
+                #     "gauss_blur_kernel_size": 7,
+                #     "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
+                #     "gauss_blur_sigma_init": 1.5,
+                #     "neuron_emb_dim": None,
+                # }),
 
                 # (FCReadIn, {
                 #     "in_shape": n_coords.shape[-2],
@@ -315,29 +316,29 @@ if "mouse_v1" in config["data"]:
                 #     "dropout": 0.15,
                 # }),
 
-                # (MEIReadIn, {
-                #     "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
-                #     "n_neurons": n_coords.shape[-2],
-                #     "mei_resize_method": "resize",
-                #     "mei_target_shape": (22, 36),
-                #     "pointwise_conv_config": {
-                #         "out_channels": 480,
-                #         "bias": False,
-                #         "batch_norm": True,
-                #         "act_fn": nn.LeakyReLU,
-                #         "dropout": 0.1,
-                #     },
-                #     "ctx_net_config": {
-                #         "in_channels": 3, # resp, x, y
-                #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
-                #         "act_fn": nn.LeakyReLU,
-                #         "out_act_fn": nn.Identity,
-                #         "dropout": 0.1,
-                #         "batch_norm": True,
-                #     },
-                #     "shift_coords": False,
-                #     "device": config["device"],
-                # }),
+                (MEIReadIn, {
+                    "meis_path": os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "meis", data_key,  "meis.pt"),
+                    "n_neurons": n_coords.shape[-2],
+                    "mei_resize_method": "resize",
+                    "mei_target_shape": (22, 36),
+                    "pointwise_conv_config": {
+                        "out_channels": 480,
+                        "bias": False,
+                        "batch_norm": True,
+                        "act_fn": nn.LeakyReLU,
+                        "dropout": 0.1,
+                    },
+                    "ctx_net_config": {
+                        "in_channels": 3, # resp, x, y
+                        "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                        "act_fn": nn.LeakyReLU,
+                        "out_act_fn": nn.Identity,
+                        "dropout": 0.1,
+                        "batch_norm": True,
+                    },
+                    "shift_coords": False,
+                    "device": config["device"],
+                }),
 
             ],
         })
@@ -360,9 +361,10 @@ if __name__ == "__main__":
     sample_dataset = "cat_v1"
     c_dp = next(iter(dls["val"][sample_dataset]))
     stim, resp, sample_data_key = c_dp[0]["stim"], c_dp[0]["resp"], c_dp[0]["data_key"]
-    m_sample_dataset = "mouse_v1"
-    m_dp = next(iter(dls["val"][m_sample_dataset]))
-    m_stim, m_resp, m_sample_data_key, m_pupil_center = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
+    if "mouse_v1" in config["data"]:
+        m_sample_dataset = "mouse_v1"
+        m_dp = next(iter(dls["val"][m_sample_dataset]))
+        m_stim, m_resp, m_sample_data_key, m_pupil_center = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
 
     ### decoder
     ### initialize (and load ckpt if needed)
@@ -387,6 +389,7 @@ if __name__ == "__main__":
         else:
             print("[INFO] Continuing the training run (loading the current model, history, and overwriting the config)...")
             history, best, config["decoder"]["model"] = ckpt["history"], ckpt["best"], ckpt["config"]["decoder"]["model"]
+            config["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"] = ckpt["config"]["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"]
 
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
             decoder.load_state_dict(ckpt["decoder"])
@@ -497,9 +500,10 @@ if __name__ == "__main__":
 
         ### plot reconstructions
         stim_pred = decoder(resp[:8].to(config["device"]), neuron_coords=neuron_coords[sample_dataset], data_key=sample_data_key).detach()
-        m_stim_pred = decoder(m_resp[:8].to(config["device"]), neuron_coords=neuron_coords[m_sample_dataset][m_sample_data_key], pupil_center=m_pupil_center[:8].to(config["device"]), data_key=m_sample_data_key).detach()
         fig = plot_comparison(target=crop(stim[:8], config["data"][sample_dataset]["crop_win"]).cpu(), pred=crop(stim_pred[:8], config["data"][sample_dataset]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "c_"), show=False)
-        fig = plot_comparison(target=crop(m_stim[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(), pred=crop(m_stim_pred[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "m_"), show=False)
+        if "mouse_v1" in config["data"]:
+            m_stim_pred = decoder(m_resp[:8].to(config["device"]), neuron_coords=neuron_coords[m_sample_dataset][m_sample_data_key], pupil_center=m_pupil_center[:8].to(config["device"]), data_key=m_sample_data_key).detach()
+            fig = plot_comparison(target=crop(m_stim[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(), pred=crop(m_stim_pred[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "m_"), show=False)
         if config["wandb"]: wdb_run.log({"val_stim_reconstruction": fig})
 
         ### plot losses
@@ -558,19 +562,20 @@ if __name__ == "__main__":
 
     ### plot reconstructions of the final model
     stim_pred_best = decoder(resp[:8].to(config["device"]), neuron_coords=neuron_coords[sample_dataset], data_key=sample_data_key).detach().cpu()
-    m_stim_pred_best = decoder(m_resp[:8].to(config["device"]), neuron_coords=neuron_coords[m_sample_dataset][m_sample_data_key], pupil_center=m_pupil_center[:8].to(config["device"]), data_key=m_sample_data_key).detach().cpu()
     fig = plot_comparison(
         target=crop(stim[:8], config["data"][sample_dataset]["crop_win"]).cpu(),
         pred=crop(stim_pred_best[:8], config["data"][sample_dataset]["crop_win"]).cpu(),
         show=False,
         save_to=os.path.join(config["dir"], "c_stim_comparison_best.png") if config["decoder"]["save_run"] else None,
     )
-    fig = plot_comparison(
-        target=crop(m_stim[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(),
-        pred=crop(m_stim_pred_best[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(),
-        show=False,
-        save_to=os.path.join(config["dir"], "m_stim_comparison_best.png") if config["decoder"]["save_run"] else None,
-    )
+    if "mouse_v1" in config["data"]:
+        m_stim_pred_best = decoder(m_resp[:8].to(config["device"]), neuron_coords=neuron_coords[m_sample_dataset][m_sample_data_key], pupil_center=m_pupil_center[:8].to(config["device"]), data_key=m_sample_data_key).detach().cpu()
+        fig = plot_comparison(
+            target=crop(m_stim[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(),
+            pred=crop(m_stim_pred_best[:8], config["data"][m_sample_dataset]["crop_win"]).cpu(),
+            show=False,
+            save_to=os.path.join(config["dir"], "m_stim_comparison_best.png") if config["decoder"]["save_run"] else None,
+        )
 
     ### log
     if config["wandb"]:

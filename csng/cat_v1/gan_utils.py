@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 from csng.utils import crop
 
-from data import (
+from csng.cat_v1.data import (
     prepare_v1_dataloaders,
     MixedBatchLoader,
 )

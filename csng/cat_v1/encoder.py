@@ -4,7 +4,7 @@ import torch
 from collections import OrderedDict
 from nnfabrik.builder import get_model
 
-from data import prepare_v1_dataloaders
+from csng.cat_v1.data import prepare_v1_dataloaders
 
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
 

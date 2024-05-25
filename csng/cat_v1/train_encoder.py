@@ -13,7 +13,7 @@ from sensorium.utility import get_correlations
 from sensorium.utility.scores import get_poisson_loss
 from sensorium.utility.measure_helpers import get_df_for_scores
 
-from cat_v1_spiking_model.dataset_50k.data import prepare_v1_dataloaders
+from csng.cat_v1.data import prepare_v1_dataloaders
 
 lt.monkey_patch()
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")

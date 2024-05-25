@@ -29,6 +29,7 @@ def prepare_v1_dataloaders(
         resp_normalize_mean=None,
         resp_normalize_std=None,
         clamp_neg_resp=False,
+        training_sample_idxs=None,
         stim_keys=("stim",),
         resp_keys=("resp",),
         verbose=False,
@@ -73,6 +74,7 @@ def prepare_v1_dataloaders(
         return_ori=return_ori,
         coords_ori_filepath=coords_ori_filepath,
         clamp_neg_resp=clamp_neg_resp,
+        sample_idxs=training_sample_idxs,
     )
     val_dataset = PerSampleStoredDataset(
         dataset_dir=val_path,
@@ -150,14 +152,18 @@ class PerSampleStoredDataset(Dataset):
         coords_ori_filepath=None,
         average_over_repeats=False,
         clamp_neg_resp=False,
+        sample_idxs=None,
     ):
         self.dataset_dir = dataset_dir
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
         self.resp_transform = resp_transform if resp_transform is not None else NumpyToTensor()
-        self.file_names = [
+        self.file_names = np.array([
             f_name for f_name in os.listdir(self.dataset_dir)
             if f_name.endswith(".pkl") or f_name.endswith(".pickle")
-        ]
+        ])
+        self.sample_idxs = sample_idxs
+        if sample_idxs is not None:
+            self.file_names = self.file_names[self.sample_idxs]                
         self.stim_keys = stim_keys
         self.resp_keys = resp_keys
         self.average_over_repeats = average_over_repeats
