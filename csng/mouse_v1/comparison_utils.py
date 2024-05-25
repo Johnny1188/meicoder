@@ -16,6 +16,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 from torchvision import transforms
 import lovely_tensors as lt
+from collections import defaultdict
 from nnfabrik.builder import get_data
 from focal_frequency_loss import FocalFrequencyLoss as FFL
 
@@ -32,6 +33,7 @@ from csng.losses import (
     PerceptualLoss,
     EncoderPerceptualLoss,
     VGGPerceptualLoss,
+    FID,
 )
 from csng.comparison import load_decoder_from_ckpt
 from csng.data import MixedBatchLoader
@@ -177,7 +179,11 @@ def find_best_ckpt(config, ckpt_paths, metrics):
     best_ckpt_path, best_loss = None, np.inf
     all_results = []
     for ckpt_path in ckpt_paths:
-        decoder, _ = load_decoder_from_ckpt(config=config, ckpt_path=ckpt_path)
+        decoder, _ = load_decoder_from_ckpt(
+            ckpt_path=ckpt_path,
+            load_best=config["comparison"]["load_best"] and not config["comparison"]["eval_all_ckpts"],
+            device=config["device"]
+        )
         decoder.eval()
         
         ### eval
@@ -186,8 +192,8 @@ def find_best_ckpt(config, ckpt_paths, metrics):
             model=decoder,
             dataloader=dls["mouse_v1"]["val"],
             loss_fns=metrics,
-            normalize_decoded=False,
             config=config,
+            calc_fid=config["comparison"]["find_best_ckpt_according_to"] == "FID",
         )
         all_results.append({
             "ckpt_path": ckpt_path,
@@ -218,15 +224,21 @@ def plot_decoding_history(decoding_history, save_to=None, show=True):
         fig.savefig(save_to)
 
 
-def eval_decoder(model, dataloader, loss_fns, config, normalize_decoded=False):
+def eval_decoder(model, dataloader, loss_fns, config, calc_fid=False, max_batches=None):
     model.eval()
+
+    ### for tracking over whole dataset
     val_losses = {loss_fn_name: {"total": 0} for loss_fn_name in loss_fns.keys()}
     num_samples = 0
     denom_data_keys = {}
+    if calc_fid:
+        preds, targets = defaultdict(list), defaultdict(list)
 
-    for b in dataloader:
+    ### run eval
+    for b_idx, b in enumerate(dataloader):
         ### combine from all data keys
         for data_key, stim, resp, neuron_coords, pupil_center in b:
+            ### get reconstructions
             if model.__class__.__name__ == "InvertedEncoder":
                 stim_pred, _, _ = model(
                     resp_target=resp,
@@ -244,21 +256,40 @@ def eval_decoder(model, dataloader, loss_fns, config, normalize_decoded=False):
                     pupil_center=pupil_center,
                 )
 
-            if normalize_decoded:
-                stim_pred = normalize(stim_pred)
-
+            ### calc metrics
             for loss_fn_name, loss_fn in loss_fns.items():
                 loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
                 val_losses[loss_fn_name]["total"] += loss
                 val_losses[loss_fn_name][data_key] = loss if data_key not in val_losses[loss_fn_name] else val_losses[loss_fn_name][data_key] + loss
-            
+
+            ### append for later fid calculation
+            if calc_fid:
+                preds[data_key].append(stim_pred.cpu())
+                targets[data_key].append(stim.cpu())
+
             num_samples += stim.shape[0]
             denom_data_keys[data_key] = denom_data_keys[data_key] + stim.shape[0] if data_key in denom_data_keys else stim.shape[0]
 
+        if max_batches is not None and b_idx + 1 >= max_batches:
+            break
+
+    ### average losses
     for loss_name in val_losses:
         val_losses[loss_name]["total"] /= num_samples
         for k in denom_data_keys:
             val_losses[loss_name][k] /= denom_data_keys[k]
+
+    ### eval fid
+    if calc_fid:
+        val_losses["FID"] = {"total": 0}
+        for data_key in preds.keys():
+            fid = FID(inp_standardized=False, device="cpu")
+            val_losses["FID"][data_key] = fid(
+                pred_imgs=torch.cat(preds[data_key], dim=0),
+                gt_imgs=torch.cat(targets[data_key], dim=0)
+            )
+            val_losses["FID"]["total"] += val_losses["FID"][data_key]
+        val_losses["FID"]["total"] /= len(preds.keys())
 
     return val_losses
 

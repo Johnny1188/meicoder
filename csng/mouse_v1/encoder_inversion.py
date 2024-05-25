@@ -44,10 +44,10 @@ config["data"]["mouse_v1"] = {
             # os.path.join(DATA_PATH, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
             # os.path.join(DATA_PATH, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
             os.path.join(DATA_PATH, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+            # os.path.join(DATA_PATH, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+            # os.path.join(DATA_PATH, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+            # os.path.join(DATA_PATH, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+            # os.path.join(DATA_PATH, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
         ],
         "normalize": True,
         "scale": 0.25, # 256x144 -> 64x36
@@ -57,7 +57,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 32,
+        "batch_size": 128,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -75,7 +75,7 @@ config["data"]["mouse_v1"] = {
 config["enc_inv"] = {
     "model": {
         "encoder": get_encoder(
-            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
+            ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
             eval_mode=True,
             device=config["device"],
         ),
@@ -93,57 +93,16 @@ config["enc_inv"] = {
     "loss_fns": get_metrics(config=config),
     "save_dir": os.path.join(DATA_PATH, "models", "inverted_encoder"),
     "find_best_ckpt_according_to": "SSIML-PL",
+    # "find_best_ckpt_according_to": "FID",
+    "max_batches": None,
 }
-config["enc_inv"]["model"]["stim_loss_fn"] = config["enc_inv"]["loss_fns"][config["enc_inv"]["find_best_ckpt_according_to"]]
-
+if config["enc_inv"]["find_best_ckpt_according_to"] != "FID":
+    config["enc_inv"]["model"]["stim_loss_fn"] = config["enc_inv"]["loss_fns"][config["enc_inv"]["find_best_ckpt_according_to"]]
+else:
+    config["enc_inv"]["model"]["stim_loss_fn"] = config["enc_inv"]["loss_fns"]["SSIML-PL"]
 
 ### hyperparam runs config - either manually selected or grid search
-# config_updates = [
-#     {},
-#     {"n_steps": 100, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
-#     {"n_steps": 300, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
-#     {"n_steps": 500, "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5}},
-#     # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=9, sigma=1.5)},
-#     # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=9, sigma=1.5)},
-#     # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=9, sigma=1.5)},
-#     # {"n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.)},
-#     # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.)},
-#     # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.)},
-#     # {"n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=0.6)},
-#     # {"n_steps": 200, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=0.6)},
-#     # {"n_steps": 300, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=0.6)},
-
-#     # {"n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"n_steps": 800, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-
-#     # {"opter_config": {"lr": 1500}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"opter_config": {"lr": 1500, "momentum":0.}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"opter_config": {"lr": 2000}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"opter_config": {"lr": 2000, "momentum":0.}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"opter_config": {"lr": 2500}, "n_steps": 600, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"opter_config": {"lr": 1500}, "n_steps": 800, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-#     # {"opter_config": {"lr": 1500}, "n_steps": 1000, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=1.5)},
-    
-#     # {"opter_config": {"lr": 500}, "n_steps": 500, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=2.)},
-#     # {"opter_config": {"lr": 1000}, "n_steps": 100, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.)},
-#     # {"opter_config": {"lr": 1500}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.)},
-#     # {"opter_config": {"lr": 1500}, "img_grad_gauss_blur_config": dict(kernel_size=13, sigma=2.)},
-#     # {"opter_config": {"lr": 1500}, "img_grad_gauss_blur_config": dict(kernel_size=11, sigma=2.)},
-#     # {"opter_config": {"lr": 1000}, "img_grad_gauss_blur_config": dict(kernel_size=13, sigma=2.)},
-#     # {"opter_config": {"lr": 1000}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.)},
-
-#     # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=13, sigma=2.5)},
-#     # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.5)},
-#     # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=2.5)},
-#     # {"opter_config": {"lr": 500}, "img_grad_gauss_blur_config": dict(kernel_size=21, sigma=2.5)},
-
-#     # {"opter_config": {"lr": 1000, "momentum": 0}, "img_grad_gauss_blur_config": dict(kernel_size=15, sigma=2.5)},
-#     # {"opter_config": {"lr": 1000, "momentum": 0}, "img_grad_gauss_blur_config": dict(kernel_size=17, sigma=2.5)},
-# ]
-config_updates = None
-
+config_updates = []
 config_grid_search = {
     "n_steps": [100, 200, 300, 500, 1000],
     "opter_config": [{"lr": 50}, {"lr": 150}, {"lr": 500}, {"lr": 1000}],
@@ -188,9 +147,9 @@ if __name__ == "__main__":
     stim, resp, pupil_center = datapoint.images.to(config["device"]), datapoint.responses.to(config["device"]), datapoint.pupil_center.to(config["device"])
 
     ### prepare config_updates
-    if config_updates is None:
+    if config_grid_search is not None:
         keys, vals = zip(*config_grid_search.items())
-        config_updates = [dict(zip(keys, v)) for v in itertools.product(*vals)]
+        config_updates.extend([dict(zip(keys, v)) for v in itertools.product(*vals)])
     print(f"[INFO] Config updates to try:\n ", "\n  ".join([dict_to_str(config_update) for config_update in config_updates]))
 
     ### run
@@ -211,6 +170,8 @@ if __name__ == "__main__":
             dataloader=dls["mouse_v1"]["val"],
             loss_fns=config["enc_inv"]["loss_fns"],
             config=config,
+            calc_fid=config["enc_inv"]["find_best_ckpt_according_to"] == "FID",
+            max_batches=config["enc_inv"]["max_batches"],
         )
 
         ### update best

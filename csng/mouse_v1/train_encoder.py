@@ -4,8 +4,8 @@ import json
 import dill
 import torch
 from collections import OrderedDict
-from nnfabrik.builder import get_model, get_trainer
-from sensorium.utility import get_correlations
+from nnfabrik.builder import get_data, get_model, get_trainer
+from sensorium.utility import get_correlations, get_signal_correlations
 from sensorium.utility.scores import get_poisson_loss
 from sensorium.utility.measure_helpers import get_df_for_scores
 from data_utils import get_mouse_v1_data
@@ -21,9 +21,9 @@ config = {
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "crop_win": (22, 36),
     "seed": 0,
-    "save_path": os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
+    "save_path": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
     "load_ckpt": None,
-    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_80.pth"),
+    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
     "only_eval": False,
 }
 
@@ -48,7 +48,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 64,
+        "batch_size": 32,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -61,11 +61,9 @@ config["data"]["mouse_v1"] = {
     "test_batch_size": 64,
     "device": config["device"],
 }
-_dataloaders, _ = get_mouse_v1_data(config=config["data"])
-data_keys = list(_dataloaders["mouse_v1"]["train"].data_keys)
-del _dataloaders
 
 ### model
+_dataloaders, _ = get_mouse_v1_data(config=config["data"])
 config["model_fn"] = "sensorium.models.stacked_core_full_gauss_readout"
 config["model_config"] = {
     "pad_input": False,
@@ -88,14 +86,12 @@ config["model_config"] = {
     "gauss_type": "full",
     "shifter": True,
     "stack": -1,
-    # "mean_activity_dict": { # todo: implement
-    #     data_key: torch.load(
-    #         os.path.join(DATA_PATH, data_path, "stats" "responses_mean.npy")
-    #     ).to(config["device"])
-    #     # for data_key, data_path in zip(_dataloaders.keys(), config["data"]["mouse_v1"]["dataset_config"]["paths"])
-    #     _dataloaders.data.statistics[out_name][stats_source]["std"]
-    # },
+    "mean_activity_dict": {
+        data_key: torch.from_numpy(dat.statistics["responses"]["all"]["mean"]).to(config["device"])
+        for data_key, dat in zip(_dataloaders["mouse_v1"]["train"].data_keys, _dataloaders["mouse_v1"]["train"].datasets)
+    },
 }
+del _dataloaders
 
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"
@@ -162,6 +158,14 @@ if __name__ == "__main__":
     single_trial_correlation = get_correlations(model, dataloaders, tier="test", device=config["device"], as_dict=True)
     df_corr_mean = get_df_for_scores(session_dict=single_trial_correlation, measure_attribute="Single Trial Correlation").groupby("dataset").mean()
     print(df_corr_mean)
+
+    print(f"[INFO] Evaluating correlation to average...")
+    dataloaders_for_eval = get_data(config["data"]["mouse_v1"]["dataset_fn"], config["data"]["mouse_v1"]["dataset_config"])
+    correlation_to_average = get_signal_correlations(model, dataloaders_for_eval, tier="test", device=config["device"], as_dict=True)
+    df_corr_avr = get_df_for_scores(session_dict=correlation_to_average, measure_attribute="Correlation to Average").groupby("dataset").mean()
+    print(df_corr_avr)
+
+    print(f"[INFO] Evaluating validation and test loss...")
     print("Validation loss: ", get_poisson_loss(
         model,
         dataloaders["validation"],

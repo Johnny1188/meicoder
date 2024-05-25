@@ -16,7 +16,7 @@ import wandb
 import csng
 from csng.GAN import GAN
 from csng.utils import crop, plot_comparison, standardize, normalize, plot_losses, count_parameters
-from csng.losses import SSIMLoss, MSELossWithCrop, Loss, CroppedLoss
+from csng.losses import SSIMLoss, Loss, CroppedLoss
 from csng.readins import (
     MultiReadIn,
     HypernetReadIn,
@@ -28,6 +28,7 @@ from csng.readins import (
     LocalizedFCReadIn,
     MEIReadIn,
 )
+from csng.comparison import get_metrics
 
 from encoder import get_encoder
 from gan_utils import train, val, get_all_data
@@ -48,7 +49,7 @@ config = {
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
     "crop_win": (22, 36),
-    # "wandb": None,
+    "wandb": None,
     "wandb": {
         "project": "CSNG",
         "group": "sensorium_2022",
@@ -242,13 +243,8 @@ config["decoder"] = {
         },
     },
     "loss": {
-        # "loss_fn": CroppedLoss(window=config["crop_win"], loss_fn=nn.MSELoss(), normalize=False, standardize=False),
-        "loss_fn": SSIMLoss(
-            window=config["crop_win"],
-            log_loss=True,
-            inp_normalized=True,
-            inp_standardized=False,
-        ),
+        "loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
+        # "loss_fn": get_metrics(config)["SSIML-PL"],
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
         "con_reg_mul": 0,
@@ -262,6 +258,8 @@ config["decoder"] = {
         #     # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
         # ),
     },
+    "val_loss": None,
+    "val_loss": get_metrics(config)["SSIML-PL"],
     "G_opter_cls": torch.optim.AdamW,
     "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
     "D_opter_cls": torch.optim.AdamW,
@@ -276,15 +274,15 @@ config["decoder"] = {
     "D_fake_stim_labels_noise": 0.05,
     "n_epochs": 150,
     "load_ckpt": None,
-    # "load_ckpt": {
-    #     "load_best": True,
-    #     "load_opter_state": False,
-    #     "reset_history": True,
-    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_10-16-21", "ckpt", "decoder_65.pt"),
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-19_08-08-05", "decoder.pt"),
-    #     "resume_checkpointing": False,
-    #     "resume_wandb_id": None,
-    # },
+    "load_ckpt": {
+        "load_best": False,
+        "load_opter_state": False,
+        "reset_history": True,
+        # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_10-16-21", "ckpt", "decoder_65.pt"),
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-19_08-08-05", "decoder.pt"),
+        "resume_checkpointing": False,
+        "resume_wandb_id": None,
+    },
     "save_run": True,
 }
 print(
@@ -413,7 +411,12 @@ if __name__ == "__main__":
             wdb_run = None
     else:
         wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config, id=config["decoder"]["load_ckpt"]["resume_wandb_id"], resume="must")
-    
+
+    ### setup eval loss
+    val_loss_fn = config["decoder"]["val_loss"]
+    if val_loss_fn is None:
+        val_loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
+
     ### train
     print(f"[INFO] Config:\n{json.dumps(config, indent=2, default=str)}")
     s, e = len(history["val_loss"]), config["decoder"]["n_epochs"]
@@ -436,7 +439,7 @@ if __name__ == "__main__":
         val_losses = val(
             model=decoder,
             dataloader=val_dataloader,
-            loss_fn=loss_fn,
+            loss_fn=val_loss_fn,
         )
 
         ### save best model
@@ -495,7 +498,7 @@ if __name__ == "__main__":
     test_loss_curr = val(
         model=decoder,
         dataloader=dls["mouse_v1"]["test"],
-        loss_fn=loss_fn,
+        loss_fn=val_loss_fn,
     )
     print(f"  Test loss (current model): {test_loss_curr['total']:.4f}")
 
@@ -509,7 +512,7 @@ if __name__ == "__main__":
     test_loss_final = val(
         model=decoder,
         dataloader=dls["mouse_v1"]["test"],
-        loss_fn=loss_fn,
+        loss_fn=val_loss_fn,
     )
     print(f"  Test loss (best model): {test_loss_final['total']:.4f}")
 
