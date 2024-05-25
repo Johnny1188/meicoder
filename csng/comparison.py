@@ -28,11 +28,11 @@ from csng.losses import (
 )
 
 
-def get_metrics(config):
+def get_metrics(crop_win=None, device="cpu"):
     metrics = {
         "SSIM": Loss(config=dict(
             loss_fn=SSIM(),
-            window=config["crop_win"],
+            window=crop_win,
             standardize=True,
         )),
         "Log SSIML": Loss(config=dict(
@@ -41,7 +41,7 @@ def get_metrics(config):
                 inp_normalized=True,
                 inp_standardized=False,
             ),
-            window=config["crop_win"],
+            window=crop_win,
         )),
         "SSIML": Loss(config=dict(
             loss_fn=SSIMLoss(
@@ -49,48 +49,56 @@ def get_metrics(config):
                 inp_normalized=True,
                 inp_standardized=False,
             ),
-            window=config["crop_win"],
+            window=crop_win,
         )),
         "PL": Loss(config=dict(
             loss_fn=VGGPerceptualLoss(
                 resize=False,
-                device=config["device"],
+                device=device,
             ),
-            window=config["crop_win"],
+            window=crop_win,
             standardize=True,
         )),
         "FFL": Loss(config=dict(
             loss_fn=FFL(loss_weight=1, alpha=1.0),
-            window=config["crop_win"],
+            window=crop_win,
             standardize=True,
         )),
         "MSE": Loss(config=dict(
             loss_fn=lambda x_hat, x: F.mse_loss(
-                standardize(crop(x_hat, config["crop_win"])),
-                standardize(crop(x, config["crop_win"])),
+                standardize(crop(x_hat, crop_win)),
+                standardize(crop(x, crop_win)),
                 reduction="none",
             ).mean((1,2,3)).sum(),
-            window=config["crop_win"],
+            window=crop_win,
+        )),
+        "MSE-no-standardization": Loss(config=dict(
+            loss_fn=lambda x_hat, x: F.mse_loss(
+                crop(x_hat, crop_win),
+                crop(x, crop_win),
+                reduction="none",
+            ).mean((1,2,3)).sum(),
+            window=crop_win,
         )),
         "MAE": Loss(config=dict(
             loss_fn=lambda x_hat, x: F.l1_loss(
-                standardize(crop(x_hat, config["crop_win"])),
-                standardize(crop(x, config["crop_win"])),
+                standardize(crop(x_hat, crop_win)),
+                standardize(crop(x, crop_win)),
                 reduction="none",
             ).mean((1,2,3)).sum(),
-            window=config["crop_win"],
+            window=crop_win,
         )),
     }
     metrics["SSIML-PL"] = Loss(config=dict(
         loss_fn=lambda y_hat, y, **kwargs: metrics["SSIML"](y_hat, y, **kwargs) + metrics["PL"](y_hat, y, **kwargs),
-        window=config["crop_win"],
+        window=crop_win,
     ))
 
     return metrics
 
 
-def load_decoder_from_ckpt(config, ckpt_path):
-    ckpt = torch.load(ckpt_path, map_location=config["device"], pickle_module=dill)
+def load_decoder_from_ckpt(ckpt_path, device, load_best=False):
+    ckpt = torch.load(ckpt_path, map_location=device, pickle_module=dill)
     ckpt_config = ckpt["config"]
 
     ### TODO: remove (quick fix) -->
@@ -104,11 +112,11 @@ def load_decoder_from_ckpt(config, ckpt_path):
             )
     ### TODO: remove (quick fix) <--
 
-    decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(config["device"])
-    if config["comparison"]["eval_all_ckpts"] or not config["comparison"]["load_best"]:
-        decoder._load_state_dict(ckpt["decoder"])
-    else:
+    decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(device)
+    if load_best:
         decoder._load_state_dict(ckpt["best"]["model"])
+    else:
+        decoder._load_state_dict(ckpt["decoder"])
     decoder.eval()
 
     return decoder, ckpt

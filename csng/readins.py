@@ -572,6 +572,7 @@ class ConvReadIn(ReadIn):
         gauss_blur_sigma_init=1.5,
         neuron_emb_dim=None, # dim of learned neuron embeddings (None if not used)
         out_channels=None, # set manually
+        neuron_idxs=None, # selection of neurons to consider
     ):
         super().__init__()
         
@@ -580,6 +581,7 @@ class ConvReadIn(ReadIn):
 
         self.H = H
         self.W = W
+        self.neuron_idxs = neuron_idxs
 
         self.shift_coords = shift_coords
         self.shifter_net = None
@@ -748,6 +750,11 @@ class ConvReadIn(ReadIn):
             self._last_loss = 0.
 
     def forward(self, x, neuron_coords, pupil_center):
+        ### select neurons
+        if self.neuron_idxs is not None:
+            x = x[..., self.neuron_idxs]
+            neuron_coords = neuron_coords[..., self.neuron_idxs, :]
+
         B, n_neurons = x.shape
 
         ### prepare neuron_coords

@@ -13,6 +13,7 @@ import torchvision
 import torchmetrics
 
 from csng.utils import standardize, normalize, crop
+from torchmetrics.image.fid import FrechetInceptionDistance
 
 
 class Loss:
@@ -71,16 +72,19 @@ class Loss:
         loss_fn = self.loss_fn
         if type(loss_fn) == dict: # different loss functions for different data keys
             loss_fn = loss_fn[data_key]
+        loss_fn_kwargs = {}
+        if loss_fn.__class__ == Loss:
+            loss_fn_kwargs = dict(data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp, phase=phase)
         if phase == "val":
             if hasattr(loss_fn, "reduction"):
                 before_red = loss_fn.reduction
                 loss_fn.reduction = "none"
-                loss = loss_fn(stim_pred, stim).sum(0).mean()
+                loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).sum(0).mean()
                 loss_fn.reduction = before_red
             else:
-                loss = sum(loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:]) for i in range(stim_pred.shape[0]))
+                loss = sum(loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:], **loss_fn_kwargs) for i in range(stim_pred.shape[0]))
         else:
-            loss = loss_fn(stim_pred, stim)
+            loss = loss_fn(stim_pred, stim, **loss_fn_kwargs)
 
         ### L1 regularization
         if self.l1_reg_mul != 0 and phase == "train":
@@ -885,6 +889,32 @@ class EncoderPerceptualLoss(torch.nn.Module):
             loss = loss / len(pred_ret)
 
         return loss
+
+
+class FID:
+    def __init__(self, inp_standardized=False, device="cpu"):
+        ### note  inp_standardized == True <=> inputs in [0, 1] (different naming)
+        self.inp_standardized = inp_standardized
+        self.fid = FrechetInceptionDistance(feature=64, normalize=False).to(device)
+
+    @torch.no_grad()
+    def __call__(self, pred_imgs, gt_imgs):
+        ### standardize to [0, 1] and then to [0, 255] uint8
+        if not self.inp_standardized:
+            pred_imgs = (standardize(pred_imgs) * 255).type(torch.uint8)
+            gt_imgs = (standardize(gt_imgs) * 255).type(torch.uint8)
+
+        ### grayscale inputs -> expand channel dim for the Inception model
+        if pred_imgs.shape[1] == 1:
+            pred_imgs = pred_imgs.repeat(1, 3, 1, 1)
+        if gt_imgs.shape[1] == 1:
+            gt_imgs = gt_imgs.repeat(1, 3, 1, 1)
+
+        self.fid.reset()
+        self.fid.update(gt_imgs, real=True)
+        self.fid.update(pred_imgs, real=False)
+
+        return self.fid.compute().item()
 
 
 ### class FocalFrequencyLoss(torch.nn.Module):
