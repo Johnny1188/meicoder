@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 
-from data_utils import (
+from csng.mouse_v1.data_utils import (
     get_mouse_v1_data,
     append_syn_dataloaders,
     append_data_aug_dataloaders,

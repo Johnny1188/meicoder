@@ -733,21 +733,19 @@ class ConvReadIn(ReadIn):
     def set_additional_loss(self, inp, out):
         decoding_loss_fn = hasattr(self, "decoding_loss_fn")
         grid_l1_reg = hasattr(self, "grid_l1_reg") and hasattr(self, "pos_x") and self.grid_l1_reg > 0
-        
-        if decoding_loss_fn and not grid_l1_reg:
-            self._last_loss = self.decoding_loss_fn(
+
+        self._last_loss = 0
+
+        ### decoding loss
+        if decoding_loss_fn:
+            self._last_loss += self.decoding_loss_fn(
                 self.decoder(out["encoded"].view(inp["resp"].size(0), -1)),
                 inp["resp"]
             )
-        elif not decoding_loss_fn and grid_l1_reg:
-            self._last_loss = self.grid_l1_reg * self.pos_x.abs().sum(dim=(-1,-2)).mean()
-        elif decoding_loss_fn and grid_l1_reg:
-            self._last_loss = self.decoding_loss_fn(
-                self.decoder(out["encoded"].view(inp["resp"].size(0), -1)),
-                inp["resp"]
-            ) + self.grid_l1_reg * self.pos_x.abs().sum(dim=(-1,-2)).mean()
-        else:
-            self._last_loss = 0.
+
+        ### grid L1 regularization
+        if grid_l1_reg:
+            self._last_loss += self.grid_l1_reg * self.pos_x.abs().sum(dim=(-1,-2)).mean()
 
     def forward(self, x, neuron_coords, pupil_center):
         ### select neurons

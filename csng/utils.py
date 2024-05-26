@@ -122,6 +122,8 @@ def plot_comparison(target, pred, target_title="Target", pred_title="Reconstruct
         fig.savefig(save_to, bbox_inches="tight", pad_inches=0.1)
         # print(f"Saved to {save_to}.")
 
+    plt.close(fig)
+
     return fig
 
 
@@ -229,11 +231,13 @@ def plot_losses(history, show=True, save_to=None, epoch=None):
     ax.set_ylabel("Loss")
     ax.legend()
 
+    if show:
+        plt.show()
+    
     if save_to:
         fig.savefig(save_to)
 
-    if show:
-        plt.show()
+    plt.close(fig)
 
 
 def build_layers(
@@ -329,12 +333,17 @@ def build_layers(
         return nn.Sequential(*layers)
 
 
-def dict_to_str(d):
+def dict_to_str(d, as_filename=False):
     def print_val(v):
         if type(v) == dict:
             return dict_to_str(v)
         elif type(v) in (list, tuple):
             return [print_val(_v) for _v in v]
+        elif type(v) == str:
+            return v
         else:
             return f"{v:.3f}"
-    return ", ".join([f"{k}: {print_val(v)}" for k, v in d.items()])
+    if as_filename:
+        return "___".join([f"{k}={print_val(v)}" for k, v in d.items()])
+    else:
+        return ", ".join([f"{k}: {print_val(v)}" for k, v in d.items()])

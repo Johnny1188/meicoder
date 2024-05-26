@@ -3,7 +3,7 @@ import torch
 import dill
 from collections import OrderedDict
 from nnfabrik.builder import get_model
-from data_utils import get_mouse_v1_data
+from csng.mouse_v1.data_utils import get_mouse_v1_data
 
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 

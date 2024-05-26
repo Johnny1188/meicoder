@@ -206,6 +206,7 @@ def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
     for run_idx in range(len(runs_to_compare[k]["test_losses"])):
         ### bar plot of test losses
         fig = plt.figure(figsize=(22, 7))
+        # fig = plt.figure(figsize=(55, 15))
         ax = fig.add_subplot(111)
         print(runs_to_compare[k]["ckpt_paths"][run_idx])
 

@@ -39,7 +39,7 @@ from csng.comparison import load_decoder_from_ckpt
 from csng.data import MixedBatchLoader
 from csng.readins import MultiReadIn
 
-from data_utils import get_mouse_v1_data, append_syn_dataloaders, append_data_aug_dataloaders
+from csng.mouse_v1.data_utils import get_mouse_v1_data, append_syn_dataloaders, append_data_aug_dataloaders
 
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 print(f"{DATA_PATH=}")
