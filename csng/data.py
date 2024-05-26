@@ -226,17 +226,22 @@ class RespGaussianNoise:
         else:
             raise NotImplementedError
 
-    def __call__(self, data):
+    def _add_noise(self, responses):
         noise_std = self.noise_std
         if self.dynamic_mul_factor > 0:
-            noise_std = noise_std.unsqueeze(0).repeat(data.responses.size(0), 1)
-            noise_std += self.dynamic_mul_factor * self._transform_resp(data.responses)
-        noise = torch.randn_like(data.responses) * noise_std
+            noise_std = noise_std.unsqueeze(0).repeat(responses.size(0), 1)
+            noise_std += self.dynamic_mul_factor * self._transform_resp(responses)
+        noise = torch.randn_like(responses) * noise_std
 
+        resp_out = responses + noise
+        if self.clip_min is not None:
+            resp_out = torch.clamp(resp_out, min=self.clip_min)
+
+        return resp_out
+
+    def __call__(self, data):
         return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
             data.images,
-            data.responses + noise \
-             if self.clip_min is None \
-             else torch.clamp(data.responses + noise, min=self.clip_min),
+            self._add_noise(data.responses),
             data.pupil_center,
         )

@@ -35,7 +35,7 @@ def train(model, dataloader, opter, loss_fn, verbose=True):
                 neuron_coords=neuron_coords,
                 pupil_center=pupil_center
             )
-            loss += loss_fn(stim_pred, stim, data_key=data_key, phase="train", neuron_coords=neuron_coords, pupil_center=pupil_center)
+            loss += loss_fn(stim_pred, stim, resp=resp, data_key=data_key, phase="train", neuron_coords=neuron_coords, pupil_center=pupil_center)
             model.set_additional_loss(
                 inp={
                     "resp": resp,

@@ -25,7 +25,8 @@ class Loss:
         self.standardize = config.get("standardize", False)
         self.normalize = config.get("normalize", False)
         self.window = config.get("window", None)
-        
+
+        ### contrastive regularization (aka encoder matching)
         self.con_reg_mul = config.get("con_reg_mul", 0.)
         if self.con_reg_mul > 0.:
             assert "encoder" in config, "Encoder model is needed for contrastive regularization"
@@ -34,6 +35,20 @@ class Loss:
             self.encoder.training = False
             self.encoder.requires_grad_(False)
             self.con_reg_stim_loss_fn = config["con_reg_loss_fn"]() if type(config["con_reg_loss_fn"]) == type else config["con_reg_loss_fn"]
+
+        ### noise regularization
+        self.noise_reg = config.get("noise_reg", None)
+        self.noise_reg_loss_fn = config.get("noise_reg_loss_fn", None)
+        self.noise_reg_mul = config.get("noise_reg_mul", 0.)
+
+    def _noise_reg_loss_fn(self, stim_pred, resp, data_key, neuron_coords=None, pupil_center=None):
+        if self.noise_reg is not None:
+            noised_resp = self.noise_reg[data_key]._add_noise(responses=resp)
+            return self.noise_reg_loss_fn(
+                self.model(noised_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center),
+                stim_pred,
+            )
+        return 0.
 
     def _con_reg_loss_fn(self, stim_pred, stim, data_key, neuron_coords=None, pupil_center=None, additional_core_inp=None):
         if hasattr(self.encoder, "shifter") and self.encoder.shifter is not None:
@@ -48,7 +63,7 @@ class Loss:
 
         return con_reg_stim_loss_fn(stim_pred, stim_pred_from_enc_resp)
 
-    def __call__(self, stim_pred, stim, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
+    def __call__(self, stim_pred, stim, resp=None, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
         assert phase in ("train", "val"), f"phase {phase} not recognized"
 
         ### contrastive regularization (do before cropping and normalization)
@@ -101,6 +116,10 @@ class Loss:
         ### contrastive regularization (add previously computed loss)
         if self.con_reg_mul > 0. and phase == "train":
             loss += self.con_reg_mul * con_reg_loss
+
+        ### noise regularization
+        if self.noise_reg is not None and phase == "train":
+            loss += self.noise_reg_mul * self._noise_reg_loss_fn(stim_pred=stim_pred, resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center)
 
         return loss
 

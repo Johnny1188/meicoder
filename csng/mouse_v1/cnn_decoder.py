@@ -92,7 +92,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 16,
+        "batch_size": 8,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -140,7 +140,7 @@ _dataloaders, _ = get_all_data(config=config)
 #     "force_same_order": True,
 #     "seed": config["seed"],
 # }
-# _dataloaders, _ = get_all_data(config=config)
+_dataloaders, _ = get_all_data(config=config)
 
 ### decoder config
 config["decoder"] = {
@@ -257,32 +257,41 @@ config["decoder"] = {
         "l1_reg_mul": 0,
         "l2_reg_mul": 0, # 1e-5
         "con_reg_mul": 0,
-        # "con_reg_mul": 1,
-        "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         "encoder": None,
+        # "con_reg_mul": 1,
+        # "con_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
         # "encoder": get_encoder(
         #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall.pth"),
         #     device=config["device"],
         #     eval_mode=True,
         # ),
+        # "noise_reg_mul": 1,
+        # "noise_reg": {
+        #     data_key: RespGaussianNoise(
+        #         noise_std=1.5 * torch.from_numpy(np.load(os.path.join(DATA_PATH, dataset.dirname, "stats", f"responses_iqr.npy"))).float().to(config["device"]),
+        #         clip_min=0.0,
+        #         dynamic_mul_factor=0.08,
+        #         resp_fn="squared",
+        #     ) for data_key, dataset in zip(_dataloaders["mouse_v1"]["train"].data_keys, _dataloaders["mouse_v1"]["train"].datasets)
+        # },
+        # "noise_reg_loss_fn": SSIMLoss(window=config["crop_win"], log_loss=True, inp_normalized=True, inp_standardized=False),
     },
-    # "val_loss": None,
     "val_loss": get_metrics(crop_win=config["crop_win"], device=config["device"])["SSIML-PL"],
-    "n_epochs": 260,
+    "n_epochs": 200,
     "load_ckpt": None,
-    "load_ckpt": {
-        "load_only_core": False,
-        "load_best": False,
-        "load_opter_state": True,
-        "reset_history": False,
-        "reset_best": False,
-        "ckpt_path": os.path.join(
-            # DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-05-23_14-21-08", "decoder.pt"),
-            DATA_PATH, "models", "cnn", "2024-05-24_17-11-11", "decoder.pt"),
-            # DATA_PATH, "models", "cnn", "2024-05-17_23-00-32", "ckpt", "decoder_130.pt"),
-        "resume_checkpointing": True,
-        "resume_wandb_id": "rny2u1na",
-    },
+    # "load_ckpt": {
+    #     "load_only_core": False,
+    #     "load_best": False,
+    #     "load_opter_state": True,
+    #     "reset_history": False,
+    #     "reset_best": False,
+    #     "ckpt_path": os.path.join(
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-05-23_14-21-08", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-05-24_17-11-11", "decoder.pt"),
+    #         # DATA_PATH, "models", "cnn", "2024-05-17_23-00-32", "ckpt", "decoder_130.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "rny2u1na",
+    # },
     "ckpt_freq": 5,
     "save_run": True,
 }
