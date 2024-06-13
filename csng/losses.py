@@ -41,12 +41,26 @@ class Loss:
         self.noise_reg_loss_fn = config.get("noise_reg_loss_fn", None)
         self.noise_reg_mul = config.get("noise_reg_mul", 0.)
 
+        ### noise data augmentation
+        self.noise_data_aug = config.get("noise_data_aug", None)
+        self.noise_data_aug_loss_fn = config.get("noise_data_aug_loss_fn", None)
+        self.noise_data_aug_mul = config.get("noise_data_aug_mul", 0.)
+
     def _noise_reg_loss_fn(self, stim_pred, resp, data_key, neuron_coords=None, pupil_center=None):
         if self.noise_reg is not None:
             noised_resp = self.noise_reg[data_key]._add_noise(responses=resp)
             return self.noise_reg_loss_fn(
                 self.model(noised_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center),
-                stim_pred,
+                stim_pred.detach(), # observed better results than w/out detaching
+            )
+        return 0.
+
+    def _noise_data_aug_loss_fn(self, stim, resp, data_key, neuron_coords=None, pupil_center=None):
+        if self.noise_data_aug is not None:
+            noised_resp = self.noise_data_aug[data_key]._add_noise(responses=resp)
+            return self.noise_data_aug_loss_fn(
+                self.model(noised_resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center),
+                stim,
             )
         return 0.
 
@@ -120,6 +134,10 @@ class Loss:
         ### noise regularization
         if self.noise_reg is not None and phase == "train":
             loss += self.noise_reg_mul * self._noise_reg_loss_fn(stim_pred=stim_pred, resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center)
+
+        ### noise data augmentation
+        if self.noise_data_aug is not None and phase == "train":
+            loss += self.noise_data_aug_mul * self._noise_data_aug_loss_fn(stim=stim, resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center)
 
         return loss
 
