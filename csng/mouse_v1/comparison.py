@@ -100,7 +100,7 @@ config["comparison"] = {
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "table_04_latest",
+        "contrastive_regularization_2",
     ),
     "loaded_ckpts_overwrite": True,
     "load_ckpts": None,
@@ -108,8 +108,8 @@ config["comparison"] = {
     #     {
     #         "path": os.path.join(
     #             "results",
-    #             "table_04_c_cnn",
-    #             "2024-05-24_20-37-28.pt",
+    #             "contrastive_regularization",
+    #             "2024-05-27_22-29-49.pt",
     #         ),
     #         "load_only": None, # load all
     #         # "load_only": [
@@ -695,6 +695,61 @@ config["comparison"] = {
 #         "run_name": "2024-04-12_11-19-16",
 #         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
 #         "skip_model_selection": True,
+#     },
+# }
+
+### Contrastive regularization
+# config["comparison"]["to_compare"] = {
+#     "Inverted Encoder": {
+#         "decoder": InvertedEncoder(
+#             encoder=get_encoder(
+#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
+#                 device=config["device"],
+#                 eval_mode=True,
+#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
+#             ),
+#             img_dims=(1, 36, 64),
+#             stim_pred_init="zeros",
+#             opter_cls=torch.optim.SGD,
+#             opter_config={"lr": 50, "momentum": 0},
+#             n_steps=500,
+#             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
+#             stim_loss_fn=SSIMLoss(
+#                 window=config["crop_win"],
+#                 log_loss=True,
+#                 inp_normalized=True,
+#                 inp_standardized=False,
+#             ),
+#             img_gauss_blur_config=None,
+#             img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 2.},
+#             device=config["device"],
+#         ).to(config["device"]),
+#         "run_name": None,
+#     },
+
+#     r"CNN-MEI (M-1)": {
+#         "run_name": "2024-04-09_08-42-29",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
+#     },
+#     r"CNN-MEI w/ CR (M-1)": {
+#         "run_name": "2024-05-26_23-06-36",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-26_23-06-36", "decoder.pt"),
+#     },
+#     r"CNN-MEI (M-1 + noisy M-1)": {
+#         "run_name": "2024-05-26_23-26-58",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-26_23-26-58", "decoder.pt"),
+#     },
+#     r"CNN-MEI w/ CR (M-1 + noisy M-1)": {
+#         "run_name": "2024-05-26_23-25-12",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-26_23-25-12", "decoder.pt"),
+#     },
+#     r"CNN-MEI w/ CRD (M-1 + noisy M-1)": {
+#         "run_name": "2024-05-27_23-10-37",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-27_23-10-37", "decoder.pt"),
+#     },
+#     r"CNN-MEI w/ CR (M-1 + S-1)": {
+#         "run_name": "2024-05-26_23-33-12",
+#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-26_23-33-12", "decoder.pt"),
 #     },
 # }
 
