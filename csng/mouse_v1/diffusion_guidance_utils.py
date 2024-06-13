@@ -5,14 +5,20 @@ from torch import nn
 from scipy import signal
 from tqdm import tqdm
 import time
+from csng.utils import crop
 
 
-def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progressive=True, desc="progress", grayscale=True):
+def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progressive=True, desc="progress", grayscale=True, init_imgs=None):
     cur_t = num_timesteps - 1
     stim_pred_history = []
     energy_history = []
 
-    samples = model.sample(energy_fn=energy_fn, energy_scale=energy_scale, num_samples=num_samples)
+    samples = model.sample(
+        energy_fn=energy_fn,
+        energy_scale=energy_scale,
+        num_samples=num_samples,
+        init_imgs=init_imgs,
+    )
 
     for j, samples_t in enumerate(samples):
         cur_t -= 1
@@ -20,6 +26,7 @@ def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progres
         #     energy = energy_fn(samples_t["pred_xstart"])
         #     curr_imgs = []
         #     for k, image in enumerate(samples_t["pred_xstart"]):
+        #         breakpoint()
         #         image = image.detach().cpu()
         #         if grayscale:
         #             image = image.mean(0, keepdim=True)
@@ -34,7 +41,10 @@ def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progres
         stim_pred_history.append(samples_t["pred_xstart"].mean(dim=1, keepdim=True).detach().cpu().numpy())
 
     stim_pred = F.interpolate(
-        samples_t["pred_xstart"].mean(dim=1, keepdim=True).detach(), size=(36, 64), mode="bilinear", align_corners=False
+        samples_t["pred_xstart"].mean(dim=1, keepdim=True).detach(),
+        size=(36, 64),
+        mode="bilinear",
+        align_corners=False,
     )
 
     return energy_history, stim_pred, stim_pred_history
@@ -59,12 +69,13 @@ def energy_fn(
     ).mean(1, keepdim=True)
     tar = tar / torch.norm(tar, dim=(2,3), keepdim=True) * norm
     resp_pred = encoder_model(tar)
-    energy += em_weight * torch.mean((resp_pred - target_response) ** 2, dim=(1)).sum()
+    energy += em_weight * torch.mean((resp_pred - target_response) ** 2, dim=1).sum()
 
     ### decoder matching
-    tar = F.interpolate(
-        x.clone(), size=crop_win, mode="bilinear", align_corners=False
-    ).mean(1, keepdim=True)
+    # tar = F.interpolate(
+    #     x.clone(), size=crop_win, mode="bilinear", align_corners=False
+    # ).mean(1, keepdim=True)
+    tar = crop(tar, crop_win)
     tar = tar / torch.norm(tar, dim=(2,3), keepdim=True) * norm
     for x_zero_to_match in xs_zero_to_match:
         energy += dm_weight * dm_loss_fn(tar, x_zero_to_match)
@@ -76,6 +87,7 @@ def plot_diffusion(
         target_image,
         imgs,
         timesteps=(0, 10, 100, 200, 300, 400, 600, 800, 999),
+        crop_win=None,
         save_to=None,
         show=True
     ):
@@ -93,7 +105,7 @@ def plot_diffusion(
         stim_pred = F.interpolate(
             torch.from_numpy(imgs[t]).unsqueeze(0), size=(36, 64), mode="bilinear", align_corners=False
         )[0]
-        ax.imshow(stim_pred.squeeze(), "gray")
+        ax.imshow(crop(stim_pred, crop_win).squeeze(), "gray")
         ax.set_title(f"t={t}")
         ax.axis("off")
 
