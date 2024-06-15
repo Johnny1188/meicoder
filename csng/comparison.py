@@ -97,26 +97,32 @@ def get_metrics(crop_win=None, device="cpu"):
     return metrics
 
 
-def load_decoder_from_ckpt(ckpt_path, device, load_best=False):
+def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=False):
     ckpt = torch.load(ckpt_path, map_location=device, pickle_module=dill)
     ckpt_config = ckpt["config"]
 
     ### TODO: remove (quick fix) -->
-    if "meis_path" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1] \
-        and not os.path.exists(ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]):
-        # and "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]:
-        for rc in ckpt_config["decoder"]["model"]["readins_config"]:
-            rc["layers"][0][1]["meis_path"] = rc["layers"][0][1]["meis_path"].replace(
-                "/media/jsobotka/ext_ssd/csng_data/mouse_v1_sensorium22/meis/",
-                "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/",
-            )
+    # if "meis_path" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1] \
+    #     and not os.path.exists(ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]):
+    #     # and "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/" in ckpt_config["decoder"]["model"]["readins_config"][-1]["layers"][0][1]["meis_path"]:
+    #     for rc in ckpt_config["decoder"]["model"]["readins_config"]:
+    #         rc["layers"][0][1]["meis_path"] = rc["layers"][0][1]["meis_path"].replace(
+    #             "/media/jsobotka/ext_ssd/csng_data/mouse_v1_sensorium22/meis/",
+    #             "/home/sobotj11/decoding-brain-activity/data/mouse_v1_sensorium22/meis/",
+    #         )
     ### TODO: remove (quick fix) <--
 
     decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(device)
+    
     if load_best:
-        decoder._load_state_dict(ckpt["best"]["model"])
+        to_load = ckpt["best"]["model"]
     else:
-        decoder._load_state_dict(ckpt["decoder"])
+        to_load = ckpt["decoder"]
+
+    if load_only_core:
+        to_load = {k:v for k,v in to_load.items() if "readin" not in k}
+    
+    decoder._load_state_dict(ckpt["best"]["model"])
     decoder.eval()
 
     return decoder, ckpt
