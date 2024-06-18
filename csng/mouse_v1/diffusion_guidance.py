@@ -60,7 +60,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 16,
+        "batch_size": 8,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -91,7 +91,9 @@ config["egg"] = {
     "em_weight": 1,
     "dm_weight": 1,
     "dm_loss_fn": "MSE-no-standardization",
-    
+
+    "encoder_response_as_target": False,
+    "init_reconstruction_mul_factor": None,
     "find_best_according_to": "SSIML-PL",
     "save_dir": os.path.join(DATA_PATH, "models", "diffusion_guidance"),
 }
@@ -99,9 +101,9 @@ config["egg"] = {
 ### hyperparam runs config - either manually selected or grid search
 config_updates = []
 config_grid_search = {
-    "energy_scale": [5, 7],
-    "em_weight": [1, 5, 10, 20],
-    "dm_weight": [0, 0.01, 1, 5],
+    "energy_scale": [0.1, 1, 2, 5],
+    "em_weight": [1],
+    "dm_weight": [1, 0.1, 0.01],
     "dm_loss_name": ["MSE-no-standardization"],
 }
 
@@ -143,6 +145,12 @@ if __name__ == "__main__":
         eval_mode=True,
     )
     encoder_pred = partial(encoder, data_key=sample_data_key, pupil_center=pupil_center)
+    
+    ### set the target response
+    if config["egg"]["encoder_response_as_target"]:
+        target_response = encoder_pred(stim)
+    else:
+        target_response = resp
 
     ### get reconstructions from decoders to match
     xs_zero_to_match = []
@@ -152,14 +160,36 @@ if __name__ == "__main__":
             load_best=False,
             device=config["device"],
         )
-        xs_zero_to_match.append(
-            crop(decoder(
-                resp,
-                data_key=sample_data_key,
-                pupil_center=pupil_center,
-                neuron_coords=neuron_coords[sample_data_key]
-            ), config["crop_win"]).detach()
-        )
+        pred_x_zero = crop(decoder(
+            resp,
+            data_key=sample_data_key,
+            pupil_center=pupil_center,
+            neuron_coords=neuron_coords[sample_data_key]
+        ), config["crop_win"]).detach()
+        xs_zero_to_match.append(pred_x_zero)
+        print(f"[INFO] loss of the x_zero to match: {loss_fn(pred_x_zero, crop(stim, config['crop_win'])):.3f}   ({decoder_ckpt_path})")
+
+    # init_imgs = torch.randn((8, 3, 256, 256), device=config["device"]).requires_grad_()
+    init_imgs = None
+    if config["egg"]["init_reconstruction_mul_factor"] is not None \
+        and config["egg"]["init_reconstruction_mul_factor"] > 0:
+        init_imgs = torch.randn((target_response.shape[0], 1, 36, 64), device=config["device"])
+        h_s = (init_imgs.shape[-2] - config["crop_win"][0])//2
+        h_e = (init_imgs.shape[-2] + config["crop_win"][0])//2
+        w_s = (init_imgs.shape[-1] - config["crop_win"][1])//2
+        w_e = (init_imgs.shape[-1] + config["crop_win"][1])//2
+        init_imgs[:,:, h_s:h_e, w_s:w_e] = \
+            (1 - config["egg"]["init_reconstruction_mul_factor"]) * torch.randn((target_response.shape[0], 1, h_e - h_s, w_e - w_s), device=config["device"]) \
+            + config["egg"]["init_reconstruction_mul_factor"] * normalize(standardize(xs_zero_to_match[0].clone()))
+        init_imgs = F.interpolate(
+            init_imgs, size=(256, 256), mode="bilinear", align_corners=False
+        ).repeat(1, 3, 1, 1)
+        # init_imgs = F.interpolate(
+        #     xs_zero_to_match[0].clone(), size=(256, 256), mode="bilinear", align_corners=False
+        # ).repeat(1, 3, 1, 1)
+        # init_imgs = normalize(standardize(init_imgs))
+        # init_imgs = 0.3 * init_imgs + 0.7 * torch.randn_like(init_imgs)
+        init_imgs = init_imgs.requires_grad_()
 
     ### run
     best = {"config": None, "loss": np.inf, "idx": None}
@@ -182,8 +212,8 @@ if __name__ == "__main__":
             energy_fn=partial(
                 energy_fn,
                 encoder_model=encoder_pred,
-                target_response=resp,
-                norm=xs_zero_to_match[0].norm(dim=(2,3), keepdim=True),
+                target_response=target_response,
+                norm=xs_zero_to_match[0].norm(dim=(2,3), keepdim=True) if len(xs_zero_to_match) > 0 else 50,
                 em_weight=run_config["egg"]["em_weight"],
                 dm_weight=run_config["egg"]["dm_weight"],
                 dm_loss_fn=metrics[run_config["egg"]["dm_loss_fn"]],
@@ -192,8 +222,9 @@ if __name__ == "__main__":
             ),
             energy_scale=run_config["egg"]["energy_scale"],
             num_timesteps=run_config["egg"]["model"]["num_steps"],
-            num_samples=resp.shape[0],
+            num_samples=target_response.shape[0],
             grayscale=True,
+            init_imgs=init_imgs,
         )
         loss = loss_fn(stim_pred, stim)
 
@@ -214,6 +245,7 @@ if __name__ == "__main__":
             "run_config": run_config,
             "stim_pred": stim_pred,
             "stim_pred_history": stim_pred_history,
+            "energy_history": energy_history,
         }, os.path.join(run_dir, f"ckpt_{i}_{dict_to_str(config_update, as_filename=True)}.pt"), pickle_module=dill)
         plot_comparison(
             target=crop(stim[:8], config["crop_win"]).cpu(),
@@ -224,8 +256,8 @@ if __name__ == "__main__":
         plot_diffusion(
             target_image=crop(stim, config["crop_win"])[0].cpu(),
             imgs=[_stim_pred[0] for _stim_pred in stim_pred_history],
-            # timesteps=(0, 10, 100, 200, 300, 400, 600, 800, 999),
-            timesteps=(0, 10, 20, 30, 50, 75, 100, 150, 199),
+            timesteps=(0, 10, 100, 200, 300, 400, 600, 800, 999),
+            crop_win=config["crop_win"],
             save_to=os.path.join(run_dir, f"decoding_history_{i}_{dict_to_str(config_update, as_filename=True)}.png"),
             show=False,
         )
