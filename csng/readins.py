@@ -55,14 +55,14 @@ class MultiReadIn(nn.Module):
         
         return nn.ModuleList(readin), in_channels
 
-    def _load_state_dict(self, state_dict):
+    def _load_state_dict(self, state_dict, strict=True):
         if self.core.__class__ == GAN:
             core_state_dict = {".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "G" in k or "D" in k}
-            self.core.G.load_state_dict(core_state_dict["G"])
-            self.core.D.load_state_dict(core_state_dict["D"])
-            self.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" in k})
+            self.core.G.load_state_dict(core_state_dict["G"], strict=strict)
+            self.core.D.load_state_dict(core_state_dict["D"], strict=strict)
+            self.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" in k}, strict=strict)
         else:
-            self.load_state_dict(state_dict)
+            self.load_state_dict(state_dict, strict)
 
     def add_readin(self, data_key, readin_config):
         if data_key in self.readins:
