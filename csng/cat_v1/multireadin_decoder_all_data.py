@@ -50,6 +50,7 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_s
 config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
+        "max_training_batches": None,
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
@@ -69,7 +70,7 @@ config["data"]["cat_v1"] = {
         "test_path": os.path.join(DATA_PATH, "datasets", "test"),
         "image_size": [50, 50],
         "crop": False,
-        "batch_size": 35,
+        "batch_size": 64,
         "stim_keys": ("stim",),
         "resp_keys": ("exc_resp", "inh_resp"),
         "return_coords": True,
@@ -89,40 +90,40 @@ config["data"]["cat_v1"] = {
 }
 
 ### mouse v1 data
-config["data"]["mouse_v1"] = {
-    "dataset_fn": "sensorium.datasets.static_loaders",
-    "dataset_config": {
-        "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
-            # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
-            # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
-            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
-        ],
-        "normalize": True,
-        "scale": 0.25, # 256x144 -> 64x36
-        "include_behavior": False,
-        "add_behavior_as_channels": False,
-        "include_eye_position": True,
-        "exclude": None,
-        "file_tree": True,
-        "cuda": "cuda" in config["device"],
-        "batch_size": 7,
-        "seed": config["seed"],
-        "use_cache": False,
-    },
-    "crop_win": (22, 36),
-    "skip_train": False,
-    "skip_val": False,
-    "skip_test": False,
-    "normalize_neuron_coords": True,
-    "average_test_multitrial": True,
-    "save_test_multitrial": True,
-    "test_batch_size": 7,
-    "device": config["device"],
-}
+# config["data"]["mouse_v1"] = {
+#     "dataset_fn": "sensorium.datasets.static_loaders",
+#     "dataset_config": {
+#         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+#             # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
+#             # os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
+#             os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
+#             os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+#             os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+#             os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+#             os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22", "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+#         ],
+#         "normalize": True,
+#         "scale": 0.25, # 256x144 -> 64x36
+#         "include_behavior": False,
+#         "add_behavior_as_channels": False,
+#         "include_eye_position": True,
+#         "exclude": None,
+#         "file_tree": True,
+#         "cuda": "cuda" in config["device"],
+#         "batch_size": 4,
+#         "seed": config["seed"],
+#         "use_cache": False,
+#     },
+#     "crop_win": (22, 36),
+#     "skip_train": False,
+#     "skip_val": False,
+#     "skip_test": False,
+#     "normalize_neuron_coords": True,
+#     "average_test_multitrial": True,
+#     "save_test_multitrial": True,
+#     "test_batch_size": 7,
+#     "device": config["device"],
+# }
 
 config["decoder"] = {
     "model": {
@@ -251,17 +252,16 @@ config["decoder"] = {
         #     ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter.pth"),
         # ),
     },
-    "n_epochs": 90,
+    "n_epochs": 60,
     "load_ckpt": None,
-    "load_ckpt": {
-        "load_only_core": False,
-        "ckpt_path": os.path.join(
-            # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-            # DATA_PATH, "models", "cnn", "2024-05-23_14-21-08", "ckpt", "decoder_65.pt"),
-            DATA_PATH, "models", "cnn", "2024-05-23_14-18-12", "decoder.pt"),
-        "resume_checkpointing": True,
-        "resume_wandb_id": "04edvzmf",
-    },
+    # "load_ckpt": {
+    #     "load_only_core": False,
+    #     "ckpt_path": os.path.join(
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-06-17_17-29-25", "ckpt", "decoder_40.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "znjuxlru",
+    # },
     "save_run": True,
 }
 
@@ -389,7 +389,8 @@ if __name__ == "__main__":
         else:
             print("[INFO] Continuing the training run (loading the current model, history, and overwriting the config)...")
             history, best, config["decoder"]["model"] = ckpt["history"], ckpt["best"], ckpt["config"]["decoder"]["model"]
-            config["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"] = ckpt["config"]["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"]
+            if "training_sample_idxs" in ckpt["config"]["data"]["cat_v1"]["dataset_config"]:
+                config["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"] = ckpt["config"]["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"]
 
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
             decoder.load_state_dict(ckpt["decoder"])

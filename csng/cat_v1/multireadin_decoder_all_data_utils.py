@@ -27,7 +27,7 @@ from csng.cat_v1.data import prepare_v1_dataloaders
 def train(model, dataloaders, opter, loss_fn, config, verbose=True):
     model.train()
     train_loss = 0
-    n_batches = sum(len(dl) for dl in dataloaders.values())
+    n_batches = max(len(dl) for dl in dataloaders.values())
 
     ### run
     batch_idx = 0
