@@ -97,7 +97,7 @@ def get_metrics(crop_win=None, device="cpu"):
     return metrics
 
 
-def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=False):
+def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=False, model_init_dict=None, strict=True):
     ckpt = torch.load(ckpt_path, map_location=device, pickle_module=dill)
     ckpt_config = ckpt["config"]
 
@@ -112,8 +112,11 @@ def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=Fa
     #         )
     ### TODO: remove (quick fix) <--
 
-    decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(device)
-    
+    if model_init_dict is not None:
+        decoder = MultiReadIn(**model_init_dict).to(device)
+    else:
+        decoder = MultiReadIn(**ckpt_config["decoder"]["model"]).to(device)
+
     if load_best:
         to_load = ckpt["best"]["model"]
     else:
@@ -121,8 +124,8 @@ def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=Fa
 
     if load_only_core:
         to_load = {k:v for k,v in to_load.items() if "readin" not in k}
-    
-    decoder._load_state_dict(ckpt["best"]["model"])
+
+    decoder._load_state_dict(to_load, strict=strict)
     decoder.eval()
 
     return decoder, ckpt
@@ -187,31 +190,17 @@ def plot_reconstructions(runs, stim, stim_label="Target", manually_standardize=F
     if save_to is not None:
         fig.savefig(save_to, bbox_inches="tight")
 
+    plt.close(fig)
+
 
 def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
-    plt.rc("pdf", fonttype=42)
-    plt.rc("ps", fonttype=42)
-    plt.rc("legend", fontsize=13)
-    plt.rc("xtick", labelsize=13)
-    plt.rc("ytick", labelsize=13)
-    plt.rc("axes", labelsize=13)
-    plt.rc("axes", titlesize=13)
-    plt.rc("axes", linewidth=0.5)
-    plt.rc("axes", labelpad=10)
-    plt.rc("lines", linewidth=1.)
     c_palette = list(plt.cm.tab10.colors)
-    plt.rc("axes", prop_cycle=plt.cycler("color", c_palette))
-    plt.rc("figure", dpi=300)
-    plt.rc("savefig", dpi=300)
-    plt.rc("savefig", format="pdf")
-    plt.rc("savefig", bbox="tight")
-    plt.rc("savefig", pad_inches=0.1)
 
     ### plot
     k = list(runs_to_compare.keys())[0]
     for run_idx in range(len(runs_to_compare[k]["test_losses"])):
         ### bar plot of test losses
-        fig = plt.figure(figsize=(22, 7))
+        fig = plt.figure(figsize=(25 + 6 * len(runs_to_compare[k]["test_losses"]), 12))
         # fig = plt.figure(figsize=(55, 15))
         ax = fig.add_subplot(111)
         print(runs_to_compare[k]["ckpt_paths"][run_idx])
@@ -251,9 +240,9 @@ def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
         ax.set_xticklabels(
             [k for k in runs_to_compare.keys()],
             rotation=90,
-            y=-0.7,
+            # y=-0.7,
             ha="right",
-            va="baseline",
+            # va="baseline",
         )
         ax.set_yticks(ax.get_yticks()[::2])
         ax.set_ylim(0, None)
@@ -270,6 +259,8 @@ def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
 
         if save_to is not None:
             fig.savefig(save_to, bbox_inches="tight")
+
+        plt.close(fig)
 
 
 def plot_syn_data_loss_curve(run_groups, losses_to_plot, run_group_colors=None, mean_line_kwargs=None, xlabel="% of synthetic data", save_to=None):
@@ -288,13 +279,18 @@ def plot_syn_data_loss_curve(run_groups, losses_to_plot, run_group_colors=None, 
 
             ### compute syn_data_percentage
             run_config = run["configs"][-1]
-            base_data_batch_size = run_config["data"]["mouse_v1"]["dataset_config"]["batch_size"] \
-                if not run_config["data"]["mouse_v1"]["skip_train"] else 0
-            if "syn_dataset_config" in run_config["data"] \
+            if run_config["data"]["mouse_v1"]["skip_train"]:
+                base_data_batch_size == 0
+            else:
+                base_data_batch_size = run_config["data"]["mouse_v1"]["dataset_config"]["batch_size"] * len(run_config["data"]["mouse_v1"]["dataset_config"]["paths"])
+
+            if "syn_data_percentage" in run:
+                syn_data_percentage = np.round(run["syn_data_percentage"], 2)
+            elif "syn_dataset_config" in run_config["data"] \
                 and run_config["data"]["syn_dataset_config"] is not None \
                 and run_config["data"]["syn_dataset_config"]["batch_size"] > 0:
-                total_batch_size = run_config["data"]["syn_dataset_config"]["batch_size"] + base_data_batch_size
-                syn_data_percentage = run_config["data"]["syn_dataset_config"]["batch_size"] / total_batch_size
+                total_batch_size = base_data_batch_size + (run_config["data"]["syn_dataset_config"]["batch_size"] * len(run_config["data"]["syn_dataset_config"]["data_keys"]))
+                syn_data_percentage = (run_config["data"]["syn_dataset_config"]["batch_size"] * len(run_config["data"]["syn_dataset_config"]["data_keys"])) / total_batch_size
                 syn_data_percentage = np.round(syn_data_percentage * 100, 2)
             else:
                 syn_data_percentage = 0

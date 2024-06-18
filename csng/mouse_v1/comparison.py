@@ -14,7 +14,7 @@ import lovely_tensors as lt
 
 import csng
 from csng.InvertedEncoder import InvertedEncoder
-from csng.utils import crop, plot_comparison, standardize, normalize, count_parameters, plot_losses
+from csng.utils import crop, plot_comparison, standardize, normalize, count_parameters, plot_losses, slugify
 from csng.losses import (
     MultiSSIMLoss,
     SSIMLoss,
@@ -100,7 +100,7 @@ config["comparison"] = {
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "contrastive_regularization_2",
+        "transfer_learning",
     ),
     "loaded_ckpts_overwrite": True,
     "load_ckpts": None,
@@ -108,18 +108,13 @@ config["comparison"] = {
     #     {
     #         "path": os.path.join(
     #             "results",
-    #             "contrastive_regularization",
-    #             "2024-05-27_22-29-49.pt",
+    #             "transfer_learning",
+    #             "2024-06-18_13-11-43.pt",
     #         ),
     #         "load_only": None, # load all
-    #         # "load_only": [
-    #         #     "Inverted Encoder",
-    #         #     # "CNN-FC (M-All)",
-    #         # ],
+    #         # "load_only": ["Inverted Encoder"],
     #         "remap": None,
-    #         # "remap": {
-    #         #     "CNN-Conv (100% M-1 + 0% S-1)": "0% S-1",
-    #         # },
+    #         # "remap": {"CNN-Conv (100% M-1 + 0% S-1)": "0% S-1"},
     #     },
     # ],
     "losses_to_plot": [
@@ -130,7 +125,7 @@ config["comparison"] = {
     ],
     "syn_data_loss_curve": None,
     # "syn_data_loss_curve": {
-    #     "losses_to_plot": ["SSIML", "MSE", "PL"],
+    #     "losses_to_plot": ["SSIML", "MSE", "PL", "FID"],
     #     # "run_group_colors": None,
     #     "run_group_colors": ["#2066a8", "#81c3e4", "#568b87", "#80ae9a"],
     #     "mean_line_kwargs": {
@@ -142,38 +137,79 @@ config["comparison"] = {
     #     "run_groups": {
     #         "CNN-Conv": {
     #             run_name: None for run_name in [
-    #                 "CNN-Conv (0%)",
-    #                 "CNN-Conv (25%)",
-    #                 "CNN-Conv (50%)",
-    #                 "CNN-Conv (87.5%)",
-    #                 "CNN-Conv (100%)",
+    #                 # "CNN-Conv (0%)",
+    #                 # "CNN-Conv (25%)",
+    #                 # "CNN-Conv (50%)",
+    #                 # "CNN-Conv (87.5%)",
+    #                 # "CNN-Conv (100%)",
+    #                 r"CNN-Conv (0% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (25% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (50% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (87.5% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (100% S-All $\rightarrow$ M-1)",
     #             ]
     #         },
     #         "CNN-MEI": {
     #             run_name: None for run_name in [
-    #                 "CNN-MEI (0%)",
-    #                 "CNN-MEI (25%)",
-    #                 "CNN-MEI (50%)",
-    #                 "CNN-MEI (87.5%)",
-    #                 "CNN-MEI (100%)",
+    #                 # "CNN-MEI (0%)",
+    #                 # "CNN-MEI (25%)",
+    #                 # "CNN-MEI (50%)",
+    #                 # "CNN-MEI (87.5%)",
+    #                 # "CNN-MEI (100%)",
+    #                 r"CNN-MEI (0% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (25% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (50% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (87.5% S-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (100% S-All $\rightarrow$ M-1)",
     #             ]
     #         },
-    #         "GAN-Conv": {
+    #         # "GAN-Conv": {
+    #         #     run_name: None for run_name in [
+    #         #         "GAN-Conv (0%)",
+    #         #         "GAN-Conv (25%)",
+    #         #         "GAN-Conv (50%)",
+    #         #         "GAN-Conv (87.5%)",
+    #         #         "GAN-Conv (100%)",
+    #         #     ]
+    #         # },
+    #         # "GAN-MEI": {
+    #         #     run_name: None for run_name in [
+    #         #         "GAN-MEI (0%)",
+    #         #         "GAN-MEI (25%)",
+    #         #         "GAN-MEI (50%)",
+    #         #         "GAN-MEI (87.5%)",
+    #         #         "GAN-MEI (100%)",
+    #         #     ]
+    #         # },
+    #     },
+    # },
+    # "syn_data_loss_curve": {
+    #     "losses_to_plot": ["SSIML", "MSE", "PL", "FID"],
+    #     # "run_group_colors": None,
+    #     "run_group_colors": ["#2066a8", "#81c3e4", "#568b87", "#80ae9a"],
+    #     "mean_line_kwargs": {
+    #         "linestyle": "-",
+    #         "linewidth": 2.5,
+    #         "label": "Mean",
+    #         "color": "#dc353b",
+    #     },
+    #     "run_groups": {
+    #         "CNN-Conv": {
     #             run_name: None for run_name in [
-    #                 "GAN-Conv (0%)",
-    #                 "GAN-Conv (25%)",
-    #                 "GAN-Conv (50%)",
-    #                 "GAN-Conv (87.5%)",
-    #                 "GAN-Conv (100%)",
+    #                 r"CNN-Conv (0% C + 100% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (25% C + 75% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (50% C + 50% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (90% C + 10% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-Conv (100% C + 0% M-All $\rightarrow$ M-1)",
     #             ]
     #         },
-    #         "GAN-MEI": {
+    #         "CNN-MEI": {
     #             run_name: None for run_name in [
-    #                 "GAN-MEI (0%)",
-    #                 "GAN-MEI (25%)",
-    #                 "GAN-MEI (50%)",
-    #                 "GAN-MEI (87.5%)",
-    #                 "GAN-MEI (100%)",
+    #                 r"CNN-MEI (0% C + 100% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (25% C + 75% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (50% C + 50% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (90% C + 10% M-All $\rightarrow$ M-1)",
+    #                 r"CNN-MEI (100% C + 0% M-All $\rightarrow$ M-1)",
     #             ]
     #         },
     #     },
@@ -528,175 +564,237 @@ config["comparison"] = {
 # }
 
 ### Table 4 - Transfer learning
-# config["comparison"]["to_compare"] = {
-#     "Inverted Encoder": {
-#         "decoder": InvertedEncoder(
-#             encoder=get_encoder(
-#                 ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
-#                 device=config["device"],
-#                 eval_mode=True,
-#                 # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
-#             ),
-#             img_dims=(1, 36, 64),
-#             stim_pred_init="zeros",
-#             opter_cls=torch.optim.SGD,
-#             opter_config={"lr": 50, "momentum": 0},
-#             n_steps=500,
-#             resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
-#             stim_loss_fn=SSIMLoss(
-#                 window=config["crop_win"],
-#                 log_loss=True,
-#                 inp_normalized=True,
-#                 inp_standardized=False,
-#             ),
-#             img_gauss_blur_config=None,
-#             img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 2.},
-#             device=config["device"],
-#         ).to(config["device"]),
-#         "run_name": None,
-#     },
+config["comparison"]["to_compare"] = {
+    "Inverted Encoder": {
+        "decoder": InvertedEncoder(
+            encoder=get_encoder(
+                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
+                device=config["device"],
+                eval_mode=True,
+                # ckpt_path=os.path.join(DATA_PATH, "models", "encoder_sens22_mall_no_shifter.pth"),
+            ),
+            img_dims=(1, 36, 64),
+            stim_pred_init="zeros",
+            opter_cls=torch.optim.SGD,
+            opter_config={"lr": 50, "momentum": 0},
+            n_steps=500,
+            resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
+            stim_loss_fn=SSIMLoss(
+                window=config["crop_win"],
+                log_loss=True,
+                inp_normalized=True,
+                inp_standardized=False,
+            ),
+            img_gauss_blur_config=None,
+            img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 2.},
+            device=config["device"],
+        ).to(config["device"]),
+        "run_name": None,
+    },
 
-#     r"CNN-Conv (C $\rightarrow$ M-All)": {
-#         "run_name": "2024-04-17_00-06-19",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_00-06-19", "decoder.pt"),
-#     },
-#     r"CNN-Conv (C $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-11_11-15-53",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-11_11-15-53", "decoder.pt"),
-#     },
-#     r"CNN-Conv (90% C + 10% M-1 $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-19_11-02-33",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_11-02-33", "decoder.pt"),
-#     },
-#     r"CNN-Conv (50% C + 50% M-1 $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-19_13-27-50",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_13-27-50", "decoder.pt"),
-#     },
-#     r"CNN-Conv (50% C + 50% M-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-24_14-28-56",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-24_14-28-56", "decoder.pt"),
-#     },
-#     r"CNN-Conv (70% C + 30% M-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-20_19-09-00",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-20_19-09-00", "decoder.pt"),
-#     },
-#     r"CNN-Conv (70% C + 30% M-All $\rightarrow$ M-1) w/ SSIML-PL": {
-#         "run_name": "2024-05-20_19-09-59",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-20_19-09-59", "decoder.pt"),
-#     },
-#     r"CNN-MEI (C $\rightarrow$ M-All)": {
-#         "run_name": "2024-04-26_21-51-47",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "decoder.pt"),
-#     },
-#     r"CNN-MEI (C $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-26_21-54-43",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "decoder.pt"),
-#     },
-#     r"CNN-MEI (50% C + 50% M-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-24_17-11-11",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-24_17-11-11", "decoder.pt"),
-#     },
-#     r"CNN-MEI (70% C + 30% M-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-21_22-22-25",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-21_22-22-25", "decoder.pt"),
-#     },
-#     r"CNN-MEI (70% C + 30% M-All $\rightarrow$ M-1) w/ SSIML-PL": {
-#         "run_name": "2024-05-22_09-10-25",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-22_09-10-25", "decoder.pt"),
-#     },
+    ### No pretraining
+    "CNN-Conv (M-1)": {
+        "run_name": "2024-03-27_11-35-11",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-03-27_11-35-11", "decoder.pt"),
+    },
+    "CNN-MEI (M-1)": {
+        "run_name": "2024-04-09_08-42-29",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-09_08-42-29", "decoder.pt"),
+    },
+    "GAN-Conv (M-1)": {
+        "run_name": "2024-04-10_11-06-28",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-10_11-06-28", "decoder.pt"),
+    },
+    "GAN-MEI (M-1)": {
+        "run_name": "2024-04-12_11-19-16",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "decoder.pt"),
+    },
 
-#     r"CNN-Conv (0% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-10_17-54-33",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
-#     },
-#     r"CNN-Conv (50% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-10_22-34-23",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-34-23", "decoder.pt"),
-#     },
-#     r"CNN-Conv (87.5% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-10_18-00-10",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_18-00-10", "decoder.pt"),
-#     },
-#     r"CNN-Conv (100% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-10_22-32-05",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-32-05", "decoder.pt"),
-#     },
-#     r"CNN-MEI (0% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-17_17-31-11",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_17-31-11", "decoder.pt"),
-#     },
-#     r"CNN-MEI (50% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-28_19-14-21",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-14-21", "decoder.pt"),
-#     },
-#     r"CNN-MEI (87.5% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-28_19-16-46",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-16-46", "decoder.pt"),
-#     },
-#     r"CNN-MEI (100% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-28_19-18-33",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-18-33", "decoder.pt"),
-#     },
+    ### C + M-All -> M-1
+    r"CNN-Conv (0% C + 100% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-10_17-54-33",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
+        "syn_data_percentage": 0,
+    },
+    r"CNN-Conv (25% C + 75% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-16_09-26-19",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-16_09-26-19", "decoder.pt"),
+        "syn_data_percentage": 25,
+    },
+    r"CNN-Conv (50% C + 50% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-15_08-58-54",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-15_08-58-54", "decoder.pt"),
+        "syn_data_percentage": 50,
+    },
+    r"CNN-Conv (50% C + 50% M-All $\rightarrow$ M-1) w/ SSIML-PL": {
+        "run_name": "2024-06-15_09-12-25",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-15_09-12-25", "decoder.pt"),
+        "syn_data_percentage": 50,
+    },
+    r"CNN-Conv (90% C + 10% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-15_09-03-51",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-15_09-03-51", "decoder.pt"),
+        "syn_data_percentage": 90,
+    },
+    r"CNN-Conv (90% C + 10% M-All $\rightarrow$ M-1) w/ SSIML-PL": {
+        "run_name": "2024-06-15_09-05-33",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-15_09-05-33", "decoder.pt"),
+        "syn_data_percentage": 90,
+    },
+    r"CNN-Conv (100% C + 0% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-17_09-00-13",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-17_09-00-13", "decoder.pt"),
+        "syn_data_percentage": 100,
+    },
+    r"CNN-MEI (0% C + 100% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-17_17-31-11",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_17-31-11", "decoder.pt"),
+        "syn_data_percentage": 0,
+    },
+    r"CNN-MEI (25% C + 75% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-17_08-15-24",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-17_08-15-24", "decoder.pt"),
+        "syn_data_percentage": 25,
+    },
+    r"CNN-MEI (50% C + 50% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-17_08-18-26",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-17_08-18-26", "decoder.pt"),
+        "syn_data_percentage": 50,
+    },
+    r"CNN-MEI (90% C + 10% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-17_08-20-32",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-17_08-20-32", "decoder.pt"),
+        "syn_data_percentage": 90,
+    },
+    r"CNN-MEI (100% C + 0% M-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-18_07-42-09",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-18_07-42-09", "decoder.pt"),
+        "syn_data_percentage": 100,
+    },
 
-#     r"GAN-Conv (0% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-04-11_10-41-27",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_10-41-27", "decoder.pt"),
-#     },
-#     r"GAN-Conv (50% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_07-38-17",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-38-17", "decoder.pt"),
-#     },
-#     r"GAN-Conv (87.5% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_07-40-05",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-40-05", "decoder.pt"),
-#     },
-#     r"GAN-Conv (100% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_07-42-24",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-42-24", "decoder.pt"),
-#     },
-#     r"GAN-MEI (0% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_09-30-53",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-30-53", "decoder.pt"),
-#     },
-#     r"GAN-MEI (50% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_09-32-21",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-32-21", "decoder.pt"),
-#     },
-#     r"GAN-MEI (87.5% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_09-33-48",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-33-48", "decoder.pt"),
-#     },
-#     r"GAN-MEI (100% S-All $\rightarrow$ M-1)": {
-#         "run_name": "2024-05-13_09-35-03",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-35-03", "decoder.pt"),
-#     },
+    ### C + M-1 -> M-1
+    r"CNN-Conv (50% C + 50% M-1 $\rightarrow$ M-1)": {
+        "run_name": "2024-05-19_13-27-50",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_13-27-50", "decoder.pt"),
+    },
+    r"CNN-Conv (90% C + 10% M-1 $\rightarrow$ M-1)": {
+        "run_name": "2024-05-19_11-02-33",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_11-02-33", "decoder.pt"),
+    },
 
-#     r"GAN-MEI (100% S-All $\rightarrow$ M-1, SSIML-PL fine-tuning)*": {
-#         "run_name": "2024-05-19_22-13-01",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-19_22-13-01", "ckpt/decoder_141.pt"),
-#         "skip_model_selection": True,
-#     },
-#     r"CNN-MEI (C $\rightarrow$ M-1)*": {
-#         "run_name": "2024-04-26_21-54-43",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "ckpt/decoder_75.pt"),
-#         "skip_model_selection": True,
-#     },
-#     r"CNN-MEI (C $\rightarrow$ M-All)*": {
-#         "run_name": "2024-04-26_21-51-47",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "ckpt/decoder_50.pt"),
-#         "skip_model_selection": True,
-#     },
-#     r"GAN-MEI w/ EM (M-1)*": {
-#         "run_name": "2024-04-23_13-46-11",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "ckpt/decoder_175.pt"),
-#         "skip_model_selection": True,
-#     },
-#     r"GAN-MEI (M-1)*": {
-#         "run_name": "2024-04-12_11-19-16",
-#         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
-#         "skip_model_selection": True,
-#     },
-# }
+    ### C -> M-All
+
+    ### S-All -> M-1
+    r"CNN-Conv (0% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-10_17-54-33",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
+        "syn_data_percentage": 0,
+    },
+    r"CNN-Conv (25% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-18_16-19-57",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-18_16-19-57", "decoder.pt"),
+        "syn_data_percentage": 25,
+    },
+    r"CNN-Conv (50% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-10_22-34-23",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-34-23", "decoder.pt"),
+        "syn_data_percentage": 50,
+    },
+    r"CNN-Conv (87.5% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-10_18-00-10",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_18-00-10", "decoder.pt"),
+        "syn_data_percentage": 87.5,
+    },
+    r"CNN-Conv (100% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-10_22-32-05",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-32-05", "decoder.pt"),
+        "syn_data_percentage": 100,
+    },
+    r"CNN-MEI (0% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-17_17-31-11",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-17_17-31-11", "decoder.pt"),
+        "syn_data_percentage": 0,
+    },
+    r"CNN-MEI (25% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-06-18_16-17-53",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-06-18_16-17-53", "decoder.pt"),
+        "syn_data_percentage": 25,
+    },
+    r"CNN-MEI (50% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-28_19-14-21",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-14-21", "decoder.pt"),
+        "syn_data_percentage": 50,
+    },
+    r"CNN-MEI (87.5% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-28_19-16-46",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-16-46", "decoder.pt"),
+        "syn_data_percentage": 87.5,
+    },
+    r"CNN-MEI (100% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-28_19-18-33",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-28_19-18-33", "decoder.pt"),
+        "syn_data_percentage": 100,
+    },
+
+    r"GAN-Conv (0% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-04-11_10-41-27",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-11_10-41-27", "decoder.pt"),
+    },
+    r"GAN-Conv (50% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_07-38-17",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-38-17", "decoder.pt"),
+    },
+    r"GAN-Conv (87.5% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_07-40-05",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-40-05", "decoder.pt"),
+    },
+    r"GAN-Conv (100% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_07-42-24",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_07-42-24", "decoder.pt"),
+    },
+    r"GAN-MEI (0% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_09-30-53",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-30-53", "decoder.pt"),
+    },
+    r"GAN-MEI (50% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_09-32-21",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-32-21", "decoder.pt"),
+    },
+    r"GAN-MEI (87.5% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_09-33-48",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-33-48", "decoder.pt"),
+    },
+    r"GAN-MEI (100% S-All $\rightarrow$ M-1)": {
+        "run_name": "2024-05-13_09-35-03",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-35-03", "decoder.pt"),
+    },
+
+    r"GAN-MEI (100% S-All $\rightarrow$ M-1, SSIML-PL fine-tuning)*": {
+        "run_name": "2024-05-19_22-13-01",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-05-19_22-13-01", "ckpt/decoder_141.pt"),
+        "skip_model_selection": True,
+    },
+    r"CNN-MEI (C $\rightarrow$ M-1)*": {
+        "run_name": "2024-04-26_21-54-43",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-54-43", "ckpt/decoder_75.pt"),
+        "skip_model_selection": True,
+    },
+    r"CNN-MEI (C $\rightarrow$ M-All)*": {
+        "run_name": "2024-04-26_21-51-47",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-26_21-51-47", "ckpt/decoder_50.pt"),
+        "skip_model_selection": True,
+    },
+    r"GAN-MEI w/ EM (M-1)*": {
+        "run_name": "2024-04-23_13-46-11",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-23_13-46-11", "ckpt/decoder_175.pt"),
+        "skip_model_selection": True,
+    },
+    r"GAN-MEI (M-1)*": {
+        "run_name": "2024-04-12_11-19-16",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
+        "skip_model_selection": True,
+    },
+}
 
 ### Contrastive regularization
 # config["comparison"]["to_compare"] = {
@@ -798,8 +896,11 @@ if __name__ == "__main__":
     ### merge and reorder with current to_compare config
     _runs_to_compare = dict()
     for run_name in config["comparison"]["to_compare"].keys():
-        if run_name in runs_to_compare and config["comparison"]["loaded_ckpts_overwrite"]:
+        if run_name in runs_to_compare \
+            and config["comparison"]["loaded_ckpts_overwrite"] \
+            and config["comparison"]["to_compare"][run_name]["run_name"] == runs_to_compare[run_name]["run_name"]:
             _runs_to_compare[run_name] = runs_to_compare[run_name]
+            _runs_to_compare[run_name].update(config["comparison"]["to_compare"][run_name]) # keep the key-value pairs in the current config
         else:
             _runs_to_compare[run_name] = config["comparison"]["to_compare"][run_name]
     runs_to_compare = _runs_to_compare
@@ -816,22 +917,23 @@ if __name__ == "__main__":
         for _k in ("test_losses", "configs", "histories", "best_val_losses", "stim_pred_best", "ckpt_paths"):
             run_dict[_k] = []
 
+        ### get filepath to the model ckpt
         if "decoder" in run_dict and run_dict["decoder"] is not None:
+            ### decoder already prepared
             run_dict["ckpt_paths"].append(None)
         else:
             if config["comparison"]["eval_all_ckpts"] \
                 and ("skip_model_selection" not in run_dict or not run_dict["skip_model_selection"]):
                 ckpts_dir = os.path.join(os.path.dirname(run_dict["ckpt_path"]), "ckpt")
                 run_dict["ckpt_paths"].extend([os.path.join(os.path.dirname(run_dict["ckpt_path"]), "ckpt", ckpt_name) for ckpt_name in os.listdir(ckpts_dir)])
-            else:
-                run_dict["ckpt_paths"].append(run_dict["ckpt_path"])
 
-            ### find best ckpt according to some metric
-            if config["comparison"]["find_best_ckpt_according_to"] is not None:
+                ### find best ckpt according to some metric
                 print(f"  Finding the best ckpt according to {config['comparison']['find_best_ckpt_according_to']}...")
                 best_ckpt_path, _, all_ckpts_losses = find_best_ckpt(config=config, ckpt_paths=run_dict["ckpt_paths"], metrics=metrics)
                 run_dict["all_ckpts_losses"] = all_ckpts_losses
                 run_dict["ckpt_paths"] = [best_ckpt_path]
+            else:
+                run_dict["ckpt_paths"].append(run_dict["ckpt_path"])
 
         ### eval ckpts
         print(f"  Evaluating ckpts on the test set...")
@@ -890,6 +992,7 @@ if __name__ == "__main__":
 
     # plot reconstructions
     for f_type in ("png", "pdf"):
+        # all together
         plot_reconstructions(
             runs=runs_to_compare,
             stim=stim,
@@ -899,6 +1002,20 @@ if __name__ == "__main__":
             save_to=os.path.join(config["comparison"]["save_dir"], f"reconstructions.{f_type}") \
                 if config["comparison"]["save_dir"] else None,
         )
+        # individually
+        os.makedirs(os.path.join(config["comparison"]["save_dir"], "individual_reconstructions"), exist_ok=True)
+        os.makedirs(os.path.join(config["comparison"]["save_dir"], "individual_reconstructions", "png"), exist_ok=True)
+        os.makedirs(os.path.join(config["comparison"]["save_dir"], "individual_reconstructions", "pdf"), exist_ok=True)
+        for k in runs_to_compare:
+            plot_reconstructions(
+                runs={k: runs_to_compare[k]},
+                stim=stim,
+                stim_label="Target",
+                manually_standardize=True,
+                crop_win=config["crop_win"],
+                save_to=os.path.join(config["comparison"]["save_dir"], "individual_reconstructions", f_type, f"{slugify(k)}.{f_type}") \
+                    if config["comparison"]["save_dir"] else None,
+            )
 
     # plot metrics
     for f_type in ("png", "pdf"):
