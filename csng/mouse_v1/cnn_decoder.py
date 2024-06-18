@@ -296,13 +296,13 @@ config["decoder"] = {
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
-    #     "load_best": False,
-    #     "load_opter_state": True,
+    #     "load_best": True,
+    #     "load_opter_state": False,
     #     "reset_history": True,
     #     "reset_best": True,
     #     "ckpt_path": os.path.join(
-    #         DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-06-14_15-09-46", "decoder.pt"),
-    #         # DATA_PATH, "models", "cnn", "2024-05-24_17-11-11", "decoder.pt"),
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "cnn", "2024-06-17_17-29-25", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-04-01_11-12-17", "decoder.pt"),
     #         # DATA_PATH, "models", "cnn", "2024-05-26_23-33-12", "ckpt", "decoder_130.pt"),
     #     "resume_checkpointing": False,
     #     "resume_wandb_id": None,
@@ -335,11 +335,14 @@ if __name__ == "__main__":
     ### initialize decoder
     if config["decoder"]["load_ckpt"] != None:
         print(f"[INFO] Loading checkpoint from {config['decoder']['load_ckpt']['ckpt_path']}...")
-        decoder, ckpt = load_decoder_from_ckpt(
+
+        ### prepare config first
+        _, ckpt = load_decoder_from_ckpt(
             ckpt_path=config["decoder"]["load_ckpt"]["ckpt_path"],
             device=config["device"],
             load_best=config["decoder"]["load_ckpt"]["load_best"],
             load_only_core=config["decoder"]["load_ckpt"]["load_only_core"],
+            strict=False,
         )
 
         if config["decoder"]["load_ckpt"]["load_only_core"]:
@@ -348,6 +351,16 @@ if __name__ == "__main__":
             config["decoder"]["model"]["core_config"] = ckpt["config"]["decoder"]["model"]["core_config"]
         else:
             config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
+
+        ### load decoder
+        decoder, ckpt = load_decoder_from_ckpt(
+            ckpt_path=config["decoder"]["load_ckpt"]["ckpt_path"],
+            device=config["device"],
+            load_best=config["decoder"]["load_ckpt"]["load_best"],
+            load_only_core=config["decoder"]["load_ckpt"]["load_only_core"],
+            model_init_dict=config["decoder"]["model"],
+            strict=False,
+        )
     else:
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
 
