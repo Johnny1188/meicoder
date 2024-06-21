@@ -8,6 +8,7 @@ import dill
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+from collections import defaultdict
 
 from csng.utils import crop
 from data_utils import (
@@ -15,6 +16,7 @@ from data_utils import (
     append_syn_dataloaders,
     append_data_aug_dataloaders,
 )
+from csng.losses import FID
 
 
 
@@ -153,11 +155,18 @@ def train(model, dataloader, loss_fn, config, history, epoch, log_freq=100, wdb_
     return history
 
 
-def val(model, dataloader, loss_fn, only_data_keys=None):
+def val(model, dataloader, loss_fn, only_data_keys=None, crop_win=None):
     model.eval()
     val_losses = {"total": 0}
     n_samples = 0
     denom_data_keys = {}
+
+    ### is loss_fn FID?
+    is_fid = False
+    if type(loss_fn) == str and loss_fn.lower() == "fid":
+        is_fid = True
+        preds, targets = defaultdict(list), defaultdict(list)
+
     with torch.no_grad():
         for b in dataloader:
             ### combine from all data keys
@@ -170,15 +179,33 @@ def val(model, dataloader, loss_fn, only_data_keys=None):
                     neuron_coords=neuron_coords,
                     pupil_center=pupil_center,
                 )
-                loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
-                val_losses["total"] += loss
-                val_losses[data_key] = loss if data_key not in val_losses else val_losses[data_key] + loss
-                denom_data_keys[data_key] = denom_data_keys[data_key] + resp.shape[0] if data_key in denom_data_keys else resp.shape[0]
-                n_samples += resp.shape[0]
 
-    val_losses["total"] /= n_samples
-    for k in denom_data_keys:
-        val_losses[k] /= denom_data_keys[k]
+                ### calc loss/FID
+                if is_fid:
+                    preds[data_key].append(crop(stim_pred, crop_win).cpu())
+                    targets[data_key].append(crop(stim, crop_win).cpu())
+                else:
+                    loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
+                    val_losses["total"] += loss
+                    val_losses[data_key] = loss if data_key not in val_losses else val_losses[data_key] + loss
+                    denom_data_keys[data_key] = denom_data_keys[data_key] + resp.shape[0] if data_key in denom_data_keys else resp.shape[0]
+                    n_samples += resp.shape[0]
+
+    ### finalize the val loss
+    if is_fid:
+        for data_key in preds.keys():
+            fid = FID(inp_standardized=False, device="cpu")
+            val_losses[data_key] = fid(
+                pred_imgs=torch.cat(preds[data_key], dim=0),
+                gt_imgs=torch.cat(targets[data_key], dim=0)
+            )
+            val_losses["total"] += val_losses[data_key]
+        val_losses["total"] /= len(preds.keys()) # average over data keys
+    else:
+        val_losses["total"] /= n_samples
+        for k in denom_data_keys:
+            val_losses[k] /= denom_data_keys[k]
+
     return val_losses
 
 
