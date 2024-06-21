@@ -75,7 +75,7 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
-        "batch_size": 64,
+        "batch_size": 32,
         "seed": config["seed"],
         "use_cache": False,
     },
@@ -96,11 +96,11 @@ config["comparison"] = {
     "eval_all_ckpts": True,
     # "eval_all_ckpts": False,
     # "find_best_ckpt_according_to": None,
-    "find_best_ckpt_according_to": "SSIML-PL",
+    "find_best_ckpt_according_to": "FID", # "SSIML-PL"
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "transfer_learning",
+        "transfer_learning_new",
     ),
     "loaded_ckpts_overwrite": True,
     "load_ckpts": None,
@@ -108,8 +108,8 @@ config["comparison"] = {
     #     {
     #         "path": os.path.join(
     #             "results",
-    #             "transfer_learning",
-    #             "2024-06-18_13-11-43.pt",
+    #             "transfer_learning_fid_model_selection_no_pretraining",
+    #             "2024-06-21_02-55-49.pt",
     #         ),
     #         "load_only": None, # load all
     #         # "load_only": ["Inverted Encoder"],
@@ -610,7 +610,7 @@ config["comparison"]["to_compare"] = {
         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "decoder.pt"),
     },
 
-    ### C + M-All -> M-1
+    ## C + M-All -> M-1
     r"CNN-Conv (0% C + 100% M-All $\rightarrow$ M-1)": {
         "run_name": "2024-04-10_17-54-33",
         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
@@ -673,18 +673,18 @@ config["comparison"]["to_compare"] = {
     },
 
     ### C + M-1 -> M-1
-    r"CNN-Conv (50% C + 50% M-1 $\rightarrow$ M-1)": {
-        "run_name": "2024-05-19_13-27-50",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_13-27-50", "decoder.pt"),
-    },
-    r"CNN-Conv (90% C + 10% M-1 $\rightarrow$ M-1)": {
-        "run_name": "2024-05-19_11-02-33",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_11-02-33", "decoder.pt"),
-    },
+    # r"CNN-Conv (50% C + 50% M-1 $\rightarrow$ M-1)": {
+    #     "run_name": "2024-05-19_13-27-50",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_13-27-50", "decoder.pt"),
+    # },
+    # r"CNN-Conv (90% C + 10% M-1 $\rightarrow$ M-1)": {
+    #     "run_name": "2024-05-19_11-02-33",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-05-19_11-02-33", "decoder.pt"),
+    # },
 
-    ### C -> M-All
+    ## C -> M-All
 
-    ### S-All -> M-1
+    ## S-All -> M-1
     r"CNN-Conv (0% S-All $\rightarrow$ M-1)": {
         "run_name": "2024-04-10_17-54-33",
         "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_17-54-33", "decoder.pt"),
