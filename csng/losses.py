@@ -936,6 +936,9 @@ class FID:
 
     @torch.no_grad()
     def __call__(self, pred_imgs, gt_imgs):
+        assert pred_imgs.shape == gt_imgs.shape, \
+            f"Shapes are not the same! pred_imgs have shape {pred_imgs.shape} while gt_imgs have shape {gt_imgs.shape}."
+
         ### standardize to [0, 1] and then to [0, 255] uint8
         if not self.inp_standardized:
             pred_imgs = (standardize(pred_imgs) * 255).type(torch.uint8)

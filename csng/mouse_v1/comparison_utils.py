@@ -264,8 +264,8 @@ def eval_decoder(model, dataloader, loss_fns, config, calc_fid=False, max_batche
 
             ### append for later fid calculation
             if calc_fid:
-                preds[data_key].append(stim_pred.cpu())
-                targets[data_key].append(stim.cpu())
+                preds[data_key].append(crop(stim_pred, config["crop_win"]).detach().cpu())
+                targets[data_key].append(crop(stim, config["crop_win"]).cpu())
 
             num_samples += stim.shape[0]
             denom_data_keys[data_key] = denom_data_keys[data_key] + stim.shape[0] if data_key in denom_data_keys else stim.shape[0]
