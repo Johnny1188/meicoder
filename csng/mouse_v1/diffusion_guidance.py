@@ -101,10 +101,14 @@ config["egg"] = {
 ### hyperparam runs config - either manually selected or grid search
 config_updates = []
 config_grid_search = {
-    "energy_scale": [0.1, 1, 2, 5],
-    "em_weight": [1],
-    "dm_weight": [1, 0.1, 0.01],
+    "energy_scale": [1],
+    # "energy_scale": [0],
+    "em_weight": [1, 10],
+    # "em_weight": [0],
+    "dm_weight": [0.01, 0.001],
+    # "dm_weight": [0],
     "dm_loss_name": ["MSE-no-standardization"],
+    "init_reconstruction_mul_factor": [0],
 }
 
 
@@ -169,28 +173,6 @@ if __name__ == "__main__":
         xs_zero_to_match.append(pred_x_zero)
         print(f"[INFO] loss of the x_zero to match: {loss_fn(pred_x_zero, crop(stim, config['crop_win'])):.3f}   ({decoder_ckpt_path})")
 
-    # init_imgs = torch.randn((8, 3, 256, 256), device=config["device"]).requires_grad_()
-    init_imgs = None
-    if config["egg"]["init_reconstruction_mul_factor"] is not None \
-        and config["egg"]["init_reconstruction_mul_factor"] > 0:
-        init_imgs = torch.randn((target_response.shape[0], 1, 36, 64), device=config["device"])
-        h_s = (init_imgs.shape[-2] - config["crop_win"][0])//2
-        h_e = (init_imgs.shape[-2] + config["crop_win"][0])//2
-        w_s = (init_imgs.shape[-1] - config["crop_win"][1])//2
-        w_e = (init_imgs.shape[-1] + config["crop_win"][1])//2
-        init_imgs[:,:, h_s:h_e, w_s:w_e] = \
-            (1 - config["egg"]["init_reconstruction_mul_factor"]) * torch.randn((target_response.shape[0], 1, h_e - h_s, w_e - w_s), device=config["device"]) \
-            + config["egg"]["init_reconstruction_mul_factor"] * normalize(standardize(xs_zero_to_match[0].clone()))
-        init_imgs = F.interpolate(
-            init_imgs, size=(256, 256), mode="bilinear", align_corners=False
-        ).repeat(1, 3, 1, 1)
-        # init_imgs = F.interpolate(
-        #     xs_zero_to_match[0].clone(), size=(256, 256), mode="bilinear", align_corners=False
-        # ).repeat(1, 3, 1, 1)
-        # init_imgs = normalize(standardize(init_imgs))
-        # init_imgs = 0.3 * init_imgs + 0.7 * torch.randn_like(init_imgs)
-        init_imgs = init_imgs.requires_grad_()
-
     ### run
     best = {"config": None, "loss": np.inf, "idx": None}
     print(f"[INFO] Hyperparameter search starts.")
@@ -205,6 +187,22 @@ if __name__ == "__main__":
         ### setup the run config
         run_config = deepcopy(config)
         run_config["egg"].update(config_update)
+
+        ### prepare initital reconstructions
+        init_imgs = None
+        if run_config["egg"]["init_reconstruction_mul_factor"] is not None \
+            and run_config["egg"]["init_reconstruction_mul_factor"] > 0:
+            init_imgs = torch.zeros((target_response.shape[0], 3, 36, 64), device=config["device"])
+            h_s = (init_imgs.shape[-2] - config["crop_win"][0])//2
+            h_e = (init_imgs.shape[-2] + config["crop_win"][0])//2
+            w_s = (init_imgs.shape[-1] - config["crop_win"][1])//2
+            w_e = (init_imgs.shape[-1] + config["crop_win"][1])//2
+            init_imgs[:,:, h_s:h_e, w_s:w_e] = xs_zero_to_match[0].clone()
+            init_imgs = F.interpolate(init_imgs, size=(256, 256), mode="bilinear", align_corners=False)
+            init_imgs = run_config["egg"]["init_reconstruction_mul_factor"] * init_imgs \
+                        + (1 - run_config["egg"]["init_reconstruction_mul_factor"]) * torch.randn_like(init_imgs)
+            # init_imgs = normalize(standardize(init_imgs))
+            init_imgs = init_imgs.requires_grad_()
 
         ### eval on validation dataset
         energy_history, stim_pred, stim_pred_history = do_run(

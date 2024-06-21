@@ -341,7 +341,7 @@ def dict_to_str(d, as_filename=False):
             return dict_to_str(v)
         elif type(v) in (list, tuple):
             return [print_val(_v) for _v in v]
-        elif type(v) == str:
+        elif type(v) == str or v == None:
             return v
         else:
             return f"{v:.3f}"
