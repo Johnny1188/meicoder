@@ -8,7 +8,7 @@ import time
 from csng.utils import crop
 
 
-def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progressive=True, desc="progress", grayscale=True, init_imgs=None):
+def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progressive=True, desc="progress", grayscale=True, init_imgs=None, approximate_xstart_for_energy=True):
     cur_t = num_timesteps - 1
     stim_pred_history = []
     energy_history = []
@@ -18,6 +18,7 @@ def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progres
         energy_scale=energy_scale,
         num_samples=num_samples,
         init_imgs=init_imgs,
+        approximate_xstart_for_energy=approximate_xstart_for_energy,
     )
 
     for j, samples_t in enumerate(samples):

@@ -91,6 +91,7 @@ config["egg"] = {
     "em_weight": 1,
     "dm_weight": 1,
     "dm_loss_fn": "MSE-no-standardization",
+    "approximate_xstart_for_energy": True,
 
     "encoder_response_as_target": False,
     "init_reconstruction_mul_factor": None,
@@ -101,14 +102,11 @@ config["egg"] = {
 ### hyperparam runs config - either manually selected or grid search
 config_updates = []
 config_grid_search = {
-    "energy_scale": [1],
-    # "energy_scale": [0],
-    "em_weight": [1, 10],
-    # "em_weight": [0],
-    "dm_weight": [0.01, 0.001],
-    # "dm_weight": [0],
+    "energy_scale": [1, 3, 7, 9, 12],
+    "em_weight": [1],
+    "dm_weight": [0, 0.1, 0.005],
     "dm_loss_name": ["MSE-no-standardization"],
-    "init_reconstruction_mul_factor": [0],
+    "init_reconstruction_mul_factor": [None],
 }
 
 
@@ -223,6 +221,7 @@ if __name__ == "__main__":
             num_samples=target_response.shape[0],
             grayscale=True,
             init_imgs=init_imgs,
+            approximate_xstart_for_energy=run_config["egg"]["approximate_xstart_for_energy"],
         )
         loss = loss_fn(stim_pred, stim)
 
