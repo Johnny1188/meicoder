@@ -79,9 +79,11 @@ config["egg"] = {
     "encoder_path": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),
     "decoder_paths": [
         os.path.join(DATA_PATH, "models", "gan", "2024-05-19_22-13-01", "ckpt/decoder_141.pt"),
-        # os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_40.pt"),
-        # os.path.join(DATA_PATH, "models", "cnn", "2024-05-21_22-22-25", "decoder.pt"),
-        # os.path.join(DATA_PATH, "models", "cnn", "2024-05-24_14-28-56", "decoder.pt"),
+        os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-33-48", "ckpt/decoder_21.pt"),
+        os.path.join(DATA_PATH, "models", "gan", "2024-05-13_09-35-03", "ckpt/decoder_63.pt"),
+        os.path.join(DATA_PATH, "models", "cnn", "2024-06-15_09-12-25", "ckpt/decoder_155.pt"),
+        os.path.join(DATA_PATH, "models", "cnn", "2024-04-10_22-32-05", "ckpt/decoder_145.pt"),
+        os.path.join(DATA_PATH, "models", "gan", "2024-04-12_11-19-16", "ckpt/decoder_125.pt"),
     ],
     "model": {
         "num_steps": 1000,
@@ -91,7 +93,8 @@ config["egg"] = {
     "em_weight": 1,
     "dm_weight": 1,
     "dm_loss_fn": "MSE-no-standardization",
-    "approximate_xstart_for_energy": True,
+    "approximate_xstart_for_energy": False,
+    "energy_freq": 1,
 
     "encoder_response_as_target": False,
     "init_reconstruction_mul_factor": None,
@@ -102,11 +105,12 @@ config["egg"] = {
 ### hyperparam runs config - either manually selected or grid search
 config_updates = []
 config_grid_search = {
-    "energy_scale": [1, 3, 7, 9, 12],
+    "energy_scale": [2, 5, 8],
     "em_weight": [1],
-    "dm_weight": [0, 0.1, 0.005],
+    "dm_weight": [0.001, 0.03],
     "dm_loss_name": ["MSE-no-standardization"],
-    "init_reconstruction_mul_factor": [None],
+    "init_reconstruction_mul_factor": [0.1, 0.3, 0.6],
+    "energy_freq": [3, 10, 30],
 }
 
 
@@ -215,6 +219,7 @@ if __name__ == "__main__":
                 dm_loss_fn=metrics[run_config["egg"]["dm_loss_fn"]],
                 xs_zero_to_match=xs_zero_to_match,
                 crop_win=config["crop_win"],
+                energy_freq=run_config["egg"]["energy_freq"],
             ),
             energy_scale=run_config["egg"]["energy_scale"],
             num_timesteps=run_config["egg"]["model"]["num_steps"],
@@ -259,7 +264,6 @@ if __name__ == "__main__":
             show=False,
         )
 
-    print(f"[INFO] Hyperparameter search finished. Best ({best['idx']}, loss={best['loss']}):")
-    json.dumps(best["config"], indent=2, default=str)
+    print(f"[INFO] Hyperparameter search finished. Best ({best['idx']}, loss={best['loss']}): {json.dumps(best['config'], indent=2, default=str)}")
     with open(os.path.join(run_dir, f"best_config.json"), "w") as f:
         json.dump(best["config"], f, indent=4, default=str)

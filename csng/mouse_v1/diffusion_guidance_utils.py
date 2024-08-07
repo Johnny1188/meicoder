@@ -38,7 +38,7 @@ def do_run(model, energy_fn, energy_scale, num_timesteps, num_samples=1, progres
         #             f'step {j} | train energy: {energy["train"]:.4g}'
         #         )
         #         curr_imgs.append(image)
-        energy_history.append(energy_fn(samples_t["pred_xstart"])["train"].detach())
+        energy_history.append(energy_fn(samples_t["pred_xstart"], t=0)["train"].detach())
         stim_pred_history.append(samples_t["pred_xstart"].mean(dim=1, keepdim=True).detach().cpu().numpy())
 
     stim_pred = F.interpolate(
@@ -61,7 +61,15 @@ def energy_fn(
         dm_loss_fn=F.mse_loss,
         xs_zero_to_match=None,
         crop_win=(22,36),
+        energy_freq=1,
+        t=None,
     ):
+    assert energy_freq == 1 or t is not None
+
+    ### skip
+    if energy_freq > 1 and t % energy_freq != 0:
+        return None
+
     energy = 0
 
     ### encoder matching
