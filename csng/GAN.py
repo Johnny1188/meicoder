@@ -5,6 +5,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from csng.utils import build_layers
+
 
 class Generator(nn.Module):
     def __init__(
@@ -114,10 +116,12 @@ class Discriminator(nn.Module):
         self.dropout = dropout
         self.batch_norm = batch_norm
 
+        self.head = None # applicable only w/ multiple data_keys
         self._build_layers()
 
-    def _get_out_shape(self, layers):
-        x = torch.zeros(1, *self.in_shape) # dummy input
+    @staticmethod
+    def get_out_shape(layers, in_shape):
+        x = torch.zeros(1, *in_shape) # dummy input
         for l in layers:
             x = l(x)
         return x.shape[1:]
@@ -128,7 +132,17 @@ class Discriminator(nn.Module):
 
         ### build cnn layers
         for l_i, layer_config in enumerate(self.layers):
-            if layer_config[0] == "conv":
+            if type(layer_config) == dict:
+                assert l_i == len(self.layers) - 1, "dictionary layer config allowed only as the last layer (module)"
+                head = dict()
+                for data_key, head_layer_config in layer_config.items():
+                    if head_layer_config["layers_config"][0][0] == "fc":
+                        in_channels_head = np.prod(self.get_out_shape(layers=layers, in_shape=head_layer_config["in_shape"]))
+                        head_layer_config["layers_config"].insert(0, ("flatten", 1, -1, in_channels_head))
+                        del head_layer_config["in_shape"]
+                    head[data_key] = build_layers(in_channels=in_channels, **head_layer_config)
+                self.head = nn.ModuleDict(head)
+            elif layer_config[0] == "conv":
                 layer_type, out_channels, kernel_size, stride, padding = layer_config
                 layers.append(
                     nn.Conv2d(
@@ -148,7 +162,7 @@ class Discriminator(nn.Module):
             elif layer_config[0] == "fc":
                 layer_type, out_channels = layer_config
                 layers.append(nn.Flatten())
-                layers.append(nn.Linear(np.prod(self._get_out_shape(layers)), out_channels))
+                layers.append(nn.Linear(np.prod(self.get_out_shape(layers=layers, in_shape=self.in_shape)), out_channels))
             else:
                 raise ValueError(f"layer_type {layer_type} not recognized")
 
@@ -170,17 +184,21 @@ class Discriminator(nn.Module):
 
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, x):
-        return self.layers(x)
-    
+    def forward(self, x, data_key=None):
+        x = self.layers(x)
+        if self.head is not None:
+            assert data_key is not None
+            x = self.head[data_key](x)
+        return x
+
 
 class GAN(nn.Module):
     def __init__(
         self,
         G_kwargs,
         D_kwargs,
-        G_optim_kwargs={"lr": 1e-4, "betas": (0.5, 0.999)},
-        D_optim_kwargs={"lr": 1e-4, "betas": (0.5, 0.999)},
+        G_optim_kwargs={"lr": 3e-4, "weight_decay": 0.3},
+        D_optim_kwargs={"lr": 3e-4, "weight_decay": 0.3},
     ):
         super().__init__()
         self.G_kwargs = G_kwargs
@@ -196,8 +214,8 @@ class GAN(nn.Module):
         self.D = Discriminator(**self.D_kwargs)
 
     def _build_optimizers(self):
-        self.G_optim = torch.optim.Adam(self.G.parameters(), **self.G_optim_kwargs)
-        self.D_optim = torch.optim.Adam(self.D.parameters(), **self.D_optim_kwargs)
+        self.G_optim = torch.optim.AdamW(self.G.parameters(), **self.G_optim_kwargs)
+        self.D_optim = torch.optim.AdamW(self.D.parameters(), **self.D_optim_kwargs)
 
     def state_dict(self, destination=None, prefix=None, keep_vars=True):
         state_dict = {

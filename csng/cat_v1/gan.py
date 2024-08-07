@@ -129,42 +129,42 @@ config["decoder"] = {
                     #     "neuron_emb_dim": None,
                     # }),
 
-                    (FCReadIn, {
-                        "in_shape": 46875,
-                        "layers_config": [
-                            ("fc", 512),
-                            ("unflatten", 1, (8, 8, 8)),
-                        ],
-                        "act_fn": nn.LeakyReLU,
-                        "out_act_fn": nn.Identity,
-                        "batch_norm": True,
-                        "dropout": 0.15,
-                        "out_channels": 8,
-                    }),
-
-                    # (MEIReadIn, {
-                    #     "meis_path": os.path.join(DATA_PATH, "meis", "cat_v1",  "meis.pt"),
-                    #     "n_neurons": 46875,
-                    #     "mei_resize_method": "resize",
-                    #     "mei_target_shape": (20, 20),
-                    #     "pointwise_conv_config": {
-                    #         "out_channels": 480,
-                    #         "bias": False,
-                    #         "batch_norm": True,
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "dropout": 0.15,
-                    #     },
-                    #     "ctx_net_config": {
-                    #         "in_channels": 3, # resp, x, y
-                    #         "layers_config": [("fc", 64), ("fc", 128), ("fc", 20*20)],
-                    #         "act_fn": nn.LeakyReLU,
-                    #         "out_act_fn": nn.Identity,
-                    #         "dropout": 0.15,
-                    #         "batch_norm": True,
-                    #     },
-                    #     "shift_coords": False,
-                    #     "device": config["device"],
+                    # (FCReadIn, {
+                    #     "in_shape": 46875,
+                    #     "layers_config": [
+                    #         ("fc", 512),
+                    #         ("unflatten", 1, (8, 8, 8)),
+                    #     ],
+                    #     "act_fn": nn.LeakyReLU,
+                    #     "out_act_fn": nn.Identity,
+                    #     "batch_norm": True,
+                    #     "dropout": 0.15,
+                    #     "out_channels": 8,
                     # }),
+
+                    (MEIReadIn, {
+                        "meis_path": os.path.join(DATA_PATH, "meis", "cat_v1",  "meis.pt"),
+                        "n_neurons": 46875,
+                        "mei_resize_method": "resize",
+                        "mei_target_shape": (20, 20),
+                        "pointwise_conv_config": {
+                            "out_channels": 480,
+                            "bias": False,
+                            "batch_norm": True,
+                            "act_fn": nn.LeakyReLU,
+                            "dropout": 0.15,
+                        },
+                        "ctx_net_config": {
+                            "in_channels": 3, # resp, x, y
+                            "layers_config": [("fc", 64), ("fc", 128), ("fc", 20*20)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.15,
+                            "batch_norm": True,
+                        },
+                        "shift_coords": False,
+                        "device": config["device"],
+                    }),
 
                 ],
             }
@@ -172,22 +172,22 @@ config["decoder"] = {
         "core_cls": GAN,
         "core_config": {
             "G_kwargs": {
-                "in_shape": [8],
+                "in_shape": [480],
                 "layers": [
-                    ("deconv", 480, 7, 2, 3),
-                    ("deconv", 256, 5, 1, 2),
-                    ("deconv", 256, 5, 1, 1),
-                    ("deconv", 128, 4, 1, 1),
-                    ("deconv", 64, 3, 1, 1),
-                    ("deconv", 1, 3, 1, 0),
+                    # ("deconv", 480, 7, 2, 3),
+                    # ("deconv", 256, 5, 1, 2),
+                    # ("deconv", 256, 5, 1, 1),
+                    # ("deconv", 128, 4, 1, 1),
+                    # ("deconv", 64, 3, 1, 1),
+                    # ("deconv", 1, 3, 1, 0),
 
                     ### MEI readin
-                    # ("conv", 480, 7, 1, 3),
-                    # ("conv", 256, 5, 1, 2),
-                    # ("conv", 256, 5, 1, 2),
-                    # ("conv", 128, 3, 1, 1),
-                    # ("conv", 64, 3, 1, 1),
-                    # ("conv", 1, 3, 1, 1),
+                    ("conv", 480, 7, 1, 3),
+                    ("conv", 256, 5, 1, 2),
+                    ("conv", 256, 5, 1, 2),
+                    ("conv", 128, 3, 1, 1),
+                    ("conv", 64, 3, 1, 1),
+                    ("conv", 1, 3, 1, 1),
                 ],
                 "act_fn": nn.ReLU,
                 "out_act_fn": nn.Identity,

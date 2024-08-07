@@ -15,7 +15,7 @@ import wandb
 
 import csng
 from csng.GAN import GAN
-from csng.utils import crop, plot_comparison, standardize, normalize, plot_losses, count_parameters
+from csng.utils import crop, plot_comparison, standardize, normalize, plot_losses, count_parameters, seed_all
 from csng.losses import SSIMLoss, Loss, CroppedLoss
 from csng.readins import (
     MultiReadIn,
@@ -47,9 +47,11 @@ config = {
         "data_augmentation": None,
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
-    "seed": 0,
+    "seed": 1,
     "crop_win": (22, 36),
-    "wandb": None,
+    # "save_run": False,
+    # "wandb": None,
+    "save_run": True,
     "wandb": {
         "project": "CSNG",
         "group": "sensorium_2022",
@@ -259,8 +261,7 @@ config["decoder"] = {
         # ),
     },
     "val_loss": None,
-    # "val_loss": get_metrics(config)["SSIML-PL"],
-    "val_loss": "FID",
+    "val_loss": "FID", # get_metrics(config)["SSIML-PL"]
     "G_opter_cls": torch.optim.AdamW,
     "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
     "D_opter_cls": torch.optim.AdamW,
@@ -275,17 +276,32 @@ config["decoder"] = {
     "D_fake_stim_labels_noise": 0.05,
     "n_epochs": 150,
     "load_ckpt": None,
-    # "load_ckpt": {
-    #     "load_best": False,
-    #     "load_opter_state": False,
-    #     "reset_history": True,
-    #     "reset_best": True,
-    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-25_10-16-21", "ckpt", "decoder_65.pt"),
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-18_15-23-39", "decoder.pt"),
-    #     "resume_checkpointing": False,
-    #     "resume_wandb_id": None,
-    # },
-    "save_run": True,
+    "load_ckpt": {
+        # "load_best": False,
+        # "load_only_core": False,
+        # "load_opter_state_G": True,
+        # "load_opter_state_D": True,
+        # "load_G": True,
+        # "load_D": True,
+        # "reset_history": False,
+        # "reset_best": False,
+        # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-08-05_08-42-01", "ckpt", "decoder_117.pt"),
+        # "resume_checkpointing": True,
+        # "resume_wandb_id": "wdm4dtfx",
+        
+        # "load_best": True,
+        # "load_only_core": True,
+        # "load_opter_state_G": False,
+        # "load_opter_state_D": False,
+        # "load_G": True,
+        # "load_D": False,
+        # "reset_history": True,
+        # "reset_best": True,
+        # # "ckpt_path": os.path.join(DATA_PATH, "models", "cat_v1_pretraining", "gan", "2024-08-05_08-42-01", "decoder.pt"),
+        # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-07-24_09-13-30", "decoder.pt"),
+        # "resume_checkpointing": False,
+        # "resume_wandb_id": None,
+    },
 }
 print(
     f"[INFO] List of dataloaders:"
@@ -299,9 +315,7 @@ del _dataloaders
 if __name__ == "__main__":
     print(f"... Running on {config['device']} ...")
     print(f"{DATA_PATH=}")
-    np.random.seed(config["seed"])
-    torch.manual_seed(config["seed"])
-    random.seed(config["seed"])
+    seed_all(config["seed"])
 
     ### data
     dataloaders, neuron_coords = get_all_data(config=config)
@@ -316,29 +330,49 @@ if __name__ == "__main__":
     if config["decoder"]["load_ckpt"] != None:
         print(f"[INFO] Loading checkpoint from {config['decoder']['load_ckpt']['ckpt_path']}...")
         ckpt = torch.load(config["decoder"]["load_ckpt"]["ckpt_path"], map_location=config["device"], pickle_module=dill)
-
         history = ckpt["history"]
-        config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
         best = ckpt["best"]
 
+        ### load config
+        if config["decoder"]["load_ckpt"]["load_only_core"]:
+            assert not config["decoder"]["load_ckpt"]["load_opter_state_G"] and not config["decoder"]["load_ckpt"]["load_opter_state_D"], \
+                "load_opter_state_{G,D}=True not supported."
+            config["decoder"]["model"]["core_cls"] = ckpt["config"]["decoder"]["model"]["core_cls"]
+            if config["decoder"]["load_ckpt"]["load_G"]:
+                config["decoder"]["model"]["core_config"]["G_kwargs"] = ckpt["config"]["decoder"]["model"]["core_config"]["G_kwargs"]
+            if config["decoder"]["load_ckpt"]["load_D"]:
+                config["decoder"]["model"]["core_config"]["D_kwargs"] = ckpt["config"]["decoder"]["model"]["core_config"]["D_kwargs"]
+        else:
+            config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
+
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
+
+        ### load core modules
         if config["decoder"]["load_ckpt"]["load_best"]:
             core_state_dict = {".".join(k.split(".")[1:]):v for k,v in best["model"].items() if "G" in k or "D" in k}
         else:
             core_state_dict = {".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "G" in k or "D" in k}
-        decoder.core.G.load_state_dict(core_state_dict["G"])
-        decoder.core.D.load_state_dict(core_state_dict["D"])
-        if config["decoder"]["load_ckpt"]["load_best"]:
-            decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in best["model"].items() if "readin" in k})
-        else:
-            decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "readin" in k})
+        if config["decoder"]["load_ckpt"]["load_G"]:
+            decoder.core.G.load_state_dict(core_state_dict["G"])
+        if config["decoder"]["load_ckpt"]["load_D"]:
+            decoder.core.D.load_state_dict(core_state_dict["D"])
+
+        ### load readins
+        if config["decoder"]["load_ckpt"]["load_G"] and not config["decoder"]["load_ckpt"]["load_only_core"]:
+            if config["decoder"]["load_ckpt"]["load_best"]:
+                decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in best["model"].items() if "readin" in k})
+            else:
+                decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "readin" in k})
+    
+        ### load optimizers
         decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])
         decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
-        if config["decoder"]["load_ckpt"]["load_opter_state"]:
+        if config["decoder"]["load_ckpt"]["load_opter_state_G"]:
             decoder.core.G_optim.load_state_dict(core_state_dict["G_optim"])
+        if config["decoder"]["load_ckpt"]["load_opter_state_D"]:
             decoder.core.D_optim.load_state_dict(core_state_dict["D_optim"])
 
-        # reset tracking
+        ### reset tracking
         if config["decoder"]["load_ckpt"]["reset_history"]:
             history = {"val_loss": []}
         if config["decoder"]["load_ckpt"]["reset_best"]:
@@ -377,7 +411,7 @@ if __name__ == "__main__":
     if config["decoder"]["load_ckpt"] == None \
         or config["decoder"]["load_ckpt"]["resume_checkpointing"] is False:
         config["run_name"] = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        if config["decoder"]["save_run"]:
+        if config["save_run"]:
             ### save config
             config["dir"] = os.path.join(DATA_PATH, "models", "gan", config["run_name"])
             os.makedirs(config["dir"], exist_ok=True)
@@ -475,10 +509,10 @@ if __name__ == "__main__":
 
         ### plot losses
         if epoch % 5 == 0 and epoch > 0:
-            plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["decoder"]["save_run"] else None)
+            plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["save_run"] else None)
 
         ### save ckpt
-        if epoch % 3 == 0 and epoch > 0 and config["decoder"]["save_run"]:
+        if epoch % 3 == 0 and epoch > 0 and config["save_run"]:
             torch.save({
                 "decoder": decoder.state_dict(),
                 "history": history,
@@ -490,7 +524,7 @@ if __name__ == "__main__":
     print(f"Best val loss: {best['val_loss']:.4f} at epoch {best['epoch']}")
 
     ### save final ckpt
-    if config["decoder"]["save_run"]:
+    if config["save_run"]:
         torch.save({
             "decoder": decoder.state_dict(),
             "history": history,
@@ -535,7 +569,7 @@ if __name__ == "__main__":
         target=crop(stim[:8], config["crop_win"]).cpu(),
         pred=crop(stim_pred_best[:8], config["crop_win"]).cpu(),
         show=False,
-        save_to=os.path.join(config["dir"], "stim_comparison_best.png") if config["decoder"]["save_run"] else None,
+        save_to=os.path.join(config["dir"], "stim_comparison_best.png") if config["save_run"] else None,
     )
 
     ### log
@@ -555,5 +589,5 @@ if __name__ == "__main__":
     plot_losses(
         history=history,
         show=False,
-        save_to=None if not config["decoder"]["save_run"] else os.path.join(config["dir"], f"losses.png"),
+        save_to=None if not config["save_run"] else os.path.join(config["dir"], f"losses.png"),
     )

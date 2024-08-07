@@ -8,13 +8,117 @@ import dill
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+from collections import defaultdict
 
 from csng.utils import crop
-
+from csng.losses import FID
 from csng.cat_v1.data import (
     prepare_v1_dataloaders,
     MixedBatchLoader,
 )
+
+
+def get_training_losses(model, resp, stim, data_key, neuron_coords, loss_fn, config, crop_win=None):
+    ### get the stimulus reconstruction from the generator
+    stim_pred = model(
+        resp,
+        data_key=data_key,
+        neuron_coords=neuron_coords,
+    )
+
+    ### get discriminator loss
+    # real stim (add noise to labels (uniform distribution between 0.xx and 1))
+    real_stim_pred = model.core.D(crop(stim, config["crop_win"] if crop_win is None else crop_win), data_key=data_key)
+    noisy_real_stim_labels = (
+        1. - config["decoder"]["D_real_stim_labels_noise"] 
+        + torch.rand_like(real_stim_pred) * config["decoder"]["D_real_stim_labels_noise"]
+    )
+    real_stim_loss = torch.mean((real_stim_pred - noisy_real_stim_labels)**2) * config["decoder"]["D_real_loss_mul"]
+    # fake stim (add noise to labels (uniform distribution between 0 and noise level))
+    fake_stim_pred = model.core.D(crop(stim_pred.detach(), config["crop_win"] if crop_win is None else crop_win), data_key=data_key)
+    noisy_fake_stim_labels = torch.rand_like(fake_stim_pred) * config["decoder"]["D_fake_stim_labels_noise"]
+    fake_stim_loss = torch.mean((fake_stim_pred - noisy_fake_stim_labels)**2) * config["decoder"]["D_fake_loss_mul"]
+    D_loss = real_stim_loss + fake_stim_loss
+
+    ### get generator loss
+    # fooling the discriminator
+    fake_stim_pred_for_G = model.core.D(crop(stim_pred, config["crop_win"] if crop_win is None else crop_win), data_key=data_key)
+    G_loss_adv = torch.mean((fake_stim_pred_for_G - 1.)**2) * config["decoder"]["G_adv_loss_mul"]
+    # reconstruction quality
+    G_loss_stim = config["decoder"]["G_stim_loss_mul"] * loss_fn(stim_pred, stim, data_key=data_key, phase="train", neuron_coords=neuron_coords)
+    G_loss = G_loss_adv + G_loss_stim
+
+    return G_loss, G_loss_stim, G_loss_adv, D_loss, real_stim_loss, fake_stim_loss
+
+
+def update_G(model, G_loss, config, data_keys=None):
+    model.core.G_optim.zero_grad()
+
+    ### regularization
+    if config["decoder"]["G_reg"]["l2"] > 0:
+        G_loss += sum(p.pow(2).sum() for n,p in model.core.G.named_parameters() \
+            if p.requires_grad and "bias" not in n) * config["decoder"]["G_reg"]["l2"]
+        G_loss += sum(p.pow(2).sum() for n,p in model.readins.named_parameters() \
+            if p.requires_grad and "bias" not in n and (data_keys is None or sum(dk in n for dk in data_keys) == 1)) * config["decoder"]["G_reg"]["l2"]
+    if config["decoder"]["G_reg"]["l1"] > 0:
+        G_loss += sum(p.abs().sum() for n,p in model.core.G.named_parameters() \
+            if p.requires_grad and "bias" not in n) * config["decoder"]["G_reg"]["l1"]
+        G_loss += sum(p.abs().sum() for n,p in model.readins.named_parameters() \
+            if p.requires_grad and "bias" not in n and (data_keys is None or sum(dk in n for dk in data_keys) == 1)) * config["decoder"]["G_reg"]["l1"]
+    G_loss.backward()
+
+    ### clip gradients
+    for n, p in model.core.G.named_parameters():
+        if "head" in n and data_keys is not None and sum(dk in n for dk in data_keys) == 0:
+            continue
+        p.grad.data.clamp_(-1., 1.)
+
+    ### log
+    G_mean_abs_grad_first_layer = torch.mean(torch.abs(model.core.G.layers[0].weight.grad)).item()
+    G_mean_abs_grad_last_layer = torch.mean(torch.abs(model.core.G.layers[-2].weight.grad)).item()
+
+    ### step
+    model.core.G_optim.step()
+
+    return G_loss, G_mean_abs_grad_first_layer, G_mean_abs_grad_last_layer
+
+
+def update_D(model, D_loss, config, data_keys=None):
+    model.core.D_optim.zero_grad()
+
+    ### regularization
+    if config["decoder"]["D_reg"]["l2"] > 0:
+        D_loss += sum(p.pow(2).sum() for n,p in model.core.D.named_parameters() \
+            if p.requires_grad and "bias" not in n and ("head" not in n or sum(dk in n for dk in data_keys) == 1)) * config["decoder"]["D_reg"]["l2"]
+    if config["decoder"]["D_reg"]["l1"] > 0:
+        D_loss += sum(p.abs().sum() for n,p in model.core.D.named_parameters() \
+            if p.requires_grad and "bias" not in n and ("head" not in n or sum(dk in n for dk in data_keys) == 1)) * config["decoder"]["D_reg"]["l1"]
+    D_loss.backward()
+
+    ### clip gradients
+    for n, p in model.core.D.named_parameters():
+        if "head" in n and data_keys is not None and sum(dk in n for dk in data_keys) == 0:
+            continue
+        p.grad.data.clamp_(-1., 1.)
+
+    ### log
+    D_mean_abs_grad_first_layer = torch.mean(torch.abs(model.core.D.layers[0].weight.grad)).item()
+    if model.core.D.head is None:
+        D_mean_abs_grad_last_layer = torch.mean(torch.abs(model.core.D.layers[-2].weight.grad)).item()
+    else:
+        D_mean_abs_grad_last_layer, div_by = 0, 0
+        for n, p in model.core.D.head.named_parameters():
+            if data_keys is not None and sum(dk in n for dk in data_keys) == 0:
+                continue
+            if "weight" in n:
+                D_mean_abs_grad_last_layer += p.grad.abs().mean().item()
+                div_by += 1
+        D_mean_abs_grad_last_layer /= max(div_by, 1)
+
+    ### step
+    model.core.D_optim.step()
+
+    return D_loss, D_mean_abs_grad_first_layer, D_mean_abs_grad_last_layer
 
 
 def train(model, dataloader, loss_fn, config, history, log_freq=100, wdb_run=None, wdb_commit=True):
@@ -26,96 +130,37 @@ def train(model, dataloader, loss_fn, config, history, log_freq=100, wdb_run=Non
 
     ### run
     for batch_idx, b in enumerate(dataloader):
-        D_loss, G_loss = 0, 0
+        D_loss, D_real_stim_loss, D_fake_stim_loss, G_loss, G_loss_stim, G_loss_adv = 0, 0, 0, 0, 0, 0
 
         ### combine losses from all data keys
         for data_key, (stim, resp, neuron_coords) in b.items():
-            ### get the stimulus reconstruction from the generator
-            stim_pred = model(
-                resp,
+            G_loss_b, G_loss_stim_b, G_loss_adv_b, D_loss_b, D_real_stim_loss_b, D_fake_stim_loss_b = get_losses(
+                model=model,
+                resp=resp,
+                stim=stim,
                 data_key=data_key,
                 neuron_coords=neuron_coords,
+                loss_fn=loss_fn,
+                config=config,
             )
-
-            ### get discriminator loss
-            # real stim (add noise to labels (uniform distribution between 0.xx and 1))
-            real_stim_pred = model.core.D(crop(stim, config["crop_win"]))
-            noisy_real_stim_labels = (
-                1. - config["decoder"]["D_real_stim_labels_noise"] 
-                + torch.rand_like(real_stim_pred) * config["decoder"]["D_real_stim_labels_noise"]
-            )
-            real_stim_loss = torch.mean((real_stim_pred - noisy_real_stim_labels)**2) * config["decoder"]["D_real_loss_mul"]
-            # fake stim (add noise to labels (uniform distribution between 0 and noise level))
-            fake_stim_pred = model.core.D(crop(stim_pred.detach(), config["crop_win"]))
-            noisy_fake_stim_labels = torch.rand_like(fake_stim_pred) * config["decoder"]["D_fake_stim_labels_noise"]
-            fake_stim_loss = torch.mean((fake_stim_pred - noisy_fake_stim_labels)**2) * config["decoder"]["D_fake_loss_mul"]
-            D_loss = D_loss + real_stim_loss + fake_stim_loss
-
-            ### get generator loss
-            # fooling the discriminator
-            fake_stim_pred_for_G = model.core.D(crop(stim_pred, config["crop_win"]))
-            G_loss_adv = torch.mean((fake_stim_pred_for_G - 1.)**2) * config["decoder"]["G_adv_loss_mul"]
-            # reconstruction quality
-            G_loss_stim = config["decoder"]["G_stim_loss_mul"] * loss_fn(stim_pred, stim, data_key=data_key, phase="train", neuron_coords=neuron_coords)
-            G_loss = G_loss + G_loss_adv + G_loss_stim
+            G_loss, G_loss_stim, G_loss_adv = G_loss + G_loss_b, G_loss_stim + G_loss_stim_b, G_loss_adv + G_loss_adv_b
+            D_loss, D_real_stim_loss, D_fake_stim_loss = D_loss + D_loss_b, D_real_stim_loss + D_real_stim_loss_b, D_fake_stim_loss + D_fake_stim_loss_b
 
         ##### update generator [START] #####
-        model.core.G_optim.zero_grad()
         G_loss /= len(b)
-
-        # regularization
-        if config["decoder"]["G_reg"]["l2"] > 0:
-            G_loss += sum(p.pow(2).sum() for n,p in model.core.G.named_parameters() \
-                if p.requires_grad and "bias" not in n) * config["decoder"]["G_reg"]["l2"]
-            G_loss += sum(p.pow(2).sum() for n,p in model.readins.named_parameters() \
-                if p.requires_grad and "bias" not in n) * config["decoder"]["G_reg"]["l2"]
-        if config["decoder"]["G_reg"]["l1"] > 0:
-            G_loss += sum(p.abs().sum() for n,p in model.core.G.named_parameters() \
-                if p.requires_grad and "bias" not in n) * config["decoder"]["G_reg"]["l1"]
-            G_loss += sum(p.abs().sum() for n,p in model.readins.named_parameters() \
-                if p.requires_grad and "bias" not in n) * config["decoder"]["G_reg"]["l1"]
-        G_loss.backward()
-
-        # clip gradients
-        for p in model.core.G.parameters():
-            p.grad.data.clamp_(-1., 1.)
-        
-        # log
-        history["G_mean_abs_grad_first_layer"].append(torch.mean(torch.abs(model.core.G.layers[0].weight.grad)).item())
-        history["G_mean_abs_grad_last_layer"].append(torch.mean(torch.abs(model.core.G.layers[-2].weight.grad)).item())
-
-        # step
-        model.core.G_optim.step()
+        G_loss, G_mean_abs_grad_first_layer, G_mean_abs_grad_last_layer = update_G(model=model, G_loss=G_loss, config=config)
         ##### update generator [END] #####
 
-
         ##### update discriminator [START] #####
-        model.core.D_optim.zero_grad()
         D_loss /= len(b)
-
-        # regularization
-        if config["decoder"]["D_reg"]["l2"] > 0:
-            D_loss += sum(p.pow(2).sum() for n,p in model.core.D.named_parameters() \
-                if p.requires_grad and "bias" not in n) * config["decoder"]["D_reg"]["l2"]
-        if config["decoder"]["D_reg"]["l1"] > 0:
-            D_loss += sum(p.abs().sum() for n,p in model.core.D.named_parameters() \
-                if p.requires_grad and "bias" not in n) * config["decoder"]["D_reg"]["l1"]
-        D_loss.backward()
-
-        # clip gradients
-        for p in model.core.D.parameters():
-            p.grad.data.clamp_(-1., 1.)
-
-        # log
-        history["D_mean_abs_grad_first_layer"].append(torch.mean(torch.abs(model.core.D.layers[0].weight.grad)).item())
-        history["D_mean_abs_grad_last_layer"].append(torch.mean(torch.abs(model.core.D.layers[-2].weight.grad)).item())
-
-        # step
-        model.core.D_optim.step()
+        D_loss, D_mean_abs_grad_first_layer, D_mean_abs_grad_last_layer = update_D(model=model, D_loss=D_loss, config=config)
         ##### update discriminator [END] #####
 
-
         ### log
+        history["G_mean_abs_grad_first_layer"].append(G_mean_abs_grad_first_layer)
+        history["G_mean_abs_grad_last_layer"].append(G_mean_abs_grad_last_layer)
+        history["D_mean_abs_grad_first_layer"].append(D_mean_abs_grad_first_layer)
+        history["D_mean_abs_grad_last_layer"].append(D_mean_abs_grad_last_layer)
         history["D_loss"].append(D_loss.item())
         history["G_loss"].append(G_loss.item())
         history["G_loss_stim"].append(G_loss_stim.item())
@@ -138,11 +183,18 @@ def train(model, dataloader, loss_fn, config, history, log_freq=100, wdb_run=Non
     return history
 
 
-def val(model, dataloader, loss_fn, only_data_keys=None):
+def val(model, dataloader, loss_fn, only_data_keys=None, crop_win=None):
     model.eval()
     val_losses = {"total": 0}
     n_samples = 0
     denom_data_keys = {}
+
+    ### is loss_fn FID?
+    is_fid = False
+    if type(loss_fn) == str and loss_fn.lower() == "fid":
+        is_fid = True
+        preds, targets = defaultdict(list), defaultdict(list)
+
     with torch.no_grad():
         for b in dataloader:
             ### combine from all data keys
@@ -154,15 +206,33 @@ def val(model, dataloader, loss_fn, only_data_keys=None):
                     data_key=data_key,
                     neuron_coords=neuron_coords,
                 )
-                loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
-                val_losses["total"] += loss
-                val_losses[data_key] = loss if data_key not in val_losses else val_losses[data_key] + loss
-                denom_data_keys[data_key] = denom_data_keys[data_key] + resp.shape[0] if data_key in denom_data_keys else resp.shape[0]
-                n_samples += resp.shape[0]
 
-    val_losses["total"] /= n_samples
-    for k in denom_data_keys:
-        val_losses[k] /= denom_data_keys[k]
+                ### calc loss/FID
+                if is_fid:
+                    preds[data_key].append(crop(stim_pred, crop_win).cpu())
+                    targets[data_key].append(crop(stim, crop_win).cpu())
+                else:
+                    loss = loss_fn(stim_pred, stim, data_key=data_key, phase="val").item()
+                    val_losses["total"] += loss
+                    val_losses[data_key] = loss if data_key not in val_losses else val_losses[data_key] + loss
+                    denom_data_keys[data_key] = denom_data_keys[data_key] + resp.shape[0] if data_key in denom_data_keys else resp.shape[0]
+                    n_samples += resp.shape[0]
+
+    ### finalize the val loss
+    if is_fid:
+        for data_key in preds.keys():
+            fid = FID(inp_standardized=False, device="cpu")
+            val_losses[data_key] = fid(
+                pred_imgs=torch.cat(preds[data_key], dim=0),
+                gt_imgs=torch.cat(targets[data_key], dim=0)
+            )
+            val_losses["total"] += val_losses[data_key]
+        val_losses["total"] /= len(preds.keys()) # average over data keys
+    else:
+        val_losses["total"] /= n_samples
+        for k in denom_data_keys:
+            val_losses[k] /= denom_data_keys[k]
+
     return val_losses
 
 
