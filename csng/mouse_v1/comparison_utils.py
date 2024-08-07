@@ -239,7 +239,7 @@ def eval_decoder(model, dataloader, loss_fns, config, calc_fid=False, max_batche
         ### combine from all data keys
         for data_key, stim, resp, neuron_coords, pupil_center in b:
             ### get reconstructions
-            if model.__class__.__name__ == "InvertedEncoder":
+            if model.__class__.__name__ in ("InvertedEncoder", "InvertedEncoderBrainreader"):
                 stim_pred, _, _ = model(
                     resp_target=resp,
                     stim_target=stim,

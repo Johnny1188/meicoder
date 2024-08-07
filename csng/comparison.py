@@ -3,6 +3,7 @@ import random
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import seaborn as sns
 from matplotlib import patches as mpatches
 from mpl_toolkits.axes_grid1 import ImageGrid
 import json
@@ -308,7 +309,8 @@ def plot_syn_data_loss_curve(run_groups, losses_to_plot, run_group_colors=None, 
                 "label": run_g_name,
             }
             if g_color is not None: plot_kwargs["color"] = g_color
-            ax[l_idx].plot(syn_data_percentages, l_vals, **plot_kwargs)
+            # ax[l_idx].plot(syn_data_percentages, l_vals, **plot_kwargs)
+            sns.lineplot(x=syn_data_percentages, y=l_vals, ax=ax[l_idx], errorbar="se", **plot_kwargs)
 
     ### plot mean
     if mean_line_kwargs:
