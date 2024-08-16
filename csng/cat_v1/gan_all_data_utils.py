@@ -268,10 +268,9 @@ def get_dataloaders(config):
 
         ### mouse v1 - synthetic data
         if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:
-            raise NotImplementedError
             m_dls = append_syn_dataloaders(
                 dataloaders=m_dls,
-                config=config["data"]["syn_dataset_config"]
+                config=config["data"]["syn_dataset_config"],
             )
 
         ### mouse v1 - data augmentation
