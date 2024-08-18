@@ -45,6 +45,7 @@ config["data"]["brainreader_mouse"] = {
 }
 
 ### model
+_dls = get_brainreader_data(config=config["data"]["brainreader_mouse"])
 config["model_fn"] = "sensorium.models.stacked_core_full_gauss_readout"
 config["model_config"] = {
     "pad_input": False,
@@ -69,10 +70,11 @@ config["model_config"] = {
     "shifter": False,
     "stack": -1,
     # "mean_activity_dict": {
-    #     data_key: torch.from_numpy(dat.statistics["responses"]["all"]["mean"]).to(config["device"])
-    #     for data_key, dat in zip(_dataloaders["mouse_v1"]["train"].data_keys, _dataloaders["mouse_v1"]["train"].datasets)
+    #     data_key: torch.from_numpy(np.load(os.path.join(dset.data_dir, "stats", "responses_mean.npy"))).to(config["device"])
+    #     for data_key, dset in _dls["brainreader_mouse"]["train"].datasets.items()
     # },
 }
+del _dls
 
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"

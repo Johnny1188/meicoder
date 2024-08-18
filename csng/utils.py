@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import nn
 import numpy as np
@@ -388,15 +389,33 @@ def seed_all(seed):
 
 
 def update_config_paths(config, new_data_path):
+    def update_path_str(old_path, new_path):
+        ### count number of folders in new_dat_path from the root "/1/2/3/4/5" -> 5,
+        ###   and then replace only the first 5 folders in the old path
+        old_data_path_split = old_path.split("/")
+        new_data_path_split = new_path.split("/")
+        n_folders = len(new_data_path_split)
+        return os.path.join("/", *new_data_path_split[:n_folders], *old_data_path_split[n_folders:])
+        # update_path = "/".join(new_data_path_split[:n_folders])
+        # if len(old_data_path_split[n_folders:]) > 0:
+        #     update_path += "/"
+        # return "/".join(new_data_path_split[:n_folders]) \
+        #     + "/".join(old_data_path_split[n_folders:])
+
     ### update paths that use remote DATA_PATH with new_data_path
-    for k, v in config.items():
-        if isinstance(v, dict):
+    if isinstance(config, dict):
+        for k, v in config.items():
+            if isinstance(v, dict):
+                update_config_paths(v, new_data_path)
+            elif isinstance(v, list) or isinstance(v, tuple):
+                for _v in v:
+                    update_config_paths(_v, new_data_path)
+            elif k in ["data_dir", "ckpt_path", "save_path"] and isinstance(v, str):
+                config[k] = update_path_str(v, new_data_path)
+            else:
+                update_config_paths(v, new_data_path)
+    elif isinstance(config, list) or isinstance(config, tuple):
+        for v in config:
             update_config_paths(v, new_data_path)
-        elif k in ["data_dir", "ckpt_path", "save_path"]:
-            ### count number of folders in new_dat_path from the root "/1/2/3/4/5" -> 5,
-            ###   and then replace only the first 5 folders in the old path
-            old_data_path_split = config[k].split("/")
-            new_data_path_split = new_data_path.split("/")
-            n_folders = len(new_data_path_split)
-            config[k] = "/".join(new_data_path_split[:n_folders]) + old_data_path_split[n_folders:]
+
     return config
