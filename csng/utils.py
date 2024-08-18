@@ -385,3 +385,18 @@ def seed_all(seed):
         ### deterministic behavior
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+
+def update_config_paths(config, new_data_path):
+    ### update paths that use remote DATA_PATH with new_data_path
+    for k, v in config.items():
+        if isinstance(v, dict):
+            update_config_paths(v, new_data_path)
+        elif k in ["data_dir", "ckpt_path", "save_path"]:
+            ### count number of folders in new_dat_path from the root "/1/2/3/4/5" -> 5,
+            ###   and then replace only the first 5 folders in the old path
+            old_data_path_split = config[k].split("/")
+            new_data_path_split = new_data_path.split("/")
+            n_folders = len(new_data_path_split)
+            config[k] = "/".join(new_data_path_split[:n_folders]) + old_data_path_split[n_folders:]
+    return config
