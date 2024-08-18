@@ -47,7 +47,7 @@ config = {
         "data_augmentation": None,
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
-    "seed": 1,
+    "seed": 0,
     "crop_win": (22, 36),
     # "save_run": False,
     # "wandb": None,
