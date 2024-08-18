@@ -756,7 +756,7 @@ class ConvReadIn(ReadIn):
         B, n_neurons = x.shape
 
         ### prepare neuron_coords
-        if neuron_coords.ndim == 2:
+        if self.grid_net_config["in_channels"] != 1 and neuron_coords.ndim == 2:
             neuron_coords = neuron_coords.unsqueeze(0).repeat(B, 1, 1) # (B, n_neurons, n_coords)
         if self.shift_coords:
             ### shift neuron_coords by pupil_center
@@ -767,7 +767,7 @@ class ConvReadIn(ReadIn):
         ### construct positioned responses tensor (B, n_neurons, H, W) based on neuron coords
         if self.learn_grid:
             ### drop the z-coordinate if it's not used
-            if self.grid_net_config["in_channels"] < 4:
+            if self.grid_net_config["in_channels"] != 1 and self.grid_net_config["in_channels"] < 4:
                 neuron_coords = neuron_coords[..., :2]
             
             ### construct grid net input
@@ -780,12 +780,14 @@ class ConvReadIn(ReadIn):
                     torch.log10(x.clamp_min(1e-3)).unsqueeze(-1)
                 ], dim=-1) # (B, n_neurons, n_coords + n_neuron_embed_dim + 1)
                 grid_net_inp = grid_net_inp.flatten(0, 1) # (B * n_neurons, n_coords + self.neuron_emb_dim + 1)
-            else:
+            elif self.grid_net_config["in_channels"] > 1:
                 grid_net_inp = torch.cat([
                     neuron_coords,
                     torch.log10(x.clamp_min(1e-3)).unsqueeze(-1)
                 ], dim=-1) # (B, n_neurons, n_coords + 1)
                 grid_net_inp = grid_net_inp.flatten(0, 1) # (B * n_neurons, n_coords + 1)
+            else:
+                grid_net_inp = torch.log10(x.clamp_min(1e-3)).flatten().unsqueeze(-1) # (B * n_neurons, 1)
 
             ### run grid net
             pos_x = self.grid_net(grid_net_inp) # (B * n_neurons, H * W)
