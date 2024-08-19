@@ -1,6 +1,7 @@
 import os
 import random
 import numpy as np
+from collections import defaultdict
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -26,7 +27,79 @@ from csng.losses import (
     PerceptualLoss,
     EncoderPerceptualLoss,
     VGGPerceptualLoss,
+    FID,
 )
+
+
+def eval_decoder(model, dataloaders, loss_fns, config, calc_fid=False, max_batches=None):
+    model.eval()
+    
+    ### for tracking over whole dataset
+    val_losses = {loss_fn_name: {"total": 0} for loss_fn_name in loss_fns.keys()}
+    num_samples = 0
+    denom_data_keys = {}
+    if calc_fid:
+        preds, targets = defaultdict(list), defaultdict(list)
+
+    ### run eval
+    for k, dl in dataloaders.items(): # different data sources (cat_v1, mouse_v1, ...)
+        for b in dl:
+            ### combine losses from all data keys
+            for dp in b:
+                ### get predictions
+                if "invertedencoder" in model.__class__.__name__.lower():
+                    stim_pred, _, _ = model(
+                        resp_target=dp["resp"],
+                        stim_target=None,
+                        additional_encoder_inp={
+                            "data_key": dp["data_key"],
+                        }
+                    )
+                else:
+                    stim_pred = model(
+                        dp["resp"],
+                        data_key=dp["data_key"],
+                        neuron_coords=dp["neuron_coords"],
+                    )
+
+
+                ### calc metrics
+                for loss_fn_name, loss_fn in loss_fns.items():
+                    loss = loss_fn(stim_pred, dp["stim"], data_key=dp["data_key"], phase="val").item()
+                    val_losses[loss_fn_name]["total"] += loss
+                    val_losses[loss_fn_name][dp["data_key"]] = loss if dp["data_key"] not in val_losses[loss_fn_name] else val_losses[loss_fn_name][dp["data_key"]] + loss
+
+                ### append for later fid calculation
+                if calc_fid:
+                    preds[dp["data_key"]].append(crop(stim_pred, config["crop_win"]).detach().cpu())
+                    targets[dp["data_key"]].append(crop(dp["stim"], config["crop_win"]).cpu())
+
+                num_samples += dp["stim"].shape[0]
+                denom_data_keys[dp["data_key"]] = denom_data_keys[dp["data_key"]] + dp["stim"].shape[0] if dp["data_key"] in denom_data_keys else dp["stim"].shape[0]
+
+            if max_batches is not None and b_idx + 1 >= max_batches:
+                break
+
+    ### average losses
+    for loss_name in val_losses:
+        val_losses[loss_name]["total"] /= num_samples
+        for k in denom_data_keys:
+            val_losses[loss_name][k] /= denom_data_keys[k]
+
+    ### eval fid
+    if calc_fid:
+        val_losses["FID"] = {"total": 0}
+        for data_key in preds.keys():
+            fid = FID(inp_standardized=False, device="cpu")
+            val_losses["FID"][data_key] = fid(
+                pred_imgs=torch.cat(preds[data_key], dim=0),
+                gt_imgs=torch.cat(targets[data_key], dim=0)
+            )
+            val_losses["FID"]["total"] += val_losses["FID"][data_key]
+        val_losses["FID"]["total"] /= len(preds.keys())
+
+
+    return val_losses
 
 
 def get_metrics(crop_win=None, device="cpu"):
