@@ -140,20 +140,20 @@ config["decoder"] = {
             "resp_shape": (480,),
             "layers": [
                 ### Conv/FC readin
-                ("deconv", 480, 7, 2, 2),
-                ("deconv", 256, 5, 1, 2),
-                ("deconv", 256, 5, 1, 2),
-                ("deconv", 128, 4, 1, 1),
-                ("deconv", 64, 3, 1, 1),
-                ("deconv", 1, 3, 1, 0),
+                # ("deconv", 480, 7, 2, 2),
+                # ("deconv", 256, 5, 1, 2),
+                # ("deconv", 256, 5, 1, 2),
+                # ("deconv", 128, 4, 1, 1),
+                # ("deconv", 64, 3, 1, 1),
+                # ("deconv", 1, 3, 1, 0),
 
                 ### MEI readin
-                # ("conv", 480, 7, 1, 3),
-                # ("conv", 256, 5, 1, 2),
-                # ("conv", 256, 5, 1, 2),
-                # ("conv", 128, 3, 1, 1),
-                # ("conv", 64, 3, 1, 1),
-                # ("conv", 1, 3, 1, 1),
+                ("conv", 480, 7, 1, 3),
+                ("conv", 256, 5, 1, 2),
+                ("conv", 256, 5, 1, 2),
+                ("conv", 128, 3, 1, 1),
+                ("conv", 64, 3, 1, 1),
+                ("conv", 1, 3, 1, 1),
             ],
             "act_fn": nn.ReLU,
             "out_act_fn": nn.Identity,
@@ -180,14 +180,14 @@ config["decoder"] = {
     "val_loss": "FID", # get_metrics(config)["SSIML-PL"],
     "n_epochs": 100,
     "load_ckpt": None,
-    # "load_ckpt": {
-    #     "load_only_core": False,
-    #     "ckpt_path": os.path.join(
-    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-    #         DATA_PATH, "models", "cnn", "2024-06-17_17-29-25", "ckpt", "decoder_40.pt"),
-    #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "znjuxlru",
-    # },
+    "load_ckpt": {
+        "load_only_core": False,
+        "ckpt_path": os.path.join(
+            # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+            DATA_PATH, "models", "cnn", "2024-08-20_08-31-45", "ckpt", "decoder_21.pt"),
+        "resume_checkpointing": True,
+        "resume_wandb_id": "6laoimoc",
+    },
 }
 
 ### append readins and losses for brainreader mouse
@@ -201,35 +201,35 @@ if "brainreader_mouse" in config["data"]:
             "in_shape": n_neurons,
             "decoding_objective_config": None,
             "layers": [
-                (ConvReadIn, {
-                    "H": 18,
-                    "W": 32,
-                    "shift_coords": False,
-                    "learn_grid": True,
-                    "grid_l1_reg": 8e-3,
-                    "in_channels_group_size": 1,
-                    "grid_net_config": {
-                        "in_channels": 1, # resp
-                        "layers_config": [("fc", 8), ("fc", 64), ("fc", 18*32)],
-                        "act_fn": nn.LeakyReLU,
-                        "out_act_fn": nn.Identity,
-                        "dropout": 0.2,
-                        "batch_norm": False,
-                    },
-                    "pointwise_conv_config": {
-                        "in_channels": n_neurons,
-                        "out_channels": 480,
-                        "act_fn": nn.Identity,
-                        "bias": False,
-                        "batch_norm": True,
-                        "dropout": 0.2,
-                    },
-                    "gauss_blur": False,
-                    "gauss_blur_kernel_size": 7,
-                    "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
-                    "gauss_blur_sigma_init": 1.5,
-                    "neuron_emb_dim": None,
-                }),
+                # (ConvReadIn, {
+                #     "H": 18,
+                #     "W": 32,
+                #     "shift_coords": False,
+                #     "learn_grid": True,
+                #     "grid_l1_reg": 8e-3,
+                #     "in_channels_group_size": 1,
+                #     "grid_net_config": {
+                #         "in_channels": 1, # resp
+                #         "layers_config": [("fc", 8), ("fc", 64), ("fc", 18*32)],
+                #         "act_fn": nn.LeakyReLU,
+                #         "out_act_fn": nn.Identity,
+                #         "dropout": 0.2,
+                #         "batch_norm": False,
+                #     },
+                #     "pointwise_conv_config": {
+                #         "in_channels": n_neurons,
+                #         "out_channels": 480,
+                #         "act_fn": nn.Identity,
+                #         "bias": False,
+                #         "batch_norm": True,
+                #         "dropout": 0.2,
+                #     },
+                #     "gauss_blur": False,
+                #     "gauss_blur_kernel_size": 7,
+                #     "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
+                #     "gauss_blur_sigma_init": 1.5,
+                #     "neuron_emb_dim": None,
+                # }),
 
                 # (FCReadIn, {
                 #     "in_shape": n_neurons,
@@ -243,29 +243,29 @@ if "brainreader_mouse" in config["data"]:
                 #     "dropout": 0.15,
                 # }),
 
-                # (MEIReadIn, {
-                #     "meis_path": os.path.join(os.environ["DATA_PATH"], "meis", data_key,  "meis.pt"),
-                #     "n_neurons": n_neurons,
-                #     "mei_resize_method": "resize",
-                #     "mei_target_shape": (22, 36),
-                #     "pointwise_conv_config": {
-                #         "out_channels": 480,
-                #         "bias": False,
-                #         "batch_norm": True,
-                #         "act_fn": nn.LeakyReLU,
-                #         "dropout": 0.1,
-                #     },
-                #     "ctx_net_config": {
-                #         "in_channels": 3, # resp, x, y
-                #         "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
-                #         "act_fn": nn.LeakyReLU,
-                #         "out_act_fn": nn.Identity,
-                #         "dropout": 0.1,
-                #         "batch_norm": True,
-                #     },
-                #     "shift_coords": False,
-                #     "device": config["device"],
-                # }),
+                (MEIReadIn, {
+                    "meis_path": os.path.join(DATA_PATH, "meis", data_key,  "meis.pt"),
+                    "n_neurons": n_neurons,
+                    "mei_resize_method": "resize",
+                    "mei_target_shape": (36, 64),
+                    "pointwise_conv_config": {
+                        "out_channels": 480,
+                        "bias": False,
+                        "batch_norm": True,
+                        "act_fn": nn.LeakyReLU,
+                        "dropout": 0.15,
+                    },
+                    "ctx_net_config": {
+                        "in_channels": 1, # resp, x, y
+                        "layers_config": [("fc", 8), ("fc", 128), ("fc", 36*64)],
+                        "act_fn": nn.LeakyReLU,
+                        "out_act_fn": nn.Identity,
+                        "dropout": 0.15,
+                        "batch_norm": True,
+                    },
+                    "shift_coords": False,
+                    "device": config["device"],
+                }),
 
             ],
         })
@@ -486,8 +486,6 @@ if __name__ == "__main__":
         else:
             print("[INFO] Continuing the training run (loading the current model, history, and overwriting the config)...")
             history, best, config["decoder"]["model"] = ckpt["history"], ckpt["best"], ckpt["config"]["decoder"]["model"]
-            if "training_sample_idxs" in ckpt["config"]["data"]["cat_v1"]["dataset_config"]:
-                config["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"] = ckpt["config"]["data"]["cat_v1"]["dataset_config"]["training_sample_idxs"]
 
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
             decoder.load_state_dict(ckpt["decoder"])
@@ -618,16 +616,16 @@ if __name__ == "__main__":
             plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["save_run"] else None)
 
         ### save ckpt
-        if epoch % 5 == 0 and epoch > 0:
-            ### ckpt
-            if config["save_run"]:
-                torch.save({
-                    "decoder": decoder.state_dict(),
-                    "opter": opter.state_dict(),
-                    "history": history,
-                    "config": config,
-                    "best": best,
-                }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
+        # if epoch % 5 == 0 and epoch > 0:
+        ### ckpt
+        if config["save_run"]:
+            torch.save({
+                "decoder": decoder.state_dict(),
+                "opter": opter.state_dict(),
+                "history": history,
+                "config": config,
+                "best": best,
+            }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
 
     ### final evaluation + logging + saving
     print(f"Best val loss: {best['val_loss']:.4f} at epoch {best['epoch']}")
