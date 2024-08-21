@@ -1138,7 +1138,7 @@ class MEIReadIn(ReadIn):
         B, n_neurons = x.shape
 
         ### prepare neuron_coords
-        if neuron_coords.ndim == 2:
+        if self.ctx_net_config["in_channels"] != 1 and neuron_coords.ndim == 2:
             neuron_coords = neuron_coords.unsqueeze(0).repeat(B, 1, 1)
         if self.shift_coords:
             ### shift neuron_coords by pupil_center
@@ -1147,10 +1147,13 @@ class MEIReadIn(ReadIn):
 
         ### contextually modulate MEIs        
         out = self.meis.unsqueeze(0).repeat(B, 1, 1, 1)
-        ctx_inp = torch.cat([
-            x.unsqueeze(-1),
-            neuron_coords[..., :2],
-        ], dim=-1) # (B, n_neurons, 3)
+        if self.ctx_net_config["in_channels"] > 1:
+            ctx_inp = torch.cat([
+                x.unsqueeze(-1),
+                neuron_coords[..., :2],
+            ], dim=-1) # (B, n_neurons, 3)
+        else:
+            ctx_inp = x.unsqueeze(-1)
         ctx_inp = ctx_inp.view(B * n_neurons, -1) # (B * n_neurons, 3)
         ctx_out = self.ctx_net(ctx_inp) # (B * n_neurons, H * W)
         out = out * ctx_out.view(B, n_neurons, *out.shape[-2:])
