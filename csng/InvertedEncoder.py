@@ -6,6 +6,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torchvision.transforms import GaussianBlur
+import featurevis
+from featurevis import ops
+from featurevis import utils as fvutils
 
 
 class InvertedEncoder(nn.Module):
@@ -17,7 +20,7 @@ class InvertedEncoder(nn.Module):
         opter_cls=torch.optim.SGD,
         opter_config={"lr": 0.1},
         n_steps=500,
-        resp_loss_fn=F.mse_loss,
+        resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
         stim_loss_fn=F.mse_loss,
         img_gauss_blur_config=None,
         img_gauss_blur_freq=1,
@@ -45,6 +48,9 @@ class InvertedEncoder(nn.Module):
         self.img_grad_gauss_blur_freq = img_grad_gauss_blur_freq
         self.img_grad_gauss_blur = None if img_grad_gauss_blur_config is None else GaussianBlur(**img_grad_gauss_blur_config)
 
+        self.resp_pred = None
+        self.history = None
+
         self.device = device
 
     def _init_x_hat(self, B):
@@ -59,11 +65,11 @@ class InvertedEncoder(nn.Module):
             raise ValueError(f"Unknown stim_pred_init: {self.stim_pred_init}")
         return x_hat
 
-    def forward(self, resp_target, stim_target=None, additional_encoder_inp=None, ckpt_config=None):
-        assert resp_target.ndim > 1, "resp_target should be at least 2d (batch_dim, neurons_dim)"
+    def forward(self, resp, data_key=None, neuron_coords=None, pupil_center=None, ckpt_config=None, stim_target=None):
+        assert resp.ndim > 1, "resp should be at least 2d (batch_dim, neurons_dim)"
 
         ### init decoded img
-        x_hat = self._init_x_hat(resp_target.size(0) if resp_target.ndim > 1 else 1)
+        x_hat = self._init_x_hat(resp.size(0) if resp.ndim > 1 else 1)
 
         ### optimize decoded img
         opter = self.opter_cls([x_hat], **self.opter_config)
@@ -71,8 +77,8 @@ class InvertedEncoder(nn.Module):
         for step_i in range(self.n_steps):
             opter.zero_grad()
 
-            resp_pred = self.encoder(x_hat) if additional_encoder_inp is None else self.encoder(x_hat, **additional_encoder_inp)
-            resp_loss = self.resp_loss_fn(resp_pred, resp_target)
+            resp_pred = self.encoder(x_hat, data_key=data_key, pupil_center=pupil_center)
+            resp_loss = self.resp_loss_fn(resp_pred, resp)
             resp_loss.backward()
 
             ### apply gaussian blur to gradients
@@ -108,7 +114,85 @@ class InvertedEncoder(nn.Module):
                 if ckpt_config.get("plot_fn", None) is not None:
                     ckpt_config["plot_fn"](target=stim_target, pred=x_hat, save_to=os.path.join(curr_ckpt_dir, f"stim_pred.png"))
 
-        return x_hat.detach(), resp_pred.detach(), history
+        self.resp_pred = resp_pred.detach()
+        self.history = history
+        return x_hat.detach()
+
+
+class InvertedEncoderBrainreader(nn.Module):
+    def __init__(
+        self,
+        encoder,
+        img_dims=(1, 36, 64),
+        stim_pred_init="randn",
+        lr=100,
+        n_steps=500,
+        img_grad_gauss_blur_sigma=0,
+        jitter=None,
+        mse_reduction="per_sample_mean_sum",
+        device="cpu",
+    ):
+        super().__init__()
+        self.encoder = encoder
+        self.encoder.training = False
+        self.encoder.eval()
+
+        self.mse_reduction = mse_reduction
+        self.stim_pred_init = stim_pred_init
+        self.img_dims = img_dims
+        self.lr = lr
+        self.n_steps = n_steps
+
+        self.img_grad_gauss_blur_sigma = img_grad_gauss_blur_sigma
+        self.jitter = jitter
+
+        self.device = device
+
+    def _init_x_hat(self, B):
+        ### init decoded img
+        if self.stim_pred_init == "zeros":
+            x_hat = torch.zeros((B, *self.img_dims), requires_grad=True, device=self.device)
+        elif self.stim_pred_init == "rand":
+            x_hat = torch.rand((B, *self.img_dims), requires_grad=True, device=self.device)
+        elif self.stim_pred_init == "randn":
+            x_hat = torch.randn((B, *self.img_dims), requires_grad=True, device=self.device)
+        else:
+            raise ValueError(f"Unknown stim_pred_init: {self.stim_pred_init}")
+        return x_hat
+
+    def forward(self, resp, data_key=None, neuron_coords=None, pupil_center=None):
+        assert resp.ndim > 1, "resp should be at least 2d (batch_dim, neurons_dim)"
+
+        ### run separately for each image
+        recons = []
+        # Set up initial image
+        # torch.manual_seed(0)
+        initial_image = self._init_x_hat(resp.shape[0])
+
+        # Set up optimization function
+        neural_resp = torch.as_tensor(resp, dtype=torch.float32, device=self.device)
+        similarity = fvutils.Compose([ops.MSE(neural_resp, reduction=self.mse_reduction), ops.MultiplyBy(-1)])
+        encoder_pred = lambda x: self.encoder(x, data_key=data_key, pupil_center=pupil_center)
+        obj_function = fvutils.Compose([encoder_pred, similarity])
+
+        # Optimize
+        jitter = ops.Jitter(self.jitter) if self.jitter is not None and self.jitter != 0 else None
+        blur = (ops.GaussianBlur(self.img_grad_gauss_blur_sigma)
+                if self.img_grad_gauss_blur_sigma != 0 else None)
+        recon, fevals, _ = featurevis.gradient_ascent(
+            obj_function,
+            initial_image,
+            step_size=self.lr,
+            num_iterations=self.n_steps,
+            transform=jitter,
+            gradient_f=blur,
+            regularization=None,
+            post_update=ops.ChangeStd(1),
+            print_iters=None,
+        )
+        recons.append(recon.detach())
+
+        return torch.cat(recons, dim=0)
 
 
 # class GaussianBlur:
