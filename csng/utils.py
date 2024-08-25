@@ -100,8 +100,11 @@ def plot_comparison(target, pred, target_title="Target", pred_title="Reconstruct
     n_rows_per_group = (1 + (n_imgs[0]-1)//n_cols, 1 + (n_imgs[1]-1)//n_cols)
 
     ### plot comparison
-    h_mul_factor = 0.4 + (target.shape[-2] / target.shape[-1])
-    fig = plt.figure(figsize=(22, 3 + h_mul_factor * sum(n_rows_per_group)))
+    h_mul_factor = 3 * (target.shape[-2] / target.shape[-1])
+    # w_mul_factor = 0.4 + (target.shape[-1] / target.shape[-2])
+    fig = plt.figure(figsize=(22, 2.5 + h_mul_factor * sum(n_rows_per_group)))
+    # fig = plt.figure(figsize=(n_cols * w_mul_factor, 3 + sum(n_rows_per_group) * h_mul_factor))
+    
     for i in range(max(n_imgs)):
         ### target
         if i < n_imgs[0]:
@@ -419,3 +422,23 @@ def update_config_paths(config, new_data_path):
             update_config_paths(v, new_data_path)
 
     return config
+
+
+def correct_path(path_to_correct, new_data_path_start):
+    # TODO: not tested
+    ### traverse down to the root from the current location until the location doesn't exist, then replace the rest of the path
+    path_to_correct_split = path_to_correct.split("/")
+    from pathlib import Path
+    curr_path = Path(os.getcwd())
+    i = len(path_to_correct_split) - 2
+    while i >= 0:
+        dir_expected = path_to_correct_split[i]
+        dir_true = curr_path.parent.absolute().name
+
+        if dir_expected != dir_true:
+            break
+
+        i -= 1
+        curr_path = curr_path.parent
+
+    return os.path.join(new_data_path_start, *path_to_correct_split[i+1:])

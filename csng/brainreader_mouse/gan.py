@@ -51,11 +51,11 @@ config = {
     "crop_wins": dict(),
     "save_run": False,
     "wandb": None,
-    # "save_run": True,
-    # "wandb": {
-    #     "project": "CSNG",
-    #     "group": "cat_v1_50k",
-    # },
+    "save_run": True,
+    "wandb": {
+        "project": "CSNG",
+        "group": "brainreader_mouse",
+    },
 }
 
 ### brain reader data
@@ -234,15 +234,15 @@ config["decoder"] = {
     "D_fake_stim_labels_noise": 0.05,
     "n_epochs": 100,
     "load_ckpt": None,
-    # "load_ckpt": {
-    #     "load_best": False,
-    #     "load_opter_state": True,
-    #     "reset_history": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-08-07_17-13-05", "ckpt", "decoder_48.pt"),
-    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-24_09-36-46", "decoder.pt"),
-    #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "lpnyd1bz",
-    # },
+    "load_ckpt": {
+        "load_best": False,
+        "load_opter_state": True,
+        "reset_history": False,
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-08-22_05-38-09", "ckpt", "decoder_26.pt"),
+        # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-04-24_09-36-46", "decoder.pt"),
+        "resume_checkpointing": True,
+        "resume_wandb_id": "o6xm00qm",
+    },
 }
 
 ### append readins and losses for brainreader mouse
@@ -660,7 +660,7 @@ if __name__ == "__main__":
         )
         val_loss = val(
             model=decoder,
-            dataloader=dls["val"],
+            dataloaders=dls["val"],
             loss_fn=val_loss_fn,
             crop_wins=config["crop_wins"],
         )
@@ -693,15 +693,15 @@ if __name__ == "__main__":
             plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(config["dir"], f"losses_{epoch}.png") if config["save_run"] else None)
 
         ### save ckpt
-        if epoch % 3 == 0 and epoch > 0:
-            ### ckpt
-            if config["save_run"]:
-                torch.save({
-                    "decoder": decoder.state_dict(),
-                    "history": history,
-                    "config": config,
-                    "best": best,
-                }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
+        # if epoch % 3 == 0 and epoch > 0:
+        ### ckpt
+        if config["save_run"]:
+            torch.save({
+                "decoder": decoder.state_dict(),
+                "history": history,
+                "config": config,
+                "best": best,
+            }, os.path.join(config["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
 
     ### final evaluation + logging + saving
     print(f"Best val loss: {best['val_loss']:.4f} at epoch {best['epoch']}")

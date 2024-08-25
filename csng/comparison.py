@@ -47,20 +47,20 @@ def eval_decoder(model, dataloaders, loss_fns, config, calc_fid=False, max_batch
             ### combine losses from all data keys
             for dp in b:
                 ### get predictions
-                if "invertedencoder" in model.__class__.__name__.lower():
-                    stim_pred, _, _ = model(
-                        resp_target=dp["resp"],
-                        stim_target=None,
-                        additional_encoder_inp={
-                            "data_key": dp["data_key"],
-                        }
-                    )
-                else:
-                    stim_pred = model(
-                        dp["resp"],
-                        data_key=dp["data_key"],
-                        neuron_coords=dp["neuron_coords"],
-                    )
+                # if "invertedencoder" in model.__class__.__name__.lower():
+                #     stim_pred, _, _ = model(
+                #         resp_target=dp["resp"],
+                #         stim_target=None,
+                #         additional_encoder_inp={
+                #             "data_key": dp["data_key"],
+                #         }
+                #     )
+                # else:
+                stim_pred = model(
+                    dp["resp"],
+                    data_key=dp["data_key"],
+                    neuron_coords=dp["neuron_coords"],
+                )
 
 
                 ### calc metrics
@@ -226,7 +226,7 @@ def autolabel(ax, rects, fontsize=15, bold=False):
 
 
 def plot_reconstructions(runs, stim, stim_label="Target", manually_standardize=False, crop_win=None, save_to=None):
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(1.5 + int(len(runs) * 1.3), int(stim.shape[0] - 2)))
     grid = ImageGrid(fig, 111, nrows_ncols=(stim.shape[0], 1 + len(runs)), direction="column", axes_pad=0.03, share_all=True)
     grid[0].get_yaxis().set_ticks([])
     grid[0].get_xaxis().set_ticks([])

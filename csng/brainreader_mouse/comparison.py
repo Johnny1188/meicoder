@@ -12,18 +12,16 @@ import torch.nn.functional as F
 import lovely_tensors as lt
 
 import csng
-from csng.InvertedEncoder import InvertedEncoder
-from csng.utils import crop, plot_comparison, standardize, normalize
-from csng.comparison import load_decoder_from_ckpt, get_metrics, plot_reconstructions, plot_metrics
+from csng.InvertedEncoder import InvertedEncoder, InvertedEncoderBrainreader
+from csng.utils import crop, plot_comparison, standardize, normalize, update_config_paths, correct_path, seed_all
+from csng.comparison import load_decoder_from_ckpt, get_metrics, plot_reconstructions, plot_metrics, eval_decoder
 
 
-from csng.brainreader_mouse.encoder_inversion_brainreader import InvertedEncoderBrainreader
 from csng.brainreader_mouse.encoder import get_encoder
-# from csng.brainreader_mouse.data import get_brainreader_data
 from csng.brainreader_mouse.comparison_utils import (
     find_best_ckpt,
     # get_dataloaders,
-    eval_decoder,
+    # eval_decoder,
 )
 from csng.brainreader_mouse.multireadin_decoder_utils import get_dataloaders
 
@@ -50,9 +48,9 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH, "data"),
-    "batch_size": 8,
+    "batch_size": 32,
     # "sessions": list(range(1, 23)),
-    "sessions": list(range(1, 2)),
+    "sessions": [6],
     "normalize_stim": True,
     "normalize_resp": False,
     "div_resp_by_std": True,
@@ -60,33 +58,6 @@ config["data"]["brainreader_mouse"] = {
     "additional_keys": None,
     "avg_test_resp": True,
 }
-
-# config["data"]["cat_v1"] = {
-#     "train_path": os.path.join(DATA_PATH, "datasets", "train"),
-#     "val_path": os.path.join(DATA_PATH, "datasets", "val"),
-#     "test_path": os.path.join(DATA_PATH, "datasets", "test"),
-#     "image_size": [50, 50],
-#     "crop": False,
-#     "batch_size": 64,
-#     "stim_keys": ("stim",),
-#     "resp_keys": ("exc_resp", "inh_resp"),
-#     "return_coords": True,
-#     "return_ori": False,
-#     "coords_ori_filepath": os.path.join(DATA_PATH, "pos_and_ori.pkl"),
-#     "cached": False,
-#     "stim_normalize_mean": 46.143,
-#     "stim_normalize_std": 20.420,
-#     "resp_normalize_mean": None, # for evaluating Inverted Encoder
-#     "resp_normalize_std": None, # for evaluating Inverted Encoder
-#     # "resp_normalize_mean": torch.load(
-#     #     os.path.join(DATA_PATH, "responses_mean.pt")
-#     # ),
-#     # "resp_normalize_std": torch.load(
-#     #     os.path.join(DATA_PATH, "responses_std.pt")
-#     # ),
-#     # "clamp_neg_resp": True,
-#     "clamp_neg_resp": False, # for evaluating Inverted Encoder
-# }
 
 ### comparison config
 config["comparison"] = {
@@ -129,15 +100,14 @@ config["comparison"] = {
     #     # },
     # },
     "losses_to_plot": [
-        "FID",
         # "SSIM",
         "SSIML",
         # "Log SSIM Loss",
         # "MultiSSIM Loss",
-        # "Log MultiSSIM Loss",
         "MSE",
         # "MAE",
         "PL",
+        "FID",
     ],
 }
 
@@ -148,13 +118,13 @@ config["comparison"]["to_compare"] = {
     #         encoder=get_encoder(
     #             device=config["device"],
     #             eval_mode=True,
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_cat_v1_no_shifter_mean_activity.pth"),
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
     #         ),
-    #         img_dims=(1, 50, 50),
+    #         img_dims=(1, 36, 64),
     #         stim_pred_init="zeros",
     #         opter_cls=torch.optim.SGD,
     #         opter_config={"lr": 10},
-    #         n_steps=100,
+    #         n_steps=1000,
     #         resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
     #         stim_loss_fn=None,
     #         img_gauss_blur_config=None,
@@ -163,28 +133,59 @@ config["comparison"]["to_compare"] = {
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
-    "Inverted Encoder": {
-        "decoder": InvertedEncoderBrainreader(
-            encoder=get_encoder(
-                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
-                device=config["device"],
-                eval_mode=True,
-            ),
-            img_dims=(1, 36, 64),
-            stim_pred_init="randn",
-            lr=1000,
-            n_steps=1000,
-            img_grad_gauss_blur_sigma=1.5,
-            jitter=None,
-            mse_reduction="per_sample_mean_sum",
+    # "Inverted Encoder": {
+    #     "decoder": InvertedEncoderBrainreader(
+    #         encoder=get_encoder(
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
+    #             device=config["device"],
+    #             eval_mode=True,
+    #         ),
+    #         img_dims=(1, 36, 64),
+    #         stim_pred_init="randn",
+    #         lr=1000,
+    #         n_steps=1000,
+    #         img_grad_gauss_blur_sigma=1.5,
+    #         jitter=None,
+    #         mse_reduction="per_sample_mean_sum",
+    #         device=config["device"],
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    "Inverted Encoder (Ensemble)": {
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+            os.path.join(DATA_PATH, "models", "encoder_m6_seed0.pth"),
+            os.path.join(DATA_PATH, "models", "encoder_m6_seed1.pth"),
+            os.path.join(DATA_PATH, "models", "encoder_m6_seed2.pth"),
+            os.path.join(DATA_PATH, "models", "encoder_m6_seed3.pth"),
+            os.path.join(DATA_PATH, "models", "encoder_m6_seed4.pth"),
+            ],
+            encoder_config={
+                "img_dims": (1, 36, 64),
+                "stim_pred_init": "randn",
+                "lr": 3000,
+                "n_steps": 1000,
+                "img_grad_gauss_blur_sigma": 2.,
+                "jitter": 0,
+                "mse_reduction": "per_sample_mean_sum",
+                "device": config["device"],
+            },
+            use_brainreader_encoder=True,
             device=config["device"],
-        ).to(config["device"]),
-        "run_name": None,
-    },
+        )
+    }
 
     "CNN-Conv": {
         "run_name": "2024-08-18_00-53-54",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-18_00-53-54", "ckpt", "decoder_118.pt"),
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-18_00-53-54", "decoder.pt"),
+    },
+    "CNN-MEI": {
+        "run_name": "2024-08-22_23-08-20",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-22_23-08-20", "ckpt", "decoder_62.pt"),
+    },
+    "GAN-MEI": {
+        "run_name": "2024-08-22_05-38-09",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-22_05-38-09", "ckpt", "decoder_26.pt"),
     },
 }
 
@@ -195,15 +196,12 @@ if __name__ == "__main__":
         print("[WARNING] both the eval_all_ckpts and load_best are set to True - still loading current (not the best) decoders.")
     assert config["comparison"]["eval_all_ckpts"] is True or config["comparison"]["find_best_ckpt_according_to"] is None
     assert config["comparison"]["find_best_ckpt_according_to"] is None or config["comparison"]["load_best"] is False
-    np.random.seed(config["seed"])
-    torch.manual_seed(config["seed"])
-    random.seed(config["seed"])
+    seed_all(config["seed"])
 
     ### get data samples for plotting
-    # dls = get_brainreader_data(config=config["data"]["brainreader_mouse"])
     dls, _ = get_dataloaders(config=config)
-    sample_data_key = dls["val"]["brainreader_mouse"].data_keys[0]
-    datapoint = next(iter(dls["val"]["brainreader_mouse"].dataloaders[0]))
+    sample_data_key = dls["test"]["brainreader_mouse"].data_keys[0]
+    datapoint = next(iter(dls["test"]["brainreader_mouse"].dataloaders[0]))
     stim, resp = datapoint.images.to(config["device"]), datapoint.responses.to(config["device"])
 
     ### load ckpt
@@ -280,20 +278,16 @@ if __name__ == "__main__":
                 run_dict["best_val_losses"].append(ckpt["best"]["val_loss"])
 
             ### get sample reconstructions
-            if "invertedencoder" in decoder.__class__.__name__.lower():
-                stim_pred_best, _, _ = decoder(resp, stim_target=None, additional_encoder_inp={"data_key": sample_data_key})
-                stim_pred_best = stim_pred_best.detach().cpu()
-            else:
-                stim_pred_best = decoder(resp, data_key=sample_data_key).detach().cpu()
+            stim_pred_best = decoder(resp, data_key=sample_data_key).detach().cpu()
 
             ### eval
-            # dls = get_brainreader_data(config=config["data"]["brainreader_mouse"])
             dls, _ = get_dataloaders(config=config)
             run_dict["test_losses"].append(eval_decoder(
                 model=decoder,
                 dataloaders=dls["test"],
                 loss_fns=metrics,
                 config=config,
+                calc_fid="FID" in config["comparison"]["losses_to_plot"],
             ))
 
             run_dict["stim_pred_best"].append(stim_pred_best.detach().cpu())
