@@ -4,13 +4,14 @@ import torch
 from nnfabrik.builder import get_data
 from collections import defaultdict
 
-from csng.utils import crop
+from csng.utils import crop, timeit
 from csng.losses import FID
 from csng.brainreader_mouse.data import get_brainreader_data
 from csng.mouse_v1.data_utils import get_mouse_v1_data, append_syn_dataloaders, append_data_aug_dataloaders, average_test_multitrial
 from csng.cat_v1.data import prepare_v1_dataloaders
 
 
+@timeit
 def train(model, dataloaders, opter, loss_fn, config, verbose=True):
     model.train()
     train_loss = 0
@@ -73,6 +74,7 @@ def train(model, dataloaders, opter, loss_fn, config, verbose=True):
     return train_loss
 
 
+@timeit
 def val(model, dataloaders, loss_fn, config):
     model.eval()
     val_loss = 0

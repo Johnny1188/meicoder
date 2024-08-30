@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import unicodedata
 import re
+from functools import wraps
+import time
 
 
 def get_corr(x, y):
@@ -442,3 +444,18 @@ def correct_path(path_to_correct, new_data_path_start):
         curr_path = curr_path.parent
 
     return os.path.join(new_data_path_start, *path_to_correct_split[i+1:])
+
+
+def timeit(func):
+    """
+    Source: https://dev.to/kcdchennai/python-decorator-to-measure-execution-time-54hk
+    """
+    @wraps(func)
+    def timeit_wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        total_time = end_time - start_time
+        print(f"> {func.__name__}(): {total_time / 60:.2f} mins = {total_time:.2f} secs = {total_time * 1000:.2f} ms = {total_time * 1000 * 1000:.2f} µs")
+        return result
+    return timeit_wrapper
