@@ -2,6 +2,7 @@ import os
 import numpy as np
 import json
 import dill
+from pathlib import Path
 from copy import deepcopy
 import torch
 from collections import OrderedDict, namedtuple
@@ -10,6 +11,7 @@ from sensorium.utility import get_correlations, get_signal_correlations
 from sensorium.utility.scores import get_poisson_loss
 from sensorium.utility.measure_helpers import get_df_for_scores
 
+from csng.utils import seed_all
 from data import get_brainreader_data
 
 DATA_PATH = os.path.join(os.environ["DATA_PATH"], "brainreader")
@@ -21,8 +23,8 @@ config = {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
     },
     "device": "cuda" if torch.cuda.is_available() else "cpu",
-    "seed": 0,
-    "save_path": os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
+    "seed": 4,
+    "save_path": os.path.join(DATA_PATH, "models", "encoder_m6_seed4.pth"),
     "load_ckpt": None,
     # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
     "only_eval": False,
@@ -34,8 +36,9 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH, "data"),
-    "batch_size": 32,
-    "sessions": list(range(1, 23)),
+    "batch_size": 64,
+    # "sessions": list(range(1, 23)),
+    "sessions": [6],
     "normalize_stim": True,
     "normalize_resp": False,
     "div_resp_by_std": True,
@@ -49,13 +52,15 @@ _dls = get_brainreader_data(config=config["data"]["brainreader_mouse"])
 config["model_fn"] = "sensorium.models.stacked_core_full_gauss_readout"
 config["model_config"] = {
     "pad_input": False,
-    "layers": 4,
-    "input_kern": 9,
+    "layers": 3,
+    "input_kern": 15,
     "gamma_input": 6.3831,
     "gamma_readout": 0.0076,
     "hidden_kern": 7,
-    "hidden_channels": 64,
-    "depth_separable": True,
+    "hidden_channels": 32,
+    "hidden_padding": 3,
+    "depth_separable": False,
+    # "laplace_pyramid": True, # TODO: add from brainreader.encoder_models.py
     # "grid_mean_predictor": {
     #     "type": "cortex",
     #     "input_dimensions": 2,
@@ -69,10 +74,10 @@ config["model_config"] = {
     "gauss_type": "full",
     "shifter": False,
     "stack": -1,
-    # "mean_activity_dict": {
-    #     data_key: torch.from_numpy(np.load(os.path.join(dset.data_dir, "stats", "responses_mean.npy"))).to(config["device"])
-    #     for data_key, dset in _dls["brainreader_mouse"]["train"].datasets.items()
-    # },
+    "mean_activity_dict": {
+        data_key: torch.from_numpy(np.load(os.path.join(Path(dset.dataset_dir).parent.absolute(), "stats", "responses_mean.npy"))).to(config["device"])
+        for data_key, dset in _dls["brainreader_mouse"]["train"].datasets.items()
+    },
 }
 del _dls
 
@@ -83,8 +88,9 @@ config["trainer_config"] = {
     "verbose": True,
     "lr_decay_steps": 4,
     "avg_loss": False,
-    "lr_init": 0.009,
+    "lr_init": 0.03,
     "track_training": True,
+    "weight_decay": 0.,
 }
 
 
@@ -95,6 +101,8 @@ config["trainer_config"] = {
 
 
 if __name__ == "__main__":
+    seed_all(config["seed"])
+
     ### prepare dataloaders compatible w/ nnfabrik
     _dataloaders = get_brainreader_data(config=config["data"]["brainreader_mouse"])
     data_keys = _dataloaders["brainreader_mouse"]["train"].data_keys

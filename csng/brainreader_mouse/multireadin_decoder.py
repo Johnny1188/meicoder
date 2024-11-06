@@ -58,8 +58,10 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH, "data"),
-    "batch_size": 2,
+    "batch_size": 4,
+    # "batch_size": 24,
     "sessions": list(range(1, 23)),
+    # "sessions": [6],
     "normalize_stim": True,
     "normalize_resp": False,
     "div_resp_by_std": True,
@@ -178,16 +180,16 @@ config["decoder"] = {
         # ),
     },
     "val_loss": "FID", # get_metrics(config)["SSIML-PL"],
-    "n_epochs": 100,
+    "n_epochs": 200,
     "load_ckpt": None,
-    "load_ckpt": {
-        "load_only_core": False,
-        "ckpt_path": os.path.join(
-            # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
-            DATA_PATH, "models", "cnn", "2024-08-20_08-31-45", "ckpt", "decoder_21.pt"),
-        "resume_checkpointing": True,
-        "resume_wandb_id": "6laoimoc",
-    },
+    # "load_ckpt": {
+    #     "load_only_core": False,
+    #     "ckpt_path": os.path.join(
+    #         # DATA_PATH, "models", "cat_v1_pretraining", "2024-02-27_19-17-39", "decoder.pt"),
+    #         DATA_PATH, "models", "cnn", "2024-08-22_23-08-20", "ckpt", "decoder_185.pt"),
+    #     "resume_checkpointing": True,
+    #     "resume_wandb_id": "qu6wnt7h",
+    # },
 }
 
 ### append readins and losses for brainreader mouse

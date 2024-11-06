@@ -13,6 +13,7 @@ import lovely_tensors as lt
 
 import csng
 from csng.InvertedEncoder import InvertedEncoder, InvertedEncoderBrainreader
+from csng.Ensemble import EnsembleInvEnc
 from csng.utils import crop, plot_comparison, standardize, normalize, update_config_paths, correct_path, seed_all
 from csng.comparison import load_decoder_from_ckpt, get_metrics, plot_reconstructions, plot_metrics, eval_decoder
 
@@ -36,7 +37,6 @@ config = {
         "mixing_strategy": "sequential", # needed only with multiple base dataloaders
     },
     "crop_win": (36, 64),
-    "only_cat_v1_eval": True,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "seed": 0,
     "wandb": None,
@@ -102,7 +102,6 @@ config["comparison"] = {
     "losses_to_plot": [
         # "SSIM",
         "SSIML",
-        # "Log SSIM Loss",
         # "MultiSSIM Loss",
         "MSE",
         # "MAE",
@@ -133,25 +132,25 @@ config["comparison"]["to_compare"] = {
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
-    # "Inverted Encoder": {
-    #     "decoder": InvertedEncoderBrainreader(
-    #         encoder=get_encoder(
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
-    #             device=config["device"],
-    #             eval_mode=True,
-    #         ),
-    #         img_dims=(1, 36, 64),
-    #         stim_pred_init="randn",
-    #         lr=1000,
-    #         n_steps=1000,
-    #         img_grad_gauss_blur_sigma=1.5,
-    #         jitter=None,
-    #         mse_reduction="per_sample_mean_sum",
-    #         device=config["device"],
-    #     ).to(config["device"]),
-    #     "run_name": None,
-    # },
-    "Inverted Encoder (Ensemble)": {
+    "Inverted Encoder (M-All)": {
+        "decoder": InvertedEncoderBrainreader(
+            encoder=get_encoder(
+                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
+                device=config["device"],
+                eval_mode=True,
+            ),
+            img_dims=(1, 36, 64),
+            stim_pred_init="randn",
+            lr=1000,
+            n_steps=1000,
+            img_grad_gauss_blur_sigma=1.5,
+            jitter=None,
+            mse_reduction="per_sample_mean_sum",
+            device=config["device"],
+        ).to(config["device"]),
+        "run_name": None,
+    },
+    "Inverted Encoder (Ensemble, M-6)": {
         "decoder": EnsembleInvEnc(
             encoder_paths=[
             os.path.join(DATA_PATH, "models", "encoder_m6_seed0.pth"),
@@ -172,20 +171,25 @@ config["comparison"]["to_compare"] = {
             },
             use_brainreader_encoder=True,
             device=config["device"],
-        )
-    }
+        ),
+        "run_name": None,
+    },
 
-    "CNN-Conv": {
+    "CNN-Conv (M-All)": {
         "run_name": "2024-08-18_00-53-54",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-18_00-53-54", "decoder.pt"),
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-18_00-53-54", "ckpt", "decoder_194.pt"),
     },
-    "CNN-MEI": {
+    "CNN-MEI (M-All)": {
         "run_name": "2024-08-22_23-08-20",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-22_23-08-20", "ckpt", "decoder_62.pt"),
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-22_23-08-20", "ckpt", "decoder_75.pt"),
     },
-    "GAN-MEI": {
+    "CNN-MEI (M-6)": {
+        "run_name": "2024-08-25_08-35-07",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-25_08-35-07", "decoder.pt"),
+    },
+    "GAN-MEI (M-All)": {
         "run_name": "2024-08-22_05-38-09",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-22_05-38-09", "ckpt", "decoder_26.pt"),
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-08-22_05-38-09", "ckpt", "decoder_31.pt"),
     },
 }
 
