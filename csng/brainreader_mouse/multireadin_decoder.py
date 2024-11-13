@@ -40,14 +40,14 @@ config = {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": os.environ["DEVICE"],
     "seed": 0,
     "crop_wins": dict(),
     "save_run": False,
     "wandb": None,
     "save_run": True,
     "wandb": {
-        "project": "CSNG",
+        "project": os.environ["WANDB_PROJECT"],
         "group": "brainreader_mouse",
     },
 }

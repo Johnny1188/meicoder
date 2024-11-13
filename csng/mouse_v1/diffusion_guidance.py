@@ -35,7 +35,7 @@ config = {
         "mixing_strategy": "sequential", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": os.environ["DEVICE"],
     "seed": 0,
     "crop_win": (22, 36),
 }

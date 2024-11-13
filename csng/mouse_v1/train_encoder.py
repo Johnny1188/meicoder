@@ -18,7 +18,7 @@ config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
     },
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": os.environ["DEVICE"],
     "crop_win": (22, 36),
     "seed": 0,
     "save_path": os.path.join(DATA_PATH, "models", "encoder_sens22_mall_mean_activity.pth"),

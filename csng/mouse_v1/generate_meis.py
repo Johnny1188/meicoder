@@ -33,7 +33,7 @@ def generate_meis():
     
     ### config
     config = {
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
+        "device": os.environ["DEVICE"],
         "data_key": "21067-10-18",
         # "data_key": "22846-10-16",
         # "data_key": "23343-5-17",

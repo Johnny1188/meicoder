@@ -40,7 +40,7 @@ config = {
     },
     "crop_win": (20, 20),
     "only_cat_v1_eval": True,
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": os.environ["DEVICE"],
     "seed": 0,
     "wandb": None,
 }

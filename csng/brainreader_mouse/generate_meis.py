@@ -33,7 +33,7 @@ def generate_meis():
     
     ### config
     config = {
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
+        "device": os.environ["DEVICE"],
         "data_key": "1",
         "save_path": os.path.join(DATA_PATH, "meis"),
         "chunk_size": 500, # number of cells to process at once

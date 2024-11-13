@@ -22,7 +22,7 @@ config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
     },
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": os.environ["DEVICE"],
     "seed": 4,
     "save_path": os.path.join(DATA_PATH, "models", "encoder_m6_seed4.pth"),
     "load_ckpt": None,

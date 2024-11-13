@@ -46,15 +46,15 @@ config = {
         "syn_dataset_config": None,
         "data_augmentation": None,
     },
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": os.environ["DEVICE"],
     "seed": 0,
     "crop_win": (22, 36),
     # "save_run": False,
     # "wandb": None,
     "save_run": True,
     "wandb": {
-        "project": "CSNG",
-        "group": "sensorium_2022",
+        "project": os.environ["WANDB_PROJECT"],
+        "group": "mouse_v1",
     },
 }
 config["data"]["mouse_v1"] = {

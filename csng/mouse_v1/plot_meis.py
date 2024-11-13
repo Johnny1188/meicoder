@@ -15,7 +15,7 @@ DATA_PATH = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 def plot_meis():
     ### config
     config = {
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
+        "device": os.environ["DEVICE"],
         "meis_path": os.path.join(DATA_PATH, "meis", "21067-10-18", "meis.pt"),
         "plots_dir": os.path.join(DATA_PATH, "meis", "21067-10-18", "plots"),
         "plot_n_neurons": 3, # number of cells to process at once
