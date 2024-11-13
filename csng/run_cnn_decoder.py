@@ -172,7 +172,7 @@ cfg["decoder"] = {
         "encoder": None, # needed only when con_reg_mul > 0
     },
     "val_loss": "FID", # get_metrics(cfg)["SSIML-PL"],
-    "n_epochs": 200,
+    "n_epochs": 100,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_only_core": False,
@@ -474,9 +474,9 @@ if __name__ == "__main__":
 
     ### train
     print(f"[INFO] cfg:\n{json.dumps(cfg, indent=2, default=str)}")
-    s, e = len(history["train_loss"]), cfg["decoder"]["n_epochs"]
-    for epoch in range(s, e):
-        print(f"[{epoch}/{e}]")
+    start, end = len(history["train_loss"]), cfg["decoder"]["n_epochs"]
+    for epoch in range(start, end):
+        print(f"[{epoch}/{end}]")
 
         ### train and val
         dls, neuron_coords = get_dataloaders(config=cfg)
@@ -509,13 +509,13 @@ if __name__ == "__main__":
         ### plot reconstructions
         if "brainreader_mouse" in cfg["data"]:
             b_stim_pred = decoder(s["b_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["b_sample_dataset"]][s["b_sample_data_key"]], data_key=s["b_sample_data_key"]).detach()
-            fig = plot_comparison(target=crop(s["b_stim"][:8], cfg["data"][s["b_sample_dataset"]]["crop_win"]).cpu(), pred=crop(b_stim_pred[:8], cfg["data"][s["b_sample_dataset"]]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "b_"), show=False)
+            fig = plot_comparison(target=crop(s["b_stim"][:8], cfg["crop_wins"][s["b_sample_data_key"]]).cpu(), pred=crop(b_stim_pred[:8], cfg["crop_wins"][s["b_sample_data_key"]]).cpu(), save_to=make_sample_path(epoch, "b_"), show=False)
         if "cat_v1" in cfg["data"]:
-            c_stim_pred = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]][s["c_sample_data_key"]], data_key=s["c_sample_data_key"]).detach()
-            fig = plot_comparison(target=crop(s["c_stim"][:8], cfg["data"][s["c_sample_dataset"]]["crop_win"]).cpu(), pred=crop(c_stim_pred[:8], cfg["data"][s["c_sample_dataset"]]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "c_"), show=False)
+            c_stim_pred = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach()
+            fig = plot_comparison(target=crop(s["c_stim"][:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(), pred=crop(c_stim_pred[:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(), save_to=make_sample_path(epoch, "c_"), show=False)
         if "mouse_v1" in cfg["data"]:
             m_stim_pred = decoder(s["m_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["m_sample_dataset"]][s["m_sample_data_key"]], pupil_center=s["m_pupil_center"][:8].to(cfg["device"]), data_key=s["m_sample_data_key"]).detach()
-            fig = plot_comparison(target=crop(s["m_stim"][:8], cfg["data"][s["m_sample_dataset"]]["crop_win"]).cpu(), pred=crop(m_stim_pred[:8], cfg["data"][s["m_sample_dataset"]]["crop_win"]).cpu(), save_to=make_sample_path(epoch, "m_"), show=False)
+            fig = plot_comparison(target=crop(s["m_stim"][:8], cfg["crop_wins"][s["m_sample_data_key"]]).cpu(), pred=crop(m_stim_pred[:8], cfg["crop_wins"][s["m_sample_data_key"]]).cpu(), save_to=make_sample_path(epoch, "m_"), show=False)
         if cfg["wandb"]: wdb_run.log({"val_stim_reconstruction": fig})
 
         ### plot losses
@@ -574,24 +574,24 @@ if __name__ == "__main__":
     if "brainreader_mouse" in cfg["data"]:
         b_stim_pred_best = decoder(s["b_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["b_sample_dataset"]][s["b_sample_data_key"]], data_key=s["b_sample_data_key"]).detach().cpu()
         fig = plot_comparison(
-            target=crop(s["b_stim"][:8], cfg["data"][s["b_sample_dataset"]]["crop_win"]).cpu(),
-            pred=crop(b_stim_pred_best[:8], cfg["data"][s["b_sample_dataset"]]["crop_win"]).cpu(),
+            target=crop(s["b_stim"][:8], cfg["crop_wins"][s["b_sample_data_key"]]).cpu(),
+            pred=crop(b_stim_pred_best[:8], cfg["crop_wins"][s["b_sample_data_key"]]).cpu(),
             show=False,
             save_to=os.path.join(cfg["dir"], "b_stim_comparison_best.png") if cfg["save_run"] else None,
         )
     if "cat_v1" in cfg["data"]:
         c_stim_pred_best = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach().cpu()
         fig = plot_comparison(
-            target=crop(s["c_stim"][:8], cfg["data"][s["c_sample_dataset"]]["crop_win"]).cpu(),
-            pred=crop(c_stim_pred_best[:8], cfg["data"][s["c_sample_dataset"]]["crop_win"]).cpu(),
+            target=crop(s["c_stim"][:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(),
+            pred=crop(c_stim_pred_best[:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(),
             show=False,
             save_to=os.path.join(cfg["dir"], "c_stim_comparison_best.png") if cfg["save_run"] else None,
         )
     if "mouse_v1" in cfg["data"]:
         m_stim_pred_best = decoder(s["m_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["m_sample_dataset"]][s["m_sample_data_key"]], pupil_center=s["m_pupil_center"][:8].to(cfg["device"]), data_key=s["m_sample_data_key"]).detach().cpu()
         fig = plot_comparison(
-            target=crop(s["m_stim"][:8], cfg["data"][s["m_sample_dataset"]]["crop_win"]).cpu(),
-            pred=crop(m_stim_pred_best[:8], cfg["data"][s["m_sample_dataset"]]["crop_win"]).cpu(),
+            target=crop(s["m_stim"][:8], cfg["crop_wins"][s["m_sample_data_key"]]).cpu(),
+            pred=crop(m_stim_pred_best[:8], cfg["crop_wins"][s["m_sample_data_key"]]).cpu(),
             show=False,
             save_to=os.path.join(cfg["dir"], "m_stim_comparison_best.png") if cfg["save_run"] else None,
         )
