@@ -1,0 +1,20 @@
+version: '2.3'
+services:
+  notebook:
+    build: .
+    ports:
+      - "8888:8888"
+
+  docs:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ".:/src/nnfabrik"
+    entrypoint: /bin/bash -c "cd /src/nnfabrik/docs/; make html; cd _build/html; python -m http.server 3000"
+
+  sphinx:
+    build: .
+    volumes:
+      - ".:/src/nnfabrik"
+    entrypoint: /bin/bash -c "cd /src/nnfabrik/docs/; while :; do make html; sleep 30; done"

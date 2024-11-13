@@ -1,0 +1,16 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+neuralpredictors/__init__.py
+neuralpredictors/distributions.py
+neuralpredictors/old_constraints.py
+neuralpredictors/regularizers.py
+neuralpredictors/utils.py
+neuralpredictors.egg-info/PKG-INFO
+neuralpredictors.egg-info/SOURCES.txt
+neuralpredictors.egg-info/dependency_links.txt
+neuralpredictors.egg-info/requires.txt
+neuralpredictors.egg-info/top_level.txt
+test/test_TransferLearningCore.py
+test/test_constraints.py

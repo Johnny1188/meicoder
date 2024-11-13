@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: neuralpredictors
+Version: 0.3.0
+Summary: Sinz Lab Neural System Identification Utilities
+Author-email: Sinz Lab <software@sinzlab.net>
+Project-URL: GitHub, https://github.com/sinzlab/neuralpredictors
+License-File: LICENSE
+Requires-Dist: numpy>=1.20
+Requires-Dist: torch
+Requires-Dist: tqdm
+Requires-Dist: pandas
+Requires-Dist: h5py
+Requires-Dist: scipy

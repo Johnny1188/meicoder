@@ -1,0 +1,17 @@
+Metadata-Version: 2.1
+Name: featurevis
+Version: 0.2.2
+Summary: Visualize features cells are responsive to via gradient ascent
+Home-page: https://github.com/cajal/featurevis
+Author: Erick Cobos
+Author-email: ecobos@bcm.edu
+License: MIT
+Keywords: feature visualization MEI pytorch
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: EnglishTopic :: Scientific/Engineering :: Bio-Informatics
+License-File: LICENSE
+Requires-Dist: scipy
+Requires-Dist: numpy
