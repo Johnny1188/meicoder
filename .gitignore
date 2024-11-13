@@ -1,18 +1,19 @@
-*__pycache__*
 .archive
 .vscode
 wandb
 .ipynb_checkpoints
 
+*__pycache__*
+*.egg-info
 tmp*
 *.pickle
 *.log
+*.csv
+*.tar.gz
+*.pth
+*.pt
 
 .env
 slurm
 results
 logs
-
-lgn
-csng.egg-info
-Lurz_2020_code
