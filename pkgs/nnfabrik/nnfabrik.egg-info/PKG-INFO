@@ -1,9 +1,0 @@
-Metadata-Version: 2.1
-Name: nnfabrik
-Version: 0.2.1
-Summary: A generalized model fitting pipeline
-Author-email: Sinz Lab <software@sinzlab.net>
-Project-URL: GitHub, https://github.com/sinzlab/nnfabrik
-Requires-Dist: sphinx
-Requires-Dist: pytorch_sphinx_theme
-Requires-Dist: recommonmark
