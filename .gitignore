@@ -1,13 +1,14 @@
 *__pycache__*
-__archive__
 .archive
+.vscode
 wandb
 .ipynb_checkpoints
-.vscode
-.env
+
 tmp*
 *.pickle
 *.log
+
+.env
 slurm
 results
 logs
@@ -15,6 +16,3 @@ logs
 lgn
 csng.egg-info
 Lurz_2020_code
-cppn_for_invariances
-other
-sensorium

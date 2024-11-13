@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: sensorium
+Version: 0.0
+Summary: Code base for SENSORIUM challenge.
+Author: sinzlab
+Requires-Dist: neuralpredictors==0.3.0
+Requires-Dist: nnfabrik==0.2.1
+Requires-Dist: scikit-image>=0.19.1
+Requires-Dist: lipstick
+Requires-Dist: numpy>=1.22.0
