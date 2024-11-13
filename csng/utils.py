@@ -456,6 +456,6 @@ def timeit(func):
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print(f"> {func.__name__}(): {total_time / 60:.2f} mins = {total_time:.2f} secs = {total_time * 1000:.2f} ms = {total_time * 1000 * 1000:.2f} µs")
+        print(f"> {func.__name__}(): {total_time / 60:.2f} mins = {total_time:.2f} secs = {total_time * 1000:.2f} ms")
         return result
     return timeit_wrapper
