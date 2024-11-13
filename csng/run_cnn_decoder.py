@@ -22,7 +22,8 @@ from csng.readins import (
     FCReadIn,
     MEIReadIn,
 )
-from csng.cnn_decoder_utils import init_decoder, get_sample_data, setup_run_dir, setup_wandb_run, train, val, get_dataloaders
+from csng.data import get_dataloaders, get_sample_data
+from csng.cnn_decoder_utils import init_decoder, setup_run_dir, setup_wandb_run, train, val
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
@@ -463,8 +464,8 @@ if __name__ == "__main__":
             f"\n    ({', '.join([f'{k}: {count_parameters(v)} [{count_parameters(v) / count_parameters(decoder) * 100:.2f}%]' for k, v in decoder.readins.items()])})"
         )
 
-    ### prepare run name and its directory
-    cfg, make_sample_path = setup_run_dir(config=cfg)
+    ### prepare run name and run directory
+    cfg, make_sample_path = setup_run_dir(config=cfg, ckpt=ckpt)
 
     ### prepare wandb logging
     wdb_run = setup_wandb_run(config=cfg, decoder=decoder)
