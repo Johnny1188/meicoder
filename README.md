@@ -20,6 +20,12 @@ Create `.env` file in the root directory according to `.env.example` file and ma
 
 Instructions regarding the data are in README files in the data-specific directories `csng/cat_v1/`, `csng/mouse_v1/`, and `csng/brainreader_mouse/`.
 
+### Potential issues
+If you encounter the error `UserWarning: Failed to initialize NumPy: _ARRAY_API not found`, run the following within the activated `csng` environment:
+```bash
+pip install --force-reinstall -v "numpy==1.25.2"
+```
+
 
 ## Directory structure
 - `README.md` - This file

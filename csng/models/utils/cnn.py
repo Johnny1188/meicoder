@@ -118,7 +118,7 @@ def setup_wandb_run(config, decoder=None):
     return wdb_run
 
 
-@timeit
+# @timeit
 def train(model, dataloaders, opter, loss_fn, config, verbose=True):
     model.train()
     train_loss = 0
@@ -181,7 +181,7 @@ def train(model, dataloaders, opter, loss_fn, config, verbose=True):
     return train_loss
 
 
-@timeit
+# @timeit
 def val(model, dataloaders, loss_fn, config):
     model.eval()
     val_loss = 0

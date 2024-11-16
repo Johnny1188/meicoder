@@ -229,7 +229,7 @@ def update_D(model, D_loss, config, data_keys=None):
     return D_loss, D_mean_abs_grad_first_layer, D_mean_abs_grad_last_layer
 
 
-@timeit
+# @timeit
 def train(model, dataloaders, loss_fn, config, history, log_freq=100, wdb_run=None, wdb_commit=True):
     for k in ("G_mean_abs_grad_first_layer", "G_mean_abs_grad_last_layer", "D_mean_abs_grad_first_layer", "D_mean_abs_grad_last_layer",
         "D_loss", "G_loss", "G_loss_stim", "G_loss_adv", "D_loss_real", "D_loss_fake"):
@@ -324,7 +324,7 @@ def train(model, dataloaders, loss_fn, config, history, log_freq=100, wdb_run=No
 
     return history
 
-@timeit
+# @timeit
 def val(model, dataloaders, loss_fn, crop_wins=None):
     model.eval()
     val_loss = 0
