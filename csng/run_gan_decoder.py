@@ -511,7 +511,7 @@ def run(cfg):
 
     ### get data sample for plotting and logging
     dls, neuron_coords = get_dataloaders(config=cfg)
-    s = get_sample_data(dls=dls, config=cfg)
+    s = get_sample_data(dls=dls, config=cfg, sample_from_tier="val")
     resp, sample_dataset, sample_data_key = s["resp"], s["sample_dataset"], s["sample_data_key"]
 
     ### init decoder (and load ckpt if needed)

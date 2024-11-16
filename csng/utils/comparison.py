@@ -14,6 +14,7 @@ import dill
 import torch
 import torch.nn.functional as F
 
+from csng.utils.mix import update_config_paths
 from csng.utils.data import crop, standardize, normalize
 from csng.models.readins import MultiReadIn
 from csng.losses import FID
@@ -103,8 +104,11 @@ def find_best_ckpt(get_dl_fn, config, ckpt_paths, metrics):
     return best_ckpt_path, best_loss
 
 
-def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=False, model_init_dict=None, strict=True):
+def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=False, model_init_dict=None, strict=True, update_paths=True):
     ckpt = torch.load(ckpt_path, map_location=device, pickle_module=dill)
+
+    if update_paths:
+        ckpt["config"] = update_config_paths(ckpt["config"], os.environ["DATA_PATH"])
 
     if model_init_dict is not None:
         decoder = MultiReadIn(**model_init_dict).to(device)

@@ -240,7 +240,7 @@ config["comparison"]["to_compare"] = {
 
     "GAN": {
         "run_name": "2024-11-16_11-31-54",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-16_11-31-54", "ckpt", "decoder_0.pt"),
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-16_16-13-29", "decoder.pt"),
     },
 }
 
@@ -260,7 +260,7 @@ def run_comparison(cfg):
 
     ### get data samples for plotting
     dls, neuron_coords = get_dataloaders(config=cfg)
-    s = get_sample_data(dls=dls, config=cfg)
+    s = get_sample_data(dls=dls, config=cfg, sample_from_tier="test")
     stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
 
     ### load previous comparison results

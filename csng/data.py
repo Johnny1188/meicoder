@@ -8,22 +8,22 @@ from csng.mouse_v1.data import get_mouse_v1_dataloaders, append_syn_dataloaders,
 from csng.cat_v1.data import get_cat_v1_dataloaders
 
 
-def get_sample_data(dls, config):
+def get_sample_data(dls, config, sample_from_tier="val"):
     s = {"stim": None, "resp": None, "sample_data_key": None, "sample_dataset": None}
 
     if "brainreader_mouse" in config["data"]:
         s["b_sample_dataset"] = "brainreader_mouse"
-        b_dp = next(iter(dls["val"][s["b_sample_dataset"]]))
+        b_dp = next(iter(dls[sample_from_tier][s["b_sample_dataset"]]))
         s["b_stim"], s["b_resp"], s["b_sample_data_key"] = b_dp[0]["stim"], b_dp[0]["resp"], b_dp[0]["data_key"]
         s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["b_stim"], s["b_resp"], s["b_sample_data_key"], s["b_sample_dataset"]
     if "cat_v1" in config["data"]:
         s["c_sample_dataset"] = "cat_v1"
-        c_dp = next(iter(dls["val"][s["c_sample_dataset"]]))
+        c_dp = next(iter(dls[sample_from_tier][s["c_sample_dataset"]]))
         s["c_stim"], s["c_resp"], s["c_sample_data_key"] = c_dp[0]["stim"], c_dp[0]["resp"], c_dp[0]["data_key"]
         s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["c_stim"], s["c_resp"], s["c_sample_data_key"], s["c_sample_dataset"]
     if "mouse_v1" in config["data"]:
         s["m_sample_dataset"] = "mouse_v1"
-        m_dp = next(iter(dls["val"][s["m_sample_dataset"]]))
+        m_dp = next(iter(dls[sample_from_tier][s["m_sample_dataset"]]))
         s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_pupil_center"] = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
         s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_sample_dataset"]
 
