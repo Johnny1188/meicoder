@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  jupyter:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+    ports:
+      - "8888:8888"
+    env_file: .env
+    entrypoint: ["jupyter", "lab", "--allow-root"]
+  pytest:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+    entrypoint: ["python", "-m", "pytest"]
+  coverage:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+    entrypoint: ["pytest", "--cov", "--cov-report=html:/src/neuralpredictors/reports/coverage.html", "test"]
+  python:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+  mypy:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+      - mypy-cache:/src/neuralpredictors/.mypy_cache
+    entrypoint: ["mypy"]
+  black:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+    entrypoint: ["black"]
+    command: ["--check", "--diff", "."]
+  isort:
+    build: .
+    volumes:
+      - .:/src/neuralpredictors
+    entrypoint: ["isort"]
+    command: ["--check-only", "--diff", "."]
+
+volumes:
+  mypy-cache:
