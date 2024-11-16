@@ -1,0 +1,25 @@
+name: csng
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - nvidia::cudatoolkit=11.3
+  - python=3.10
+  - pip=23.1.2
+  - einops=0.4.1
+  - lovely-tensors=0.1.7
+  - dill=0.3.7
+  - seaborn
+  - pip:
+    - --extra-index-url https://download.pytorch.org/whl/cu121
+    - torch==2.2.1+cu121
+    - torchvision==0.17.1+cu121
+    - torchmetrics==0.9.3
+    - torchmetrics[image]
+    - torchviz==0.0.2
+    - wandb==0.16.3
+    - scikit-image>=0.21.0
+    - datajoint
+    - focal-frequency-loss
+    - lovely-tensors
