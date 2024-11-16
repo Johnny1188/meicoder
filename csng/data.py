@@ -1,0 +1,98 @@
+import os
+import torch
+import torch.nn.functional as F
+
+from csng.utils.data import MixedBatchLoader
+from csng.brainreader_mouse.data import get_brainreader_mouse_dataloaders
+from csng.mouse_v1.data import get_mouse_v1_dataloaders, append_syn_dataloaders, append_data_aug_dataloaders
+from csng.cat_v1.data import get_cat_v1_dataloaders
+
+
+def get_sample_data(dls, config):
+    s = {"stim": None, "resp": None, "sample_data_key": None, "sample_dataset": None}
+
+    if "brainreader_mouse" in config["data"]:
+        s["b_sample_dataset"] = "brainreader_mouse"
+        b_dp = next(iter(dls["val"][s["b_sample_dataset"]]))
+        s["b_stim"], s["b_resp"], s["b_sample_data_key"] = b_dp[0]["stim"], b_dp[0]["resp"], b_dp[0]["data_key"]
+        s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["b_stim"], s["b_resp"], s["b_sample_data_key"], s["b_sample_dataset"]
+    if "cat_v1" in config["data"]:
+        s["c_sample_dataset"] = "cat_v1"
+        c_dp = next(iter(dls["val"][s["c_sample_dataset"]]))
+        s["c_stim"], s["c_resp"], s["c_sample_data_key"] = c_dp[0]["stim"], c_dp[0]["resp"], c_dp[0]["data_key"]
+        s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["c_stim"], s["c_resp"], s["c_sample_data_key"], s["c_sample_dataset"]
+    if "mouse_v1" in config["data"]:
+        s["m_sample_dataset"] = "mouse_v1"
+        m_dp = next(iter(dls["val"][s["m_sample_dataset"]]))
+        s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_pupil_center"] = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
+        s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_sample_dataset"]
+
+    return s
+
+
+def get_dataloaders(config):
+    dls = dict(train=dict(), val=dict(), test=dict())
+    neuron_coords = dict()
+
+    ### brainreader mouse
+    if "brainreader_mouse" in config["data"]:
+        _dls = get_brainreader_mouse_dataloaders(config=config["data"]["brainreader_mouse"])
+
+        ### add to data loaders
+        for tier in ("train", "val", "test"):
+            dls[tier]["brainreader_mouse"] = _dls["brainreader_mouse"][tier]
+        neuron_coords["brainreader_mouse"] = {data_key: None for data_key in _dls["brainreader_mouse"]["train"].data_keys}
+
+    ### mouse v1 - base
+    if "mouse_v1" in config["data"] and config["data"]["mouse_v1"] is not None:
+        m_dls, _neuron_coords = get_mouse_v1_dataloaders(config=config)
+
+        ### mouse v1 - synthetic data
+        if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:
+            raise NotImplementedError
+            m_dls = append_syn_dataloaders(
+                dataloaders=m_dls,
+                config=config["data"]["syn_dataset_config"]
+            )
+
+        ### mouse v1 - data augmentation
+        if "data_augmentation" in config["data"] and config["data"]["data_augmentation"] is not None:
+            raise NotImplementedError
+            m_dls = append_data_aug_dataloaders(
+                dataloaders=m_dls,
+                config=config["data"]["data_augmentation"],
+            )
+
+        ### add to data loaders
+        for tier in ("train", "val", "test"):
+            dls[tier]["mouse_v1"] = m_dls["mouse_v1"][tier]
+        neuron_coords["mouse_v1"] = _neuron_coords
+
+    ### cat v1
+    if "cat_v1" in config["data"]:
+        c_dls = get_cat_v1_dataloaders(**config["data"]["cat_v1"]["dataset_config"])
+
+        ### get neuron coordinates
+        torch.allclose(c_dls["train"].dataset[0].neuron_coords, c_dls["train"].dataset[-1].neuron_coords) and \
+        torch.allclose(c_dls["train"].dataset[-1].neuron_coords, c_dls["val"].dataset[0].neuron_coords) and \
+        torch.allclose(c_dls["val"].dataset[0].neuron_coords, c_dls["val"].dataset[-1].neuron_coords) and \
+        torch.allclose(c_dls["val"].dataset[-1].neuron_coords, c_dls["test"].dataset[0].neuron_coords) and \
+        torch.allclose(c_dls["test"].dataset[0].neuron_coords, c_dls["test"].dataset[-1].neuron_coords), \
+            "Neuron coordinates must be the same for all samples in the dataset"
+        neuron_coords["cat_v1"] = c_dls["train"].dataset[0].neuron_coords.float().to(config["device"])
+
+        ### add to data loaders
+        for tier in ("train", "val", "test"):
+            dls[tier]["cat_v1"] = MixedBatchLoader(
+                dataloaders=[c_dls[tier]],
+                neuron_coords={"cat_v1": neuron_coords["cat_v1"]},
+                mixing_strategy=config["data"]["mixing_strategy"],
+                max_batches=config["data"].get("max_training_batches"),
+                data_keys=["cat_v1"],
+                return_data_key=True,
+                return_pupil_center=False, # no pupil center in cat_v1
+                return_neuron_coords=True,
+                device=config["device"],
+            )
+
+    return dls, neuron_coords
