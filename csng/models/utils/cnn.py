@@ -18,43 +18,46 @@ DATA_PATH = os.environ["DATA_PATH"]
 
 
 def init_decoder(config):
+    history = {"train_loss": [], "val_loss": []}
+    best = {"val_loss": np.inf, "epoch": 0, "model": None}
+
     if config["decoder"]["load_ckpt"] != None:
+        ### load the checkpoint
         print(f"[INFO] Loading checkpoint from {config['decoder']['load_ckpt']['ckpt_path']}...")
         ckpt = torch.load(config["decoder"]["load_ckpt"]["ckpt_path"], map_location=config["device"], pickle_module=dill)
 
         if config["decoder"]["load_ckpt"]["load_only_core"]:
             print("[INFO] Loading only the core of the model (no history, no best ckpt)...")
 
-            ### init decoder (load only the core)
+            ### load decoder (load only the core)
             config["decoder"]["model"]["core_cls"] = ckpt["config"]["decoder"]["model"]["core_cls"]
             config["decoder"]["model"]["core_config"] = ckpt["config"]["decoder"]["model"]["core_config"]
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
-            decoder.load_state_dict({k:v for k,v in ckpt["best"]["model"].items() if "readin" not in k}, strict=False)
-
-            ### init the rest
-            opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
-            loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
-            history = {"train_loss": [], "val_loss": []}
-            best = {"val_loss": np.inf, "epoch": 0, "model": None}
+            decoder.load_from_ckpt(ckpt=ckpt, load_best=config["decoder"]["load_ckpt"]["load_best"], load_only_core=True, strict=False)
         else:
             print("[INFO] Continuing the training run (loading the current model, history, and overwriting the config)...")
-            history, best, config["decoder"]["model"] = ckpt["history"], ckpt["best"], ckpt["config"]["decoder"]["model"]
-
+            ### load decoder
+            config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
             decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
-            decoder.load_state_dict(ckpt["decoder"])
+            decoder.load_from_ckpt(ckpt=ckpt, load_best=config["decoder"]["load_ckpt"]["load_best"], load_only_core=False, strict=True)
 
-            opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
+        ### init optimizer (and load its state)
+        opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
+        if config["decoder"]["load_ckpt"]["load_opter_state"]:
             opter.load_state_dict(ckpt["opter"])
-            loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
+
+        ### history and best tracking
+        if config["decoder"]["load_ckpt"]["load_history"]:
+            history = ckpt["history"]
+        if not config["decoder"]["load_ckpt"]["reset_best"]:
+            best = ckpt["best"]
     else:
         print("[INFO] Initializing the model from scratch...")
         ckpt = None
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
         opter = config["decoder"]["opter_cls"](decoder.parameters(), **config["decoder"]["opter_kwargs"])
-        loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
 
-        history = {"train_loss": [], "val_loss": []}
-        best = {"val_loss": np.inf, "epoch": 0, "model": None}
+    loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
 
     return config, decoder, opter, loss_fn, history, best, ckpt
 

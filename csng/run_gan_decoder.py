@@ -210,7 +210,8 @@ config["decoder"] = {
     # "load_ckpt": {
     #     "load_best": False,
     #     "load_opter_state": True,
-    #     "reset_history": False,
+    #     "load_history": True,
+    #     "reset_best": False,
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-16_11-31-54", "decoder.pt"),
     #     "resume_checkpointing": True,
     #     "resume_wandb_id": "wznl0c8v",

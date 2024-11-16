@@ -179,7 +179,11 @@ config["decoder"] = {
     "n_epochs": 100,
     "load_ckpt": None,
     # "load_ckpt": {
+    #     "load_best": False,
+    #     "load_opter_state": True,
     #     "load_only_core": False,
+    #     "load_history": True,
+    #     "reset_best": False,
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-22_23-08-20", "ckpt", "decoder_185.pt"),
     #     "resume_checkpointing": True,
     #     "resume_wandb_id": "qu6wnt7h",
