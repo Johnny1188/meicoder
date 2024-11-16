@@ -508,7 +508,7 @@ def run(cfg):
         if val_loss < best["val_loss"]:
             best["val_loss"] = val_loss
             best["epoch"] = epoch
-            best["model"] = deepcopy(decoder.state_dict())
+            best["decoder"] = deepcopy(decoder.state_dict())
 
         ### log
         print(f"{train_loss=:.4f}, {val_loss=:.4f}")
@@ -567,7 +567,7 @@ def run(cfg):
     print(f"  Test loss (current model): {curr_test_loss:.4f}")
 
     ### load best model
-    decoder.load_state_dict(best["model"])
+    decoder.load_state_dict(best["decoder"])
 
     ### eval on test set w/ best params
     print("Evaluating on test set with the best model...")

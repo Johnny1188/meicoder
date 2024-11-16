@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor
 import torchvision
 import torchmetrics
+from focal_frequency_loss import FocalFrequencyLoss as FFL
 
 from csng.utils.data import standardize, normalize, crop
 from torchmetrics.image.fid import FrechetInceptionDistance
