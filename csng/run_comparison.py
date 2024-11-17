@@ -46,6 +46,7 @@ config["data"]["brainreader_mouse"] = {
     "batch_size": 6,
     # "sessions": list(range(1, 3)),
     "sessions": [6],
+    "resize_stim_to": (36, 64),
     "normalize_stim": True,
     "normalize_resp": False,
     "div_resp_by_std": True,

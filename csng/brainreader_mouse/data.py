@@ -17,10 +17,17 @@ def get_brainreader_mouse_dataloaders(config):
         ### prepare stim transforms
         stim_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToPILImage(),
-            torchvision.transforms.Resize((36, 64)),
+        ])
+        # by default resize to 36x64
+        if config.get("resize_stim_to", (36, 64)) is not None:
+            stim_transform.transforms.append(
+                torchvision.transforms.Resize(config.get("resize_stim_to", (36, 64)))
+            )
+        stim_transform.transforms.extend([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Lambda(lambda x: x.to(config["device"])),
         ])
+        # normalize stimuli
         if config["normalize_stim"]:
             stim_mean = np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "stimuli_mean.npy")).item()
             stim_std = np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "stimuli_std.npy")).item()
