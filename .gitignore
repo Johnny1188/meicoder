@@ -14,7 +14,6 @@ tmp*
 *.pt
 
 .env
-data
 slurm
 results
 logs
