@@ -38,7 +38,7 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    "batch_size": 64,
+    "batch_size": 128,
     "sessions": list(range(1, 23)),
     # "sessions": [6],
     "resize_stim_to": (36, 64),
