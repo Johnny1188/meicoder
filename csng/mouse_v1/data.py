@@ -9,7 +9,7 @@ from nnfabrik.builder import get_data
 from collections import namedtuple
 
 import csng
-from csng.utils.data import MixedBatchLoader, NumpyToTensor
+from csng.utils.data import MixedBatchLoader, NumpyToTensor, PerSampleStoredDataset
 
 
 def get_mouse_v1_dataloaders(config):
@@ -328,43 +328,43 @@ class SamplesDataset(Dataset):
             return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(stimuli.to(self.device), responses.to(self.device), self.pupil_centers[idx].to(self.device))
 
 
-class PerSampleStoredDataset(Dataset):
-    def __init__(self, dataset_dir, stim_transform=None, resp_transform=None, device="cpu"):
-        self.dirname = dataset_dir
-        self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
-        self.resp_transform = resp_transform if resp_transform is not None else NumpyToTensor()
-        self.file_names = [
-            f_name for f_name in os.listdir(self.dirname)
-            if f_name.endswith(".pkl") or f_name.endswith(".pickle")
-        ]
-        self.device = device
+# class PerSampleStoredDataset(Dataset):
+#     def __init__(self, dataset_dir, stim_transform=None, resp_transform=None, device="cpu"):
+#         self.dirname = dataset_dir
+#         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
+#         self.resp_transform = resp_transform if resp_transform is not None else NumpyToTensor()
+#         self.file_names = [
+#             f_name for f_name in os.listdir(self.dirname)
+#             if f_name.endswith(".pkl") or f_name.endswith(".pickle")
+#         ]
+#         self.device = device
 
-    @property
-    def n_neurons(self):
-        return self[0][1].shape[-1]
+#     @property
+#     def n_neurons(self):
+#         return self[0][1].shape[-1]
 
-    def __len__(self):
-        return len(self.file_names)
+#     def __len__(self):
+#         return len(self.file_names)
 
-    def __getitem__(self, idx):
-        f_name = self.file_names[idx]
-        with open(os.path.join(self.dirname, f_name), "rb") as f:
-            data = pickle.load(f)
-            stimuli = data["stim"]
-            responses = data["resp"]
-            if self.stim_transform is not None:
-                stimuli = self.stim_transform(stimuli)
-            if self.resp_transform is not None:
-                responses = self.resp_transform(responses)
+#     def __getitem__(self, idx):
+#         f_name = self.file_names[idx]
+#         with open(os.path.join(self.dirname, f_name), "rb") as f:
+#             data = pickle.load(f)
+#             stimuli = data["stim"]
+#             responses = data["resp"]
+#             if self.stim_transform is not None:
+#                 stimuli = self.stim_transform(stimuli)
+#             if self.resp_transform is not None:
+#                 responses = self.resp_transform(responses)
 
-            if "pupil_center" in data:
-                return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
-                    stimuli.to(self.device),
-                    responses.to(self.device),
-                    data["pupil_center"].to(self.device)
-                )
-            else:
-                return namedtuple("Datapoint", ["images", "responses"])(
-                    stimuli.to(self.device),
-                    responses.to(self.device)
-                )
+#             if "pupil_center" in data:
+#                 return namedtuple("Datapoint", ["images", "responses", "pupil_center"])(
+#                     stimuli.to(self.device),
+#                     responses.to(self.device),
+#                     data["pupil_center"].to(self.device)
+#                 )
+#             else:
+#                 return namedtuple("Datapoint", ["images", "responses"])(
+#                     stimuli.to(self.device),
+#                     responses.to(self.device)
+#                 )

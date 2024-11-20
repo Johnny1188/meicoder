@@ -1,10 +1,12 @@
 import os
+import numpy as np
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
-from csng.utils.data import MixedBatchLoader
+from csng.utils.data import MixedBatchLoader, PerSampleStoredDataset, Normalize
 from csng.brainreader_mouse.data import get_brainreader_mouse_dataloaders
-from csng.mouse_v1.data import get_mouse_v1_dataloaders, append_syn_dataloaders, append_data_aug_dataloaders
+from csng.mouse_v1.data import get_mouse_v1_dataloaders
 from csng.cat_v1.data import get_cat_v1_dataloaders
 
 
@@ -47,22 +49,6 @@ def get_dataloaders(config):
     if "mouse_v1" in config["data"] and config["data"]["mouse_v1"] is not None:
         m_dls, _neuron_coords = get_mouse_v1_dataloaders(config=config)
 
-        ### mouse v1 - synthetic data
-        if "syn_dataset_config" in config["data"] and config["data"]["syn_dataset_config"] is not None:
-            raise NotImplementedError
-            m_dls = append_syn_dataloaders(
-                dataloaders=m_dls,
-                config=config["data"]["syn_dataset_config"]
-            )
-
-        ### mouse v1 - data augmentation
-        if "data_augmentation" in config["data"] and config["data"]["data_augmentation"] is not None:
-            raise NotImplementedError
-            m_dls = append_data_aug_dataloaders(
-                dataloaders=m_dls,
-                config=config["data"]["data_augmentation"],
-            )
-
         ### add to data loaders
         for tier in ("train", "val", "test"):
             dls[tier]["mouse_v1"] = m_dls["mouse_v1"][tier]
@@ -94,5 +80,73 @@ def get_dataloaders(config):
                 return_neuron_coords=True,
                 device=config["device"],
             )
+
+    ### synthetic data
+    if "syn_data" in config["data"]:
+        s_dls, _neuron_coords = get_syn_dataloaders(config=config["data"]["syn_data"])
+
+        ### add to data loaders
+        for tier in config["data"]["syn_data"]["append_data_tiers"]:
+            dls[tier]["syn_data"] = s_dls[tier]
+        neuron_coords["syn_data"] = _neuron_coords
+
+    return dls, neuron_coords
+
+
+def get_syn_dataloaders(config):
+    dls = {data_tier: [] for data_tier in config["append_data_tiers"]}
+    neuron_coords = dict()
+    for data_dict in config["data_dicts"]:
+        ### divide by the per neuron std if the std is greater than 1% of the mean std (to avoid division by 0) - used by neuralpredictors
+        resp_std = torch.from_numpy(np.load(os.path.join(data_dict["path"], "train", "stats", f"responses_std.npy"))).float()
+        div_by = resp_std.clone()
+        thres = 0.01 * resp_std.mean()
+        idx = resp_std <= thres
+        div_by[idx] = thres
+
+        ### load mean for shifting the responses
+        if config["responses_shift_mean"]:
+            resp_mean = torch.from_numpy(np.load(os.path.join(data_dict["path"], "train", "stats", f"responses_mean.npy"))).float()
+        else:
+            resp_mean = 0
+
+        ### load neuron coordinates
+        if data_dict["load_neuron_coords"]:
+            neuron_coords[data_dict["data_key"]] = torch.from_numpy(np.load(
+                os.path.join(data_dict["path"], f"neuron_coords.npy"))
+            ).float()
+
+        ### append all data parts
+        for data_tier in config["append_data_tiers"]:
+            dls[data_tier].append(DataLoader(
+                PerSampleStoredDataset(
+                    dataset_dir=os.path.join(data_dict["path"], data_tier),
+                    stim_transform=lambda x: x,
+                    resp_transform=Normalize(
+                        mean=resp_mean,
+                        std=div_by,
+                        center_data=False, # keep the same mean, just scale
+                        clip_min=config.get("responses_clip_min", None),
+                        clip_max=config.get("responses_clip_max", None),
+                    ),
+                    device=config.get("device", "cpu"),
+                ),
+                batch_size=config["batch_size"],
+                shuffle=config["shuffle"],
+            ))
+
+    ### combine all dataloaders
+    for data_tier in config["append_data_tiers"]:
+        dls[data_tier] = MixedBatchLoader(
+            dataloaders=dls[data_tier],
+            neuron_coords=neuron_coords,
+            mixing_strategy=config["mixing_strategy"],
+            max_batches=config.get("max_training_batches", None),
+            data_keys=[data_dict["data_key"] for data_dict in config["data_dicts"]],
+            return_data_key=True,
+            return_pupil_center=config["return_pupil_center"],
+            return_neuron_coords=config["return_neuron_coords"],
+            device=config["device"],
+        )
 
     return dls, neuron_coords
