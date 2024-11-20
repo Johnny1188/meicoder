@@ -684,7 +684,10 @@ class MEIReadIn(ReadIn):
             neuron_coords[:, torch.arange(n_neurons), :2] += delta.unsqueeze(1)
 
         ### contextually modulate MEIs        
-        out = self.meis.unsqueeze(0).repeat(B, 1, 1, 1)
+        out = self.meis.unsqueeze(0)
+        if out.device != x.device: # fix for data parallelism
+            out = out.to(x.device)
+        out = out.repeat(B, 1, 1, 1) # (B, n_neurons, H, W)
         if self.ctx_net_config["in_channels"] > 1:
             ctx_inp = torch.cat([
                 x.unsqueeze(-1),
