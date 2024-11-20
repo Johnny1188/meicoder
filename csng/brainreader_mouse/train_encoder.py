@@ -23,12 +23,11 @@ config = {
     "device": os.environ["DEVICE"],
     "seed": 0,
     "data": {
-        "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
+        "mixing_strategy": "sequential", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
-
-    "save_path": os.path.join(DATA_PATH, "models", "encoder_ball.pth"),
-    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
+    "save_path": os.path.join(DATA_PATH, "models", "encoder_ball_50.pt"),
+    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
     "train": True,
 }
 
@@ -83,25 +82,26 @@ config["model_config"] = {
     "gauss_type": "full",
     "shifter": False,
     "stack": -1,
-    "mean_activity_dict": {
-        data_key: torch.from_numpy(np.load(
-            os.path.join(Path(dset.dataset_dir).parent.absolute(), "stats", "responses_mean.npy"))
-        ).to(config["device"])
-        for data_key, dset in zip(_dls["brainreader_mouse"]["train"].data_keys, _dls["brainreader_mouse"]["train"].datasets)
-    },
+    # "mean_activity_dict": {
+    #     data_key: torch.from_numpy(np.load(
+    #         os.path.join(Path(dset.dataset_dir).parent.absolute(), "stats", "responses_mean.npy"))
+    #     ).to(config["device"])
+    #     for data_key, dset in zip(_dls["brainreader_mouse"]["train"].data_keys, _dls["brainreader_mouse"]["train"].datasets)
+    # },
 }
 del _dls
 
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"
 config["trainer_config"] = {
-    "max_iter": 400,
+    "max_iter": 50,
     "verbose": True,
     "lr_decay_steps": 4,
     "avg_loss": False,
-    "lr_init": 0.03,
+    "lr_init": 0.009,
     "track_training": True,
     "weight_decay": 0.,
+    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_latest_ckpt.pt"),
 }
 
 
