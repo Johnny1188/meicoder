@@ -110,13 +110,15 @@ def setup_wandb_run(config, decoder=None):
                 wdb_run.watch(decoder)
         else:
             print("[WARNING] Not using wandb.")
+            wdb_run = None
     else:
         wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config, id=config["decoder"]["load_ckpt"]["resume_wandb_id"], resume="must", save_code=True)
 
-    wdb_run.log_code(
-        ".",
-        include_fn=lambda path, root: path.endswith(".py") or path.endswith(".ipynb") or path.endswith(".yaml") or path.endswith(".yml"),
-    )
+    if wdb_run:
+        wdb_run.log_code(
+            ".",
+            include_fn=lambda path, root: path.endswith(".py") or path.endswith(".ipynb") or path.endswith(".yaml") or path.endswith(".yml"),
+        )
 
     return wdb_run
 

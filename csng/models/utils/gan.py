@@ -42,6 +42,10 @@ def init_decoder(config):
         decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])
         decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
         if config["decoder"]["load_ckpt"]["load_opter_state"]:
+            if config["decoder"]["load_ckpt"]["load_best"]:
+                core_state_dict = {".".join(k.split(".")[1:]):v for k,v in ckpt["best"]["decoder"].items() if "G" in k or "D" in k}
+            else:
+                core_state_dict = {".".join(k.split(".")[1:]):v for k,v in ckpt["decoder"].items() if "G" in k or "D" in k}
             decoder.core.G_optim.load_state_dict(core_state_dict["G_optim"])
             decoder.core.D_optim.load_state_dict(core_state_dict["D_optim"])
 
