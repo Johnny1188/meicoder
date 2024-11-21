@@ -137,7 +137,7 @@ config["data"]["mouse_v1"] = {
 # config["data"]["syn_data"] = {
 #     "data_dicts": [
 #         {
-#             "path": os.path.join(DATA_PATH, "synthetic_data_1_train", "6"),
+#             "path": os.path.join(DATA_PATH, "synthetic_data_6_train", "6"),
 #             "data_key": "syn_6",
 #             "load_neuron_coords": False,
 #             "meis_path": os.path.join(DATA_PATH_BRAINREADER, "meis", "6",  "meis.pt"),
