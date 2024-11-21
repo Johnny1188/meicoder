@@ -56,7 +56,7 @@ config["syn_data"] = {
     "data_part_src": "train", # from base_dls
     "data_part_target": "train", # to which folder to save the synthetic data
     "data_key_src": "6", # from base_dls
-    "max_samples": 1000, # None or int
+    "max_samples": 50000, # None or int
     "save_stats": True,
     "patch_dataset": {
         "data_key": "6", # data key on which the encoder was trained
