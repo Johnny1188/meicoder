@@ -65,13 +65,13 @@ def get_dataloaders(config):
         torch.allclose(c_dls["val"].dataset[-1].neuron_coords, c_dls["test"].dataset[0].neuron_coords) and \
         torch.allclose(c_dls["test"].dataset[0].neuron_coords, c_dls["test"].dataset[-1].neuron_coords), \
             "Neuron coordinates must be the same for all samples in the dataset"
-        neuron_coords["cat_v1"] = c_dls["train"].dataset[0].neuron_coords.float().to(config["device"])
+        neuron_coords["cat_v1"] = {"cat_v1": c_dls["train"].dataset[0].neuron_coords.float().to(config["device"])}
 
         ### add to data loaders
         for tier in ("train", "val", "test"):
             dls[tier]["cat_v1"] = MixedBatchLoader(
                 dataloaders=[c_dls[tier]],
-                neuron_coords={"cat_v1": neuron_coords["cat_v1"]},
+                neuron_coords=neuron_coords["cat_v1"],
                 mixing_strategy=config["data"]["mixing_strategy"],
                 max_batches=config["data"].get("max_training_batches"),
                 data_keys=["cat_v1"],

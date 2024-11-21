@@ -38,7 +38,9 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 config = {
     "device": os.environ["DEVICE"],
     "seed": 0,
+    # "save_run": False,
     "save_run": True,
+    # "wandb": None,
     "wandb": {
         "project": os.environ["WANDB_PROJECT"],
         "group": "gan_decoder",
@@ -56,9 +58,8 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    # "batch_size": 1,
     "batch_size": 5,
-    # "sessions": list(range(1, 3)),
+    # "sessions": list(range(1, 23)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
     "normalize_stim": True,
@@ -85,6 +86,7 @@ config["data"]["cat_v1"] = {
         "return_ori": False,
         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
         "cached": False,
+        "clamp_neg_resp": True,
         "stim_normalize_mean": 46.143,
         "stim_normalize_std": 20.420,
         "resp_normalize_mean": torch.load(
@@ -130,6 +132,31 @@ config["data"]["mouse_v1"] = {
     "test_batch_size": 7,
     "device": config["device"],
 }
+
+# ### synthetic data
+# config["data"]["syn_data"] = {
+#     "data_dicts": [
+#         {
+#             "path": os.path.join(DATA_PATH, "synthetic_data_1_train", "6"),
+#             "data_key": "syn_6",
+#             "load_neuron_coords": False,
+#             "meis_path": os.path.join(DATA_PATH_BRAINREADER, "meis", "6",  "meis.pt"),
+#         },
+#     ],
+#     "append_data_tiers": ["train"],
+#     "responses_shift_mean": True,
+#     "responses_clip_min": 0,
+#     "responses_clip_max": None,
+
+#     "device": config["device"],
+#     "batch_size": 8,
+#     "shuffle": False,
+#     "mixing_strategy": config["data"]["mixing_strategy"],
+#     "max_training_batches": None,
+#     "return_pupil_center": False,
+#     "return_neuron_coords": False,
+#     "crop_win": (36, 64),
+# }
 
 ### decoder
 config["decoder"] = {
@@ -493,6 +520,107 @@ if "mouse_v1" in config["data"]:
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
                             "dropout": 0.1,
+                            "batch_norm": True,
+                        },
+                        "shift_coords": False,
+                        "device": config["device"],
+                    }),
+                ],
+            }[config["decoder"]["readin_type"]],
+        })
+
+### finish config for synthetic data
+if "syn_data" in config["data"]:
+    _dls, _ = get_dataloaders(config=config)
+    for data_key, syn_data_dict, dset in zip(
+        _dls["train"]["syn_data"].data_keys,
+        config["data"]["syn_data"]["data_dicts"],
+        _dls["train"]["syn_data"].datasets,
+    ):
+        assert syn_data_dict["data_key"] == data_key, f"{syn_data_dict['data_key']} != {data_key}"
+
+        ### set crop wins and losses
+        config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
+        config["decoder"]["loss"]["loss_fn"][data_key] = SSIMLoss(window=config["crop_wins"][data_key], log_loss=True, inp_normalized=True, inp_standardized=False)
+
+        ### append discriminator's head
+        config["decoder"]["model"]["core_config"]["D_kwargs"]["layers"][-1][data_key] = {
+            "in_shape": [1, *config["crop_wins"][data_key]],
+            "layers_config": [("fc", 1)],
+            "act_fn": nn.Identity,
+            "out_act_fn": nn.Sigmoid,
+        }
+
+        ### append readin
+        n_neurons = dset[0].responses.shape[-1]
+        config["decoder"]["model"]["readins_config"].append({
+            "data_key": data_key,
+            "in_shape": n_neurons,
+            "decoding_objective_config": None,
+            "layers": {
+                "conv": [
+                    (ConvReadIn, {
+                        "H": 18,
+                        "W": 32,
+                        "shift_coords": False,
+                        "learn_grid": True,
+                        "grid_l1_reg": 8e-3,
+                        "in_channels_group_size": 1,
+                        "grid_net_config": {
+                            "in_channels": 1, # resp
+                            "layers_config": [("fc", 8), ("fc", 64), ("fc", 18*32)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.2,
+                            "batch_norm": False,
+                        },
+                        "pointwise_conv_config": {
+                            "in_channels": n_neurons,
+                            "out_channels": 480,
+                            "act_fn": nn.Identity,
+                            "bias": False,
+                            "batch_norm": True,
+                            "dropout": 0.2,
+                        },
+                        "gauss_blur": False,
+                        "gauss_blur_kernel_size": 7,
+                        "gauss_blur_sigma": "fixed", # "fixed", "single", "per_neuron"
+                        "gauss_blur_sigma_init": 1.5,
+                        "neuron_emb_dim": None,
+                    }),
+                ],
+                "fc": [
+                    (FCReadIn, {
+                        "in_shape": n_neurons,
+                        "layers_config": [
+                            ("fc", 1728),
+                            ("unflatten", 1, (3, 18, 32)),
+                        ],
+                        "act_fn": nn.LeakyReLU,
+                        "out_act_fn": nn.Identity,
+                        "batch_norm": True,
+                        "dropout": 0.15,
+                    }),
+                ],
+                "mei": [
+                    (MEIReadIn, {
+                        "meis_path": syn_data_dict["meis_path"],
+                        "n_neurons": n_neurons,
+                        "mei_resize_method": "resize",
+                        "mei_target_shape": (36, 64),
+                        "pointwise_conv_config": {
+                            "out_channels": 480,
+                            "bias": False,
+                            "batch_norm": True,
+                            "act_fn": nn.LeakyReLU,
+                            "dropout": 0.15,
+                        },
+                        "ctx_net_config": {
+                            "in_channels": 1, # resp, x, y
+                            "layers_config": [("fc", 8), ("fc", 128), ("fc", 36*64)],
+                            "act_fn": nn.LeakyReLU,
+                            "out_act_fn": nn.Identity,
+                            "dropout": 0.15,
                             "batch_norm": True,
                         },
                         "shift_coords": False,
