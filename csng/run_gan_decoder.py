@@ -150,7 +150,7 @@ config["data"]["mouse_v1"] = {
 
 #     "device": config["device"],
 #     "batch_size": 8,
-#     "shuffle": False,
+#     "shuffle": True,
 #     "mixing_strategy": config["data"]["mixing_strategy"],
 #     "max_training_batches": None,
 #     "return_pupil_center": False,
