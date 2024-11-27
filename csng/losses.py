@@ -464,7 +464,7 @@ class SSIMLoss(torch.nn.Module):
             pred = standardize(pred)
             target = standardize(target)
 
-        assert torch.all(pred >= 0) and torch.all(pred <= 1), "Predictions should be in the [0, 1] range."
+        assert torch.all(pred >= -1e-5) and torch.all(pred <= 1 + 1e-5), "Predictions should be in the [0, 1] range."
         assert torch.all(target >= 0) and torch.all(target <= 1), "Targets should be in the [0, 1] range."
         ssim_val = self.ssim(pred, target) # (B,)
         assert ssim_val.ndim == 1 and ssim_val.size(0) == pred.size(0), \
@@ -776,6 +776,21 @@ class MS_SSIM(torch.nn.Module):
             weights=self.weights,
             K=self.K,
         )
+
+
+class MSELoss(torch.nn.Module):
+    def __init__(self, window=None, reduction="mean"):
+        super().__init__()
+        self.window = window
+        self.reduction = reduction
+
+    def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+        if self.window is not None:
+            pred = crop(pred, win=self.window)
+            target = crop(target, win=self.window)
+
+        loss = F.mse_loss(pred, target, reduction=self.reduction)
+        return loss
 
 
 ### Perceptual Loss
