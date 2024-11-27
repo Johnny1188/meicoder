@@ -2,6 +2,7 @@
 .vscode
 wandb
 .ipynb_checkpoints
+.conda/**
 
 *__pycache__*
 *.egg-info
