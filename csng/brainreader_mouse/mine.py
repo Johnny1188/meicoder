@@ -49,10 +49,6 @@ resnet50 = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet
 utils = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_convnets_processing_utils')
 resnet50.eval().to(device)
 
-# Expects a 224x224 image, so we need to resize the stimuli to that size.
-# img_transforms = transforms.Compose(
-#     [transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor()]
-# )
 
 for batch_no, batch in tqdm(enumerate(dl)):
     def objective(real, fake):
@@ -67,17 +63,16 @@ for batch_no, batch in tqdm(enumerate(dl)):
     padded_image = torch.zeros(stim.shape[0], 3, 224, 224)
 
     final_size = 224
-    start_h = (final_size - padded_image.shape[2]) // 2
-    start_w = (final_size - padded_image.shape[3]) // 2
+    h,w = stim.shape[2:]
+    start_h, start_w = (final_size-h)//2, (final_size-w)//2
     stim_color = stim.repeat(1, 3, 1, 1)
-    padded_image[:, :, 0:36, 0:64] = stim_color
+    padded_image[:, :, start_h:start_h+h, start_w: start_w + w] = stim_color
 
 
     with torch.no_grad():
         output = torch.nn.functional.softmax(resnet50(padded_image), dim=1)
-        results = utils.pick_n_best(predictions=output, n=5)
-    for result in results:
-        print(result)
+        results = utils.pick_n_best(predictions=output, n=3)
+        
 
     break;
 
