@@ -51,28 +51,7 @@ resnet50.eval().to(device)
 
 
 for batch_no, batch in tqdm(enumerate(dl)):
+    resnet50.register_hook()
     def objective(real, fake):
         pass
-    assert len(batch) == 1
-    data = batch[0]
-    stim = data['stim']
-    resp = data['resp']
-    for key in ['stim', 'resp']:
-        print(f"{key}: ", data[key].shape)
-
-    padded_image = torch.zeros(stim.shape[0], 3, 224, 224)
-
-    final_size = 224
-    h,w = stim.shape[2:]
-    start_h, start_w = (final_size-h)//2, (final_size-w)//2
-    stim_color = stim.repeat(1, 3, 1, 1)
-    padded_image[:, :, start_h:start_h+h, start_w: start_w + w] = stim_color
-
-
-    with torch.no_grad():
-        output = torch.nn.functional.softmax(resnet50(padded_image), dim=1)
-        results = utils.pick_n_best(predictions=output, n=3)
-        
-
-    break;
 
