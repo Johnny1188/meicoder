@@ -4,7 +4,7 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu_free
 #SBATCH --gres=gpu:volta:1
-#SBATCH --time=01:30:00
+#SBATCH --time=10:30:00
 
 
 echo "Start: $(date)"
