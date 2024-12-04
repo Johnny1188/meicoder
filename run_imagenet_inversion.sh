@@ -3,7 +3,7 @@
 #SBATCH --error="%J.err"
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu_free
-#SBATCH --gres=gpu:volta:2
+#SBATCH --gres=gpu:volta:1
 #SBATCH --time=01:30:00
 
 
