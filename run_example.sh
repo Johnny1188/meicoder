@@ -1,20 +1,24 @@
-#!/usr/bin/env bash
-SBATCH --output="%J.out"
-SBATCH --error="%J.err"
-SBATCH --partition=gpu
-SBATCH --qos=gpu_free
-SBATCH --gres=gpu:volta:2
+#!/bin/bash
+#SBATCH --output="%J.out"
+#SBATCH --error="%J.err"
+#SBATCH --partition=gpu
+#SBATCH --qos=gpu_free
+#SBATCH --gres=gpu:volta:2
+#SBATCH --time=01:30:00
+
 
 echo "Start: $(date)"
 nvidia-smi
 
-### activate conda environment
+### Activate conda environment
 source $HOME/miniconda3/bin/activate csng
 
-### run the python script
+### Run the notebook
 cd $HOME/cs-433-project
+
 export $(cat .env | xargs)
-python csng/brainreader_mouse/train_encoder.py
+
+# Using the SLURM job ID to create a unique filename for the output notebook
+jupyter nbconvert --to notebook --execute --output resnet_inversion_${SLURM_JOB_ID}.ipynb csng/brainreader_mouse/resnet_inversion.ipynb
 
 echo "End: $(date)"
-
