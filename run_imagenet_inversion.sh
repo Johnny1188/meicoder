@@ -5,6 +5,8 @@
 #SBATCH --qos=gpu_free
 #SBATCH --gres=gpu:volta:1
 #SBATCH --time=2:00:00
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=vanousekmikulas@gmail.com
 
 # Record the start time
 START_TIME=$(date +%s)
