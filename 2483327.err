@@ -1,0 +1,106 @@
+[NbConvertApp] Converting notebook csng/brainreader_mouse/resnet_inversion.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/vanousek/miniconda3/envs/csng/bin/jupyter-nbconvert", line 11, in <module>
+    sys.exit(main())
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/jupyter_core/application.py", line 283, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/traitlets/config/application.py", line 1075, in launch_instance
+    app.start()
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 420, in start
+    self.convert_notebooks()
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 597, in convert_notebooks
+    self.convert_single_notebook(notebook_filename)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 563, in convert_single_notebook
+    output, resources = self.export_single_notebook(
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 487, in export_single_notebook
+    output, resources = self.exporter.from_filename(
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 201, in from_filename
+    return self.from_file(f, resources=resources, **kw)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 220, in from_file
+    return self.from_notebook_node(
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/notebook.py", line 36, in from_notebook_node
+    nb_copy, resources = super().from_notebook_node(nb, resources, **kw)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 154, in from_notebook_node
+    nb_copy, resources = self._preprocess(nb_copy, resources)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 353, in _preprocess
+    nbc, resc = preprocessor(nbc, resc)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/preprocessors/base.py", line 48, in __call__
+    return self.preprocess(nb, resources)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/preprocessors/execute.py", line 103, in preprocess
+    self.preprocess_cell(cell, resources, index)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/preprocessors/execute.py", line 124, in preprocess_cell
+    cell = self.execute_cell(cell, index, store_history=True)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbclient/client.py", line 1058, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbclient/client.py", line 914, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+import torch.nn.functional as f2
+
+class MLP(nn.Module):
+    def __init__(self, dims):
+        """
+        Single-layer MLP for regression.
+        :param input_dim: Input feature size (flattened)
+        :param hidden_dim: Number of hidden units
+        :param output_dim: Number of outputs (target size)
+        :param alpha: Regularization strength
+        """
+        super(MLP, self, alpha=.1).__init__()
+        self.lins = nn.ModuleList([nn.Linear(input_dim, output_dim) for input_dim, output_dim in zip(dims[:-1], dims[1:])])
+        self.acts = nn.ModuleList([nn.LeakyReLU(alpha) for _ in self.lins])
+
+    def forward(self, x):
+        for lin, act in zip(self.lins, self.acts):
+            x = act(lin(x))
+        return x
+
+# Model parameters
+feature_shape = (1024, 14, 14)  # Provided feature shape
+
+input_size = feature_shape[0] * feature_shape[1] * feature_shape[2] # 200704
+
+output_size = 36 * 64  # 2304
+# Model parameters
+mlp_model = MLP([input_size, 2* output_size, output_size, output_size]).to(device)
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+print("Total parametrs: ", count_parameters(mlp_model))
+
+criterion = nn.MSELoss()
+optimizer = optim.Adam(mlp_model.parameters(), lr=0.0005)
+------------------
+
+
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mTypeError[0m                                 Traceback (most recent call last)
+Cell [0;32mIn[4], line 32[0m
+[1;32m     30[0m output_size [38;5;241m=[39m [38;5;241m36[39m [38;5;241m*[39m [38;5;241m64[39m  [38;5;66;03m# 2304[39;00m
+[1;32m     31[0m [38;5;66;03m# Model parameters[39;00m
+[0;32m---> 32[0m mlp_model [38;5;241m=[39m [43mMLP[49m[43m([49m[43m[[49m[43minput_size[49m[43m,[49m[43m [49m[38;5;241;43m2[39;49m[38;5;241;43m*[39;49m[43m [49m[43moutput_size[49m[43m,[49m[43m [49m[43moutput_size[49m[43m,[49m[43m [49m[43moutput_size[49m[43m][49m[43m)[49m[38;5;241m.[39mto(device)
+[1;32m     33[0m [38;5;28;01mdef[39;00m [38;5;21mcount_parameters[39m(model):
+[1;32m     34[0m     [38;5;28;01mreturn[39;00m [38;5;28msum[39m(p[38;5;241m.[39mnumel() [38;5;28;01mfor[39;00m p [38;5;129;01min[39;00m model[38;5;241m.[39mparameters() [38;5;28;01mif[39;00m p[38;5;241m.[39mrequires_grad)
+
+Cell [0;32mIn[4], line 16[0m, in [0;36mMLP.__init__[0;34m(self, dims)[0m
+[1;32m      8[0m [38;5;28;01mdef[39;00m [38;5;21m__init__[39m([38;5;28mself[39m, dims):
+[1;32m      9[0m [38;5;250m    [39m[38;5;124;03m"""[39;00m
+[1;32m     10[0m [38;5;124;03m    Single-layer MLP for regression.[39;00m
+[1;32m     11[0m [38;5;124;03m    :param input_dim: Input feature size (flattened)[39;00m
+[0;32m   (...)[0m
+[1;32m     14[0m [38;5;124;03m    :param alpha: Regularization strength[39;00m
+[1;32m     15[0m [38;5;124;03m    """[39;00m
+[0;32m---> 16[0m     [38;5;28;43msuper[39;49m[43m([49m[43mMLP[49m[43m,[49m[43m [49m[38;5;28;43mself[39;49m[43m,[49m[43m [49m[43malpha[49m[38;5;241;43m=[39;49m[38;5;241;43m.1[39;49m[43m)[49m[38;5;241m.[39m[38;5;21m__init__[39m()
+[1;32m     17[0m     [38;5;28mself[39m[38;5;241m.[39mlins [38;5;241m=[39m nn[38;5;241m.[39mModuleList([nn[38;5;241m.[39mLinear(input_dim, output_dim) [38;5;28;01mfor[39;00m input_dim, output_dim [38;5;129;01min[39;00m [38;5;28mzip[39m(dims[:[38;5;241m-[39m[38;5;241m1[39m], dims[[38;5;241m1[39m:])])
+[1;32m     18[0m     [38;5;28mself[39m[38;5;241m.[39macts [38;5;241m=[39m nn[38;5;241m.[39mModuleList([nn[38;5;241m.[39mLeakyReLU(alpha) [38;5;28;01mfor[39;00m _ [38;5;129;01min[39;00m [38;5;28mself[39m[38;5;241m.[39mlins])
+
+[0;31mTypeError[0m: super() takes no keyword arguments
+
