@@ -1,0 +1,131 @@
+[NbConvertApp] Converting notebook csng/brainreader_mouse/resnet_inversion.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/vanousek/miniconda3/envs/csng/bin/jupyter-nbconvert", line 11, in <module>
+    sys.exit(main())
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/jupyter_core/application.py", line 283, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/traitlets/config/application.py", line 1075, in launch_instance
+    app.start()
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 420, in start
+    self.convert_notebooks()
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 597, in convert_notebooks
+    self.convert_single_notebook(notebook_filename)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 563, in convert_single_notebook
+    output, resources = self.export_single_notebook(
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/nbconvertapp.py", line 487, in export_single_notebook
+    output, resources = self.exporter.from_filename(
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 201, in from_filename
+    return self.from_file(f, resources=resources, **kw)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 220, in from_file
+    return self.from_notebook_node(
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/notebook.py", line 36, in from_notebook_node
+    nb_copy, resources = super().from_notebook_node(nb, resources, **kw)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 154, in from_notebook_node
+    nb_copy, resources = self._preprocess(nb_copy, resources)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/exporters/exporter.py", line 353, in _preprocess
+    nbc, resc = preprocessor(nbc, resc)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/preprocessors/base.py", line 48, in __call__
+    return self.preprocess(nb, resources)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/preprocessors/execute.py", line 103, in preprocess
+    self.preprocess_cell(cell, resources, index)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbconvert/preprocessors/execute.py", line 124, in preprocess_cell
+    cell = self.execute_cell(cell, index, store_history=True)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbclient/client.py", line 1058, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/home/vanousek/miniconda3/envs/csng/lib/python3.10/site-packages/nbclient/client.py", line 914, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+num_epochs = 3
+for epoch in range(num_epochs):
+    mlp_model.train()
+    running_loss = 0.0
+
+    # for grayscale_img, features, target in tqdm(train_loader):
+    for grayscale_img, features, target in train_loader:
+        features = features.to(device)  # Move to device
+        target = target.view(target.size(0), -1).to(device)  # Flatten target
+
+        # Flatten features
+        # cut to 8x8
+
+        features = features[:, feature_cut[1], feature_cut[2]].view(features.size(0), -1)
+        features = features.view(features.size(0), -1)
+
+        # Forward pass
+        outputs = mlp_model(features)
+        loss = criterion(outputs, target)
+
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+        # constant_guess = torch.mean(target, dim=(-1, -2), keepdim=True)
+        constant_guess_loss = criterion(torch.full_like(target, 0), target)
+        # print(f"Constant guess loss: {constant_guess_loss.item()}")
+        # print(f"Loss: {loss.item()}")
+
+
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}")
+
+------------------
+
+
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mRuntimeError[0m                              Traceback (most recent call last)
+Cell [0;32mIn[5], line 18[0m
+[1;32m     15[0m features [38;5;241m=[39m features[38;5;241m.[39mview(features[38;5;241m.[39msize([38;5;241m0[39m), [38;5;241m-[39m[38;5;241m1[39m)
+[1;32m     17[0m [38;5;66;03m# Forward pass[39;00m
+[0;32m---> 18[0m outputs [38;5;241m=[39m [43mmlp_model[49m[43m([49m[43mfeatures[49m[43m)[49m
+[1;32m     19[0m loss [38;5;241m=[39m criterion(outputs, target)
+[1;32m     21[0m [38;5;66;03m# Backward pass and optimization[39;00m
+
+File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules/module.py:1511[0m, in [0;36mModule._wrapped_call_impl[0;34m(self, *args, **kwargs)[0m
+[1;32m   1509[0m     [38;5;28;01mreturn[39;00m [38;5;28mself[39m[38;5;241m.[39m_compiled_call_impl([38;5;241m*[39margs, [38;5;241m*[39m[38;5;241m*[39mkwargs)  [38;5;66;03m# type: ignore[misc][39;00m
+[1;32m   1510[0m [38;5;28;01melse[39;00m:
+[0;32m-> 1511[0m     [38;5;28;01mreturn[39;00m [38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43m_call_impl[49m[43m([49m[38;5;241;43m*[39;49m[43margs[49m[43m,[49m[43m [49m[38;5;241;43m*[39;49m[38;5;241;43m*[39;49m[43mkwargs[49m[43m)[49m
+
+File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules/module.py:1520[0m, in [0;36mModule._call_impl[0;34m(self, *args, **kwargs)[0m
+[1;32m   1515[0m [38;5;66;03m# If we don't have any hooks, we want to skip the rest of the logic in[39;00m
+[1;32m   1516[0m [38;5;66;03m# this function, and just call forward.[39;00m
+[1;32m   1517[0m [38;5;28;01mif[39;00m [38;5;129;01mnot[39;00m ([38;5;28mself[39m[38;5;241m.[39m_backward_hooks [38;5;129;01mor[39;00m [38;5;28mself[39m[38;5;241m.[39m_backward_pre_hooks [38;5;129;01mor[39;00m [38;5;28mself[39m[38;5;241m.[39m_forward_hooks [38;5;129;01mor[39;00m [38;5;28mself[39m[38;5;241m.[39m_forward_pre_hooks
+[1;32m   1518[0m         [38;5;129;01mor[39;00m _global_backward_pre_hooks [38;5;129;01mor[39;00m _global_backward_hooks
+[1;32m   1519[0m         [38;5;129;01mor[39;00m _global_forward_hooks [38;5;129;01mor[39;00m _global_forward_pre_hooks):
+[0;32m-> 1520[0m     [38;5;28;01mreturn[39;00m [43mforward_call[49m[43m([49m[38;5;241;43m*[39;49m[43margs[49m[43m,[49m[43m [49m[38;5;241;43m*[39;49m[38;5;241;43m*[39;49m[43mkwargs[49m[43m)[49m
+[1;32m   1522[0m [38;5;28;01mtry[39;00m:
+[1;32m   1523[0m     result [38;5;241m=[39m [38;5;28;01mNone[39;00m
+
+Cell [0;32mIn[4], line 22[0m, in [0;36mMLP.forward[0;34m(self, x)[0m
+[1;32m     20[0m [38;5;28;01mdef[39;00m [38;5;21mforward[39m([38;5;28mself[39m, x):
+[1;32m     21[0m     [38;5;28;01mfor[39;00m lin, act [38;5;129;01min[39;00m [38;5;28mzip[39m([38;5;28mself[39m[38;5;241m.[39mlins, [38;5;28mself[39m[38;5;241m.[39macts):
+[0;32m---> 22[0m         x [38;5;241m=[39m act([43mlin[49m[43m([49m[43mx[49m[43m)[49m)
+[1;32m     23[0m     [38;5;28;01mreturn[39;00m x
+
+File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules/module.py:1511[0m, in [0;36mModule._wrapped_call_impl[0;34m(self, *args, **kwargs)[0m
+[1;32m   1509[0m     [38;5;28;01mreturn[39;00m [38;5;28mself[39m[38;5;241m.[39m_compiled_call_impl([38;5;241m*[39margs, [38;5;241m*[39m[38;5;241m*[39mkwargs)  [38;5;66;03m# type: ignore[misc][39;00m
+[1;32m   1510[0m [38;5;28;01melse[39;00m:
+[0;32m-> 1511[0m     [38;5;28;01mreturn[39;00m [38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43m_call_impl[49m[43m([49m[38;5;241;43m*[39;49m[43margs[49m[43m,[49m[43m [49m[38;5;241;43m*[39;49m[38;5;241;43m*[39;49m[43mkwargs[49m[43m)[49m
+
+File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules/module.py:1520[0m, in [0;36mModule._call_impl[0;34m(self, *args, **kwargs)[0m
+[1;32m   1515[0m [38;5;66;03m# If we don't have any hooks, we want to skip the rest of the logic in[39;00m
+[1;32m   1516[0m [38;5;66;03m# this function, and just call forward.[39;00m
+[1;32m   1517[0m [38;5;28;01mif[39;00m [38;5;129;01mnot[39;00m ([38;5;28mself[39m[38;5;241m.[39m_backward_hooks [38;5;129;01mor[39;00m [38;5;28mself[39m[38;5;241m.[39m_backward_pre_hooks [38;5;129;01mor[39;00m [38;5;28mself[39m[38;5;241m.[39m_forward_hooks [38;5;129;01mor[39;00m [38;5;28mself[39m[38;5;241m.[39m_forward_pre_hooks
+[1;32m   1518[0m         [38;5;129;01mor[39;00m _global_backward_pre_hooks [38;5;129;01mor[39;00m _global_backward_hooks
+[1;32m   1519[0m         [38;5;129;01mor[39;00m _global_forward_hooks [38;5;129;01mor[39;00m _global_forward_pre_hooks):
+[0;32m-> 1520[0m     [38;5;28;01mreturn[39;00m [43mforward_call[49m[43m([49m[38;5;241;43m*[39;49m[43margs[49m[43m,[49m[43m [49m[38;5;241;43m*[39;49m[38;5;241;43m*[39;49m[43mkwargs[49m[43m)[49m
+[1;32m   1522[0m [38;5;28;01mtry[39;00m:
+[1;32m   1523[0m     result [38;5;241m=[39m [38;5;28;01mNone[39;00m
+
+File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules/linear.py:116[0m, in [0;36mLinear.forward[0;34m(self, input)[0m
+[1;32m    115[0m [38;5;28;01mdef[39;00m [38;5;21mforward[39m([38;5;28mself[39m, [38;5;28minput[39m: Tensor) [38;5;241m-[39m[38;5;241m>[39m Tensor:
+[0;32m--> 116[0m     [38;5;28;01mreturn[39;00m [43mF[49m[38;5;241;43m.[39;49m[43mlinear[49m[43m([49m[38;5;28;43minput[39;49m[43m,[49m[43m [49m[38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43mweight[49m[43m,[49m[43m [49m[38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43mbias[49m[43m)[49m
+
+[0;31mRuntimeError[0m: mat1 and mat2 shapes cannot be multiplied (256x0 and 65536x9216)
+
