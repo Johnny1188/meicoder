@@ -53,8 +53,7 @@ for epoch in range(num_epochs):
         # Flatten features
         # cut to 8x8
 
-        features = features[:, feature_cut[1], feature_cut[2]].view(features.size(0), -1)
-        features = features.view(features.size(0), -1)
+        features = features[:, feature_cut[0], feature_cut[1], feature_cut[2]].reshape(features.size(0), -1)
 
         # Forward pass
         outputs = mlp_model(features)
@@ -80,12 +79,12 @@ for epoch in range(num_epochs):
 
 [0;31m---------------------------------------------------------------------------[0m
 [0;31mRuntimeError[0m                              Traceback (most recent call last)
-Cell [0;32mIn[5], line 18[0m
-[1;32m     15[0m features [38;5;241m=[39m features[38;5;241m.[39mview(features[38;5;241m.[39msize([38;5;241m0[39m), [38;5;241m-[39m[38;5;241m1[39m)
-[1;32m     17[0m [38;5;66;03m# Forward pass[39;00m
-[0;32m---> 18[0m outputs [38;5;241m=[39m [43mmlp_model[49m[43m([49m[43mfeatures[49m[43m)[49m
-[1;32m     19[0m loss [38;5;241m=[39m criterion(outputs, target)
-[1;32m     21[0m [38;5;66;03m# Backward pass and optimization[39;00m
+Cell [0;32mIn[5], line 17[0m
+[1;32m     14[0m features [38;5;241m=[39m features[:, feature_cut[[38;5;241m0[39m], feature_cut[[38;5;241m1[39m], feature_cut[[38;5;241m2[39m]][38;5;241m.[39mreshape(features[38;5;241m.[39msize([38;5;241m0[39m), [38;5;241m-[39m[38;5;241m1[39m)
+[1;32m     16[0m [38;5;66;03m# Forward pass[39;00m
+[0;32m---> 17[0m outputs [38;5;241m=[39m [43mmlp_model[49m[43m([49m[43mfeatures[49m[43m)[49m
+[1;32m     18[0m loss [38;5;241m=[39m criterion(outputs, target)
+[1;32m     20[0m [38;5;66;03m# Backward pass and optimization[39;00m
 
 File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules/module.py:1511[0m, in [0;36mModule._wrapped_call_impl[0;34m(self, *args, **kwargs)[0m
 [1;32m   1509[0m     [38;5;28;01mreturn[39;00m [38;5;28mself[39m[38;5;241m.[39m_compiled_call_impl([38;5;241m*[39margs, [38;5;241m*[39m[38;5;241m*[39mkwargs)  [38;5;66;03m# type: ignore[misc][39;00m
@@ -127,5 +126,5 @@ File [0;32m~/miniconda3/envs/csng/lib/python3.10/site-packages/torch/nn/modules
 [1;32m    115[0m [38;5;28;01mdef[39;00m [38;5;21mforward[39m([38;5;28mself[39m, [38;5;28minput[39m: Tensor) [38;5;241m-[39m[38;5;241m>[39m Tensor:
 [0;32m--> 116[0m     [38;5;28;01mreturn[39;00m [43mF[49m[38;5;241;43m.[39;49m[43mlinear[49m[43m([49m[38;5;28;43minput[39;49m[43m,[49m[43m [49m[38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43mweight[49m[43m,[49m[43m [49m[38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43mbias[49m[43m)[49m
 
-[0;31mRuntimeError[0m: mat1 and mat2 shapes cannot be multiplied (256x0 and 65536x9216)
+[0;31mRuntimeError[0m: mat1 and mat2 shapes cannot be multiplied (256x896 and 65536x9216)
 
