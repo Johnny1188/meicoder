@@ -22,9 +22,11 @@ cd $HOME/cs-433-project
 export $(cat .env | xargs)
 
 # Using the SLURM job ID to create a unique filename for the output notebook
-jupyter nbconvert --to notebook --execute --allow-errors --output resnet_inversion_${SLURM_JOB_ID}.ipynb csng/brainreader_mouse/resnet_inversion.ipynb
+OUTPUT_FILE=resnet_inversion_${SLURM_JOB_ID}.ipynb
+jupyter nbconvert --to notebook --execute --allow-errors --output $OUTPUT_FILE csng/brainreader_mouse/resnet_inversion.ipynb
 
-nvidia-smi
+# Remove write permission for everyone, including yourself
+chmod a-w $OUTPUT_FILE
 
 echo "End: $(date)"
 
