@@ -16,6 +16,7 @@ from csng.utils.data import standardize, normalize, crop
 from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder
 from csng.losses import get_metrics
 from csng.data import get_dataloaders, get_sample_data
+from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
@@ -43,7 +44,7 @@ config["data"]["brainreader_mouse"] = {
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
     # "batch_size": 1,
-    "batch_size": 6,
+    "batch_size": 16,
     # "sessions": list(range(1, 3)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
@@ -60,73 +61,73 @@ for data_key, dset in zip(_dls["train"]["brainreader_mouse"].data_keys, _dls["tr
     config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
 
 ### cat v1 data
-config["data"]["cat_v1"] = {
-    "crop_win": (20, 20),
-    "dataset_config": {
-        "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
-        "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
-        "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
-        "image_size": [50, 50],
-        "crop": False,
-        "batch_size": 6,
-        "stim_keys": ("stim",),
-        "resp_keys": ("exc_resp", "inh_resp"),
-        "return_coords": True,
-        "return_ori": False,
-        "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
-        "cached": False,
-        "stim_normalize_mean": 46.143,
-        "stim_normalize_std": 20.420,
-        "resp_normalize_mean": torch.load(
-            os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
-        ),
-        "resp_normalize_std": torch.load(
-            os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
-        ),
-        # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
-    },
-}
-# add crop_wins for cat v1 data
-config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
+# config["data"]["cat_v1"] = {
+#     "crop_win": (20, 20),
+#     "dataset_config": {
+#         "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
+#         "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
+#         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
+#         "image_size": [50, 50],
+#         "crop": False,
+#         "batch_size": 6,
+#         "stim_keys": ("stim",),
+#         "resp_keys": ("exc_resp", "inh_resp"),
+#         "return_coords": True,
+#         "return_ori": False,
+#         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
+#         "cached": False,
+#         "stim_normalize_mean": 46.143,
+#         "stim_normalize_std": 20.420,
+#         "resp_normalize_mean": torch.load(
+#             os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
+#         ),
+#         "resp_normalize_std": torch.load(
+#             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
+#         ),
+#         # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
+#     },
+# }
+# # add crop_wins for cat v1 data
+# config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
 
 ### mouse v1 data
-config["data"]["mouse_v1"] = {
-    "dataset_fn": "sensorium.datasets.static_loaders",
-    "dataset_config": {
-        "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
-            # os.path.join(DATA_PATH_MOUSE_V1, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
-            # os.path.join(DATA_PATH_MOUSE_V1, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
-            os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
-            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
-        ],
-        "normalize": True,
-        "scale": 0.25, # 256x144 -> 64x36
-        "include_behavior": False,
-        "add_behavior_as_channels": False,
-        "include_eye_position": True,
-        "exclude": None,
-        "file_tree": True,
-        "cuda": "cuda" in config["device"],
-        "batch_size": 6,
-        "seed": config["seed"],
-        "use_cache": False,
-    },
-    "crop_win": (22, 36),
-    "skip_train": False,
-    "skip_val": False,
-    "skip_test": False,
-    "normalize_neuron_coords": True,
-    "average_test_multitrial": True,
-    "save_test_multitrial": True,
-    "test_batch_size": 7,
-    "device": config["device"],
-}
-# add crop_wins for mouse v1 data
-for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
-    config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
+# config["data"]["mouse_v1"] = {
+#     "dataset_fn": "sensorium.datasets.static_loaders",
+#     "dataset_config": {
+#         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static26872-17-20-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # mouse 1
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static27204-5-13-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # sensorium+ (mouse 2)
+#             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 3)
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 4)
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 5)
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 6)
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # pretraining (mouse 7)
+#         ],
+#         "normalize": True,
+#         "scale": 0.25, # 256x144 -> 64x36
+#         "include_behavior": False,
+#         "add_behavior_as_channels": False,
+#         "include_eye_position": True,
+#         "exclude": None,
+#         "file_tree": True,
+#         "cuda": "cuda" in config["device"],
+#         "batch_size": 6,
+#         "seed": config["seed"],
+#         "use_cache": False,
+#     },
+#     "crop_win": (22, 36),
+#     "skip_train": False,
+#     "skip_val": False,
+#     "skip_test": False,
+#     "normalize_neuron_coords": True,
+#     "average_test_multitrial": True,
+#     "save_test_multitrial": True,
+#     "test_batch_size": 7,
+#     "device": config["device"],
+# }
+# # add crop_wins for mouse v1 data
+# for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
+#     config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
 
 
 ### comparison config
@@ -146,9 +147,9 @@ config["comparison"] = {
     # "load_ckpt": {
     #     "overwrite": True,
     #     "path": os.path.join(
-    #         "results",
-    #         "table_01",
-    #         "2024-04-29_11-08-54.pt",
+    #         # "results",
+    #         # "test",
+    #         "/home/sobotka/cs-433-project/csng/results/test/2024-12-06_20-18-50.pt",
     #     ),
     #     "load_only": None, # 'None' to load all
     #     # "load_only": [
@@ -191,24 +192,24 @@ config["comparison"]["to_compare"] = {
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
-    # "Inverted Encoder (M-All)": {
-    #     "decoder": InvertedEncoderBrainreader(
-    #         encoder=get_encoder(
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
-    #             device=config["device"],
-    #             eval_mode=True,
-    #         ),
-    #         img_dims=(1, 36, 64),
-    #         stim_pred_init="randn",
-    #         lr=1000,
-    #         n_steps=1000,
-    #         img_grad_gauss_blur_sigma=1.5,
-    #         jitter=None,
-    #         mse_reduction="per_sample_mean_sum",
-    #         device=config["device"],
-    #     ).to(config["device"]),
-    #     "run_name": None,
-    # },
+    "Inverted Encoder (B-All)": {
+        "decoder": InvertedEncoderBrainreader(
+            encoder=get_encoder_brainreader(
+                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+                device=config["device"],
+                eval_mode=True,
+            ),
+            img_dims=(1, 36, 64),
+            stim_pred_init="randn",
+            lr=1000,
+            n_steps=1000,
+            img_grad_gauss_blur_sigma=1.5,
+            jitter=None,
+            mse_reduction="per_sample_mean_sum",
+            device=config["device"],
+        ).to(config["device"]),
+        "run_name": None,
+    },
     # "Inverted Encoder (Ensemble, M-6)": {
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
@@ -240,8 +241,8 @@ config["comparison"]["to_compare"] = {
     # },
 
     "GAN": {
-        "run_name": "2024-11-16_11-31-54",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-16_16-13-29", "decoder.pt"),
+        "run_name": "2024-11-25_19-22-15",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-25_19-22-15", "decoder.pt"),
     },
 }
 
@@ -344,11 +345,11 @@ def run_comparison(cfg):
             ### get sample reconstructions
             stim_pred_best = dict()
             if "brainreader_mouse" in cfg["data"]:
-                stim_pred_best[s["b_sample_data_key"]] = decoder(s["b_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["b_sample_dataset"]][s["b_sample_data_key"]], data_key=s["b_sample_data_key"]).detach().cpu()
+                stim_pred_best[s["b_sample_data_key"]] = decoder(s["b_resp"].to(cfg["device"]), neuron_coords=neuron_coords[s["b_sample_dataset"]][s["b_sample_data_key"]], data_key=s["b_sample_data_key"]).detach().cpu()
             if "cat_v1" in cfg["data"]:
-                stim_pred_best[s["c_sample_data_key"]] = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach().cpu()
+                stim_pred_best[s["c_sample_data_key"]] = decoder(s["c_resp"].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach().cpu()
             if "mouse_v1" in cfg["data"]:
-                stim_pred_best[s["m_sample_data_key"]] = decoder(s["m_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["m_sample_dataset"]][s["m_sample_data_key"]], pupil_center=s["m_pupil_center"][:8].to(cfg["device"]), data_key=s["m_sample_data_key"]).detach().cpu()
+                stim_pred_best[s["m_sample_data_key"]] = decoder(s["m_resp"].to(cfg["device"]), neuron_coords=neuron_coords[s["m_sample_dataset"]][s["m_sample_data_key"]], pupil_center=s["m_pupil_center"].to(cfg["device"]), data_key=s["m_sample_data_key"]).detach().cpu()
             run_dict["stim_pred_best"].append(stim_pred_best)
 
             ### eval

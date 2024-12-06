@@ -11,6 +11,7 @@ dependencies:
   - lovely-tensors=0.1.7
   - dill=0.3.7
   - seaborn
+  - scipy=1.12.0
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/cu121
     - torch==2.2.1+cu121
