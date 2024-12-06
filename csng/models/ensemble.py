@@ -19,6 +19,7 @@ class Ensemble(nn.Module):
         super().__init__()
         assert ((0 if ckpt_paths is None else len(ckpt_paths)) + (0 if decoders is None else len(decoders))) > 0, \
             "Neither decoders nor ckpt_paths specified"
+        
         self.decoders = decoders
         self.ckpt_paths = ckpt_paths
         self.crop_win = crop_win
@@ -28,6 +29,7 @@ class Ensemble(nn.Module):
         stim_pred = 0
         n_preds = 0
 
+        ### run already loaded decoders
         if self.decoders is not None:
             for decoder in self.decoders:
                 n_preds += 1
@@ -37,6 +39,8 @@ class Ensemble(nn.Module):
                     neuron_coords=neuron_coords,
                     pupil_center=pupil_center,
                 ), self.crop_win)
+
+        ### load and run decoders from ckpt_paths
         if self.ckpt_paths is not None:
             for ckpt_path in self.ckpt_paths:
                 n_preds += 1
@@ -63,8 +67,9 @@ class EnsembleInvEnc(Ensemble):
         use_brainreader_encoder=True,
         **kwargs,
     ):
-        assert "decoders" not in kwargs
-        kwargs.pop("encoder_paths", None)
+        ### check kwargs
+        assert "decoders" not in kwargs, "Use `encoder_paths` and `encoder_config` instead of `decoders`."
+        assert "get_encoder_fn" in kwargs, "Missing `get_encoder_fn` in kwargs."
         if type(encoder_config) == dict:
             assert "encoder" not in encoder_config
         elif type(encoder_config) == list:
@@ -74,8 +79,9 @@ class EnsembleInvEnc(Ensemble):
         else:
             raise ValueError("`encoder_config` must be dict or list of dicts.")
 
+        ### load encoders to initalize decoders
         kwargs["decoders"] = []
-        if use_brainreader_encoder:
+        if use_brainreader_encoder: # select encoder class
             inv_enc_cls = InvertedEncoderBrainreader
         else:
             inv_enc_cls = InvertedEncoder
@@ -84,12 +90,15 @@ class EnsembleInvEnc(Ensemble):
                 enc_cfg = encoder_config
             else:
                 enc_cfg = encoder_config[enc_idx]
-            enc_cfg["encoder"] = get_encoder(
+            ### load encoder
+            enc_cfg["encoder"] = kwargs["get_encoder_fn"](
                 ckpt_path=encoder_path,
                 eval_mode=True,
                 device=kwargs.get("device", "cpu"),
             )
             kwargs["decoders"].append(inv_enc_cls(**enc_cfg))
 
+        kwargs.pop("encoder_paths", None)
+        kwargs.pop("get_encoder_fn", None)
         super().__init__(**kwargs)
 
