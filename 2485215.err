@@ -1,3 +1,4 @@
 Error while loading conda entry point: conda-libmamba-solver (libarchive.so.20: cannot open shared object file: No such file or directory)
 [NbConvertApp] Converting notebook csng/brainreader_mouse/resnet_inversion.ipynb to notebook
-slurmstepd: error: *** JOB 2485195 ON i21 CANCELLED AT 2024-12-06T21:49:44 ***
+[NbConvertApp] Writing 1469632 bytes to csng/brainreader_mouse/resnet_inversion_2485215.ipynb
+chmod: cannot access 'resnet_inversion_2485215.ipynb': No such file or directory
