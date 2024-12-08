@@ -835,7 +835,6 @@ class VGGPerceptualLoss(torch.nn.Module):
         self.transform = torch.nn.functional.interpolate
         self.resize = resize
         self.reduction = reduction
-        print(f"[INFO] VGGPerceptualLoss: reduction={reduction}")
         self.mul_factor = mul_factor
         self.mean_across_layers = mean_across_layers
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1))

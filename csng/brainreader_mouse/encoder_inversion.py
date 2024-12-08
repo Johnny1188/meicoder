@@ -40,7 +40,7 @@ config = {
 config["data"]["brainreader_mouse"] = {
     "device": config["device"],
     "mixing_strategy": "sequential",
-    "max_batches": 10,
+    "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
     "batch_size": 32,
     "sessions": [6],
@@ -99,13 +99,9 @@ config_updates = [dict()]
 # ]
 config_grid_search = None
 # config_grid_search = {
-#     ### InvertedEncoderBrainreader
-#     # "n_steps": [200, 600, 1000],
-#     "n_steps": [1000],
-#     # "lr": [100, 250, 500, 1000],
-#     "lr": [500, 1000],
-#     # "img_grad_gauss_blur_sigma": [1.5, 2, 2.5],
-#     "img_grad_gauss_blur_sigma": [2, 2.5],
+#     "n_steps": [300, 1000, 2000],
+#     "lr": [100, 1000, 2000],
+#     "img_grad_gauss_blur_sigma": [1, 1.5, 2, 2.5],
 #     "jitter": [0],
 # }
 
@@ -143,7 +139,7 @@ if __name__ == "__main__":
 
         ### setup the model
         run_config = deepcopy(config)
-        run_config["enc_inv"]["model"].update(config_update)
+        run_config["enc_inv"]["model"]["encoder_config"].update(config_update)
         run_name = f"{i}__{slugify(config_update)}"
         model = EnsembleInvEnc(**run_config["enc_inv"]["model"]).to(config["device"])
 
