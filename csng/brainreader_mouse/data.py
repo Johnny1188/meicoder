@@ -69,13 +69,13 @@ def get_brainreader_mouse_dataloaders(config):
         "brainreader_mouse": {
             data_part: MixedBatchLoader(
                 dataloaders=[dls[data_part][str(sess_id)] for sess_id in config["sessions"]],
-                neuron_coords=None,
+                neuron_coords=config.get("neuron_coords", None), # ground truth data doesn't have neuron coords
                 mixing_strategy=config["mixing_strategy"],
                 max_batches=config["max_batches"],
                 data_keys=list(dls[data_part].keys()),
                 return_data_key=True,
                 return_pupil_center=False,
-                return_neuron_coords=False,
+                return_neuron_coords="neuron_coords" in config,
                 device=config["device"],
             ) for data_part in ["train", "test", "val"]
         }

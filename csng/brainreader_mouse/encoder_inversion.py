@@ -98,12 +98,12 @@ config_updates = [dict()]
 #     }},
 # ]
 config_grid_search = None
-# config_grid_search = {
-#     "n_steps": [300, 1000, 2000],
-#     "lr": [100, 1000, 2000],
-#     "img_grad_gauss_blur_sigma": [1, 1.5, 2, 2.5],
-#     "jitter": [0],
-# }
+config_grid_search = {
+    "n_steps": [300, 1000, 2000],
+    "lr": [100, 1000, 2000],
+    "img_grad_gauss_blur_sigma": [1, 1.5, 2, 2.5],
+    "jitter": [0],
+}
 
 
 if __name__ == "__main__":

@@ -43,7 +43,10 @@ def get_dataloaders(config):
         ### add to data loaders
         for tier in ("train", "val", "test"):
             dls[tier]["brainreader_mouse"] = _dls["brainreader_mouse"][tier]
-        neuron_coords["brainreader_mouse"] = {data_key: None for data_key in _dls["brainreader_mouse"]["train"].data_keys}
+        if _dls["brainreader_mouse"]["train"].neuron_coords is None:
+            neuron_coords["brainreader_mouse"] = {data_key: None for data_key in _dls["brainreader_mouse"]["train"].data_keys}
+        else:
+            neuron_coords["brainreader_mouse"] = _dls["brainreader_mouse"]["train"].neuron_coords
 
     ### mouse v1 - base
     if "mouse_v1" in config["data"] and config["data"]["mouse_v1"] is not None:

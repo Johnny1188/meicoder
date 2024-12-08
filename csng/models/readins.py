@@ -607,6 +607,7 @@ class MEIReadIn(ReadIn):
             "dropout": 0.1,
             "batch_norm": False,
         },
+        apply_resp_transform=False,
         shift_coords=True,
         shifter_net_layers=[("fc", 10), ("fc", 10), ("fc", 2)],
         shifter_net_act_fn=nn.LeakyReLU,
@@ -661,10 +662,15 @@ class MEIReadIn(ReadIn):
             )
         self.out_channels = pointwise_conv_config["out_channels"] if out_channels is None else out_channels
 
+        self.resp_transform = self._resp_transform if apply_resp_transform else nn.Identity()
         self.ctx_net_config = ctx_net_config
         self.ctx_net = build_layers(**ctx_net_config)
 
         self.device = device
+
+    @staticmethod
+    def _resp_transform(x):
+        return torch.log10(x.clamp_min(1e-3))
 
     def forward(self, x, neuron_coords, pupil_center):
         """
@@ -690,11 +696,11 @@ class MEIReadIn(ReadIn):
         out = out.repeat(B, 1, 1, 1) # (B, n_neurons, H, W)
         if self.ctx_net_config["in_channels"] > 1:
             ctx_inp = torch.cat([
-                x.unsqueeze(-1),
+                self.resp_transform(x).unsqueeze(-1),
                 neuron_coords[..., :2],
             ], dim=-1) # (B, n_neurons, 3)
         else:
-            ctx_inp = x.unsqueeze(-1)
+            ctx_inp = self.resp_transform(x).unsqueeze(-1)
         ctx_inp = ctx_inp.view(B * n_neurons, -1) # (B * n_neurons, 3)
         ctx_out = self.ctx_net(ctx_inp) # (B * n_neurons, H * W)
         out = out * ctx_out.view(B, n_neurons, *out.shape[-2:])
