@@ -172,73 +172,45 @@ config["comparison"] = {
 
 ### methods to compare
 config["comparison"]["to_compare"] = {
-    # "Inverted Encoder": {
-    #     "decoder": InvertedEncoder(
-    #         encoder=get_encoder(
+    # "Inverted Encoder (B-All)": {
+    #     "decoder": InvertedEncoderBrainreader(
+    #         encoder=get_encoder_brainreader(
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
     #             device=config["device"],
     #             eval_mode=True,
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoder_mall.pth"),
     #         ),
     #         img_dims=(1, 36, 64),
-    #         stim_pred_init="zeros",
-    #         opter_cls=torch.optim.SGD,
-    #         opter_config={"lr": 10},
+    #         stim_pred_init="randn",
+    #         lr=1000,
     #         n_steps=1000,
-    #         resp_loss_fn=lambda resp_pred, resp_target: F.mse_loss(resp_pred, resp_target, reduction="none").mean(-1).sum(),
-    #         stim_loss_fn=None,
-    #         img_gauss_blur_config=None,
-    #         img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 1.5},
+    #         img_grad_gauss_blur_sigma=1.5,
+    #         jitter=None,
+    #         mse_reduction="per_sample_mean_sum",
     #         device=config["device"],
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
-    "Inverted Encoder (B-All)": {
-        "decoder": InvertedEncoderBrainreader(
-            encoder=get_encoder_brainreader(
-                ckpt_path=os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-                device=config["device"],
-                eval_mode=True,
-            ),
-            img_dims=(1, 36, 64),
-            stim_pred_init="randn",
-            lr=1000,
-            n_steps=1000,
-            img_grad_gauss_blur_sigma=1.5,
-            jitter=None,
-            mse_reduction="per_sample_mean_sum",
+    "Inverted Encoder": {
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+                os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+            ],
+            encoder_config={
+                "img_dims": (1, 36, 64),
+                "stim_pred_init": "randn",
+                "lr": 1000,
+                "n_steps": 1000,
+                "img_grad_gauss_blur_sigma": 1.5,
+                "jitter": None,
+                "mse_reduction": "per_sample_mean_sum",
+                "device": config["device"],
+            },
+            use_brainreader_encoder=True,
+            get_encoder_fn=get_encoder_brainreader,
             device=config["device"],
-        ).to(config["device"]),
+        ),
         "run_name": None,
     },
-    # "Inverted Encoder (Ensemble, M-6)": {
-    #     "decoder": EnsembleInvEnc(
-    #         encoder_paths=[
-    #         os.path.join(DATA_PATH, "models", "encoder_m6_seed0.pth"),
-    #         os.path.join(DATA_PATH, "models", "encoder_m6_seed1.pth"),
-    #         os.path.join(DATA_PATH, "models", "encoder_m6_seed2.pth"),
-    #         os.path.join(DATA_PATH, "models", "encoder_m6_seed3.pth"),
-    #         os.path.join(DATA_PATH, "models", "encoder_m6_seed4.pth"),
-    #         ],
-    #         encoder_config={
-    #             "img_dims": (1, 36, 64),
-    #             "stim_pred_init": "randn",
-    #             "lr": 3000,
-    #             "n_steps": 1000,
-    #             "img_grad_gauss_blur_sigma": 2.,
-    #             "jitter": 0,
-    #             "mse_reduction": "per_sample_mean_sum",
-    #             "device": config["device"],
-    #         },
-    #         use_brainreader_encoder=True,
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
-    # },
-
-    # "CNN-Conv (M-All)": {
-    #     "run_name": "2024-08-18_00-53-54",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-08-18_00-53-54", "ckpt", "decoder_194.pt"),
-    # },
 
     "GAN": {
         "run_name": "2024-11-25_19-22-15",
