@@ -4,7 +4,7 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu_free
 #SBATCH --gres=gpu:volta:1
-#SBATCH --time=12:00:00
+#SBATCH --time=2:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=mikulas.vanousek@epfl.ch
 
@@ -26,7 +26,7 @@ OUTPUT_FILE=resnet_inversion_${SLURM_JOB_ID}.ipynb
 jupyter nbconvert --to notebook --execute --allow-errors --output $OUTPUT_FILE csng/brainreader_mouse/resnet_inversion.ipynb
 
 # Remove write permission for everyone, including yourself
-chmod a-w $OUTPUT_FILE
+chmod -w $OUTPUT_FILE
 
 echo "End: $(date)"
 
