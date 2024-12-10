@@ -63,7 +63,7 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, calc_fid=False, max_ba
         for loss_name in losses[data_key]:
             losses[data_key][loss_name] /= denom_data_keys[data_key]
             losses["total"][loss_name] += losses[data_key][loss_name]
-    losses["total"] = {loss_name: losses["total"][loss_name] / len(losses.keys()) for loss_name in losses["total"]}
+    losses["total"] = {loss_name: losses["total"][loss_name] / (len(losses.keys()) - 1) for loss_name in losses["total"]}
 
     ### eval fid
     if calc_fid:
