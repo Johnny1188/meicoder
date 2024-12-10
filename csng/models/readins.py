@@ -199,6 +199,7 @@ class FCReadIn(ReadIn):
     :param dropout: dropout probability
     :param batch_norm: whether to use batch normalization
     :param out_channels: number of output channels (if None, it is set automatically)
+    :param apply_resp_transform: whether to apply the clamp log10 transformation to the responses before the first layer
     :param l2_reg_mul: L2 regularization multiplier
     :param l1_reg_mul: L1 regularization multiplier
     """
@@ -212,6 +213,7 @@ class FCReadIn(ReadIn):
         dropout=0.0,
         batch_norm=False,
         out_channels=None,
+        apply_resp_transform=False,
         l2_reg_mul=0.0,
         l1_reg_mul=0.0,
     ):
@@ -235,9 +237,14 @@ class FCReadIn(ReadIn):
                 self.out_channels = layers_config[-1][-1][0]
             else:
                 self.out_channels = layers_config[-1][-1]
-        
+
+        self.resp_transform = self._resp_transform if apply_resp_transform else nn.Identity()
         self.l2_reg_mul = l2_reg_mul
         self.l1_reg_mul = l1_reg_mul
+
+    @staticmethod
+    def _resp_transform(x):
+        return torch.log10(x.clamp_min(1e-3))
 
     def set_additional_loss(self, inp, out):
         self._last_loss = 0.
@@ -247,7 +254,7 @@ class FCReadIn(ReadIn):
             self._last_loss += self.l1_reg_mul * sum(p.abs().sum() for p in self.parameters())
 
     def forward(self, x, neuron_coords=None, pupil_center=None):
-        return self.layers(x)
+        return self.layers(self.resp_transform(x))
 
 
 class ShifterNet(nn.Module):
@@ -579,6 +586,7 @@ class MEIReadIn(ReadIn):
     :param mei_target_shape: target shape of the MEIs
     :param pointwise_conv_config: configuration of the pointwise convolutional layer (set to None if not used)
     :param ctx_net_config: configuration of the context network
+    :param apply_resp_transform: whether to apply the clamp log10 transformation to the responses before the first layer
     :param shift_coords: whether to shift the MEIs based on the pupil center
     :param shifter_net_layers: list of tuples, each containing the configuration of a layer of the shifter network
     :param shifter_net_act_fn: activation function of the shifter network
@@ -613,12 +621,14 @@ class MEIReadIn(ReadIn):
         shifter_net_act_fn=nn.LeakyReLU,
         shifter_net_out_act_fn=nn.Tanh,
         out_channels=None, # set manually
+        neuron_idxs=None, # selection of neurons to use
         device="cpu",
     ):
         super().__init__()
         
         self.requires_neuron_coords = True
         self.requires_pupil_center = True
+        self.neuron_idxs = neuron_idxs
 
         self.meis_path = meis_path
         self.meis = torch.load(meis_path)["meis"].to(device)
@@ -679,6 +689,11 @@ class MEIReadIn(ReadIn):
         :param pupil_center: pupil center (B, 2) or None if shift_coords=False
         :return: channel reduced contextualized MEIs (B, N_reduced, H, W)
         """
+        ### filter neurons
+        if self.neuron_idxs is not None:
+            x = x[..., self.neuron_idxs]
+            neuron_coords = neuron_coords[..., self.neuron_idxs, :] if neuron_coords is not None else None
+
         B, n_neurons = x.shape
 
         ### prepare neuron_coords
