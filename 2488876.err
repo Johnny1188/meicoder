@@ -1,0 +1,3 @@
+Error while loading conda entry point: conda-libmamba-solver (libarchive.so.20: cannot open shared object file: No such file or directory)
+[NbConvertApp] WARNING | pattern 'csng/brainreader_mouse/resnet_inversion.ipynb' matched no files
+chmod: cannot access 'resnet_inversion_2488876.ipynb': No such file or directory
