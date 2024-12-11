@@ -42,7 +42,7 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": "sequential",
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    "batch_size": 32,
+    "batch_size": 16,
     "sessions": [6],
     "resize_stim_to": (36, 64),
     "normalize_stim": True,
