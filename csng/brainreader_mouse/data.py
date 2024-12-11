@@ -71,7 +71,7 @@ def get_brainreader_mouse_dataloaders(config):
                 dataloaders=[dls[data_part][str(sess_id)] for sess_id in config["sessions"]],
                 neuron_coords=config.get("neuron_coords", None), # ground truth data doesn't have neuron coords
                 mixing_strategy=config["mixing_strategy"],
-                max_batches=config["max_batches"],
+                max_batches=config["max_batches"] if f"max_{data_part}_batches" not in config else config[f"max_{data_part}_batches"],
                 data_keys=list(dls[data_part].keys()),
                 return_data_key=True,
                 return_pupil_center=False,

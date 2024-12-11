@@ -37,7 +37,8 @@ def init_decoder(config):
         ### load decoder
         config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
-        decoder.load_from_ckpt(ckpt=ckpt, load_best=config["decoder"]["load_ckpt"]["load_best"], load_only_core=False, strict=True)
+        decoder.load_from_ckpt(ckpt=ckpt, load_best=config["decoder"]["load_ckpt"]["load_best"],
+            load_only_core=config["decoder"]["load_ckpt"]["load_only_core"], strict=config["decoder"]["load_ckpt"]["load_only_core"] is False)
 
         ### init optimizers (and load their states)
         decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])

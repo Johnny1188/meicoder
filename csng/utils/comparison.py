@@ -191,7 +191,6 @@ def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
         ### bar plot of test losses
         fig = plt.figure(figsize=(25 + 6 * len(runs_to_compare[k]["test_losses"]), 12))
         ax = fig.add_subplot(111)
-        print(runs_to_compare[k]["ckpt_paths"][run_idx])
 
         ### grouped bar plot
         for i, (k, run_dict) in enumerate(runs_to_compare.items()):

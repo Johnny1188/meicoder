@@ -630,10 +630,12 @@ class MEIReadIn(ReadIn):
         self.requires_pupil_center = True
         self.neuron_idxs = neuron_idxs
 
+        self.n_neurons = n_neurons if neuron_idxs is None else len(neuron_idxs)
         self.meis_path = meis_path
         self.meis = torch.load(meis_path)["meis"].to(device)
-        self.n_neurons = n_neurons
-        assert self.meis.shape[0] == n_neurons, "number of neurons in MEIs does not match n_neurons"
+        if self.neuron_idxs is not None:
+            self.meis = self.meis[self.neuron_idxs]
+        assert self.meis.shape[0] == self.n_neurons, "number of neurons in MEIs does not match n_neurons"
         if mei_resize_method == "crop":
             self.meis = crop(self.meis, mei_target_shape)
         elif mei_resize_method == "resize":
@@ -660,7 +662,7 @@ class MEIReadIn(ReadIn):
             self.pointwise_conv = nn.Sequential(
                 nn.Dropout2d(pointwise_conv_config["dropout"]) if pointwise_conv_config.get("dropout", 0) > 0 else nn.Identity(),
                 nn.Conv2d(
-                    in_channels=n_neurons,
+                    in_channels=self.n_neurons,
                     out_channels=pointwise_conv_config["out_channels"],
                     kernel_size=1,
                     stride=1,
