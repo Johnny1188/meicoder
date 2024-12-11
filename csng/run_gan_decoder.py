@@ -248,14 +248,28 @@ config["decoder"] = {
     "D_fake_stim_labels_noise": 0.05,
     "n_epochs": 200,
     "load_ckpt": None,
+
+    ### continue training
     # "load_ckpt": {
+    #     "load_only_core": False,
     #     "load_best": False,
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-16_11-31-54", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-35-04", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "wznl0c8v",
+    #     "resume_wandb_id": "i15d0lvy",
+    # },
+    ### for fine-tuning
+    # "load_ckpt": {
+    #     "load_only_core": True,
+    #     "load_best": True,
+    #     "load_opter_state": False,
+    #     "load_history": False,
+    #     "reset_best": True,
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-19_15-45-08", "decoder.pt"),
+    #     "resume_checkpointing": False,
+    #     "resume_wandb_id": None,
     # },
 }
 
@@ -324,6 +338,7 @@ if "brainreader_mouse" in config["data"]:
                         "out_act_fn": nn.Identity,
                         "batch_norm": True,
                         "dropout": 0.15,
+                        "apply_resp_transform": False,
                     }),
                 ],
                 "mei": [
@@ -340,7 +355,7 @@ if "brainreader_mouse" in config["data"]:
                             "dropout": 0.15,
                         },
                         "ctx_net_config": {
-                            "in_channels": 3, # resp, x, y
+                            "in_channels": 1, # resp, x, y
                             "layers_config": [("fc", 8), ("fc", 128), ("fc", 36*64)],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
@@ -349,6 +364,8 @@ if "brainreader_mouse" in config["data"]:
                         },
                         "apply_resp_transform": False,
                         "shift_coords": False,
+                        "neuron_idxs": None,
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
                         "device": config["device"],
                     }),
                 ],
