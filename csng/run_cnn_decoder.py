@@ -58,7 +58,8 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    "batch_size": 6,
+    # "batch_size": 4,
+    "batch_size": 16,
     # "sessions": list(range(1, 23)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
@@ -70,70 +71,70 @@ config["data"]["brainreader_mouse"] = {
     "avg_test_resp": True,
 }
 
-### cat v1 data
-config["data"]["cat_v1"] = {
-    "crop_win": (20, 20),
-    "dataset_config": {
-        "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
-        "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
-        "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
-        "image_size": [50, 50],
-        "crop": False,
-        "batch_size": 6,
-        "stim_keys": ("stim",),
-        "resp_keys": ("exc_resp", "inh_resp"),
-        "return_coords": True,
-        "return_ori": False,
-        "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
-        "cached": False,
-        "clamp_neg_resp": True,
-        "stim_normalize_mean": 46.143,
-        "stim_normalize_std": 20.420,
-        "resp_normalize_mean": torch.load(
-            os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
-        ),
-        "resp_normalize_std": torch.load(
-            os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
-        ),
-        # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
-    },
-}
+# ### cat v1 data
+# config["data"]["cat_v1"] = {
+#     "crop_win": (20, 20),
+#     "dataset_config": {
+#         "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
+#         "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
+#         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
+#         "image_size": [50, 50],
+#         "crop": False,
+#         "batch_size": 6,
+#         "stim_keys": ("stim",),
+#         "resp_keys": ("exc_resp", "inh_resp"),
+#         "return_coords": True,
+#         "return_ori": False,
+#         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
+#         "cached": False,
+#         "clamp_neg_resp": True,
+#         "stim_normalize_mean": 46.143,
+#         "stim_normalize_std": 20.420,
+#         "resp_normalize_mean": torch.load(
+#             os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
+#         ),
+#         "resp_normalize_std": torch.load(
+#             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
+#         ),
+#         # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
+#     },
+# }
 
-### mouse v1 data
-config["data"]["mouse_v1"] = {
-    "dataset_fn": "sensorium.datasets.static_loaders",
-    "dataset_config": {
-        "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
-            os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
-        ],
-        "normalize": True,
-        "scale": 0.25, # 256x144 -> 64x36
-        "include_behavior": False,
-        "add_behavior_as_channels": False,
-        "include_eye_position": True,
-        "exclude": None,
-        "file_tree": True,
-        "cuda": "cuda" in config["device"],
-        "batch_size": 6,
-        "seed": config["seed"],
-        "use_cache": False,
-    },
-    "crop_win": (22, 36),
-    "skip_train": False,
-    "skip_val": False,
-    "skip_test": False,
-    "normalize_neuron_coords": True,
-    "average_test_multitrial": True,
-    "save_test_multitrial": True,
-    "test_batch_size": 7,
-    "device": config["device"],
-}
+# ### mouse v1 data
+# config["data"]["mouse_v1"] = {
+#     "dataset_fn": "sensorium.datasets.static_loaders",
+#     "dataset_config": {
+#         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+#             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+#         ],
+#         "normalize": True,
+#         "scale": 0.25, # 256x144 -> 64x36
+#         "include_behavior": False,
+#         "add_behavior_as_channels": False,
+#         "include_eye_position": True,
+#         "exclude": None,
+#         "file_tree": True,
+#         "cuda": "cuda" in config["device"],
+#         "batch_size": 6,
+#         "seed": config["seed"],
+#         "use_cache": False,
+#     },
+#     "crop_win": (22, 36),
+#     "skip_train": False,
+#     "skip_val": False,
+#     "skip_test": False,
+#     "normalize_neuron_coords": True,
+#     "average_test_multitrial": True,
+#     "save_test_multitrial": True,
+#     "test_batch_size": 7,
+#     "device": config["device"],
+# }
 
-# ### synthetic data
+### synthetic data
 # config["data"]["syn_data"] = {
 #     "data_dicts": [
 #         {
@@ -205,7 +206,7 @@ config["decoder"] = {
         "l2_reg_mul": 0,
     },
     "val_loss": "FID", # get_metrics(config)["SSIML-PL"],
-    "n_epochs": 100,
+    "n_epochs": 200,
     "load_ckpt": None,
     # "load_ckpt": {
     #     "load_best": False,
@@ -270,7 +271,9 @@ if "brainreader_mouse" in config["data"]:
                         "in_shape": n_neurons,
                         "layers_config": [
                             ("fc", 1728),
+                            # ("fc", 2304),
                             ("unflatten", 1, (3, 18, 32)),
+                            # ("unflatten", 1, (16, 9, 16)),
                         ],
                         "act_fn": nn.LeakyReLU,
                         "out_act_fn": nn.Identity,
