@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from math import prod
 
 import os
 
@@ -72,9 +73,11 @@ class ReadIn(torch.nn.Module):
             torch.nn.BatchNorm2d(1024),
             # torch.nn.LeakyReLU(0.1, inplace=True),
         )
+        self.apply(initialize_weights)
         
     def forward(self, x):
         return self.model(x)
+
 def initialize_weights(module):
     if isinstance(module, torch.nn.Linear):
         # Initialize weights close to zero
