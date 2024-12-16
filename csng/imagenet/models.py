@@ -1,4 +1,6 @@
 import torch
+import os
+
 device = os.environ["DEVICE"]
 utils = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_convnets_processing_utils', )
 
