@@ -1,4 +1,6 @@
 import torch
+from torch import nn
+
 import os
 
 device = os.environ["DEVICE"]
