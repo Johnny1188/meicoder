@@ -50,6 +50,7 @@ class ReadIn(torch.nn.Module):
 
         self.model = torch.nn.Sequential(
             # Linear layer to map input to intermediate feature space
+            nn.Dropout(p=0.1),
             torch.nn.Linear(n_features, prod(self.inter_shape), bias=True, device=device, dtype=dtype),
             torch.nn.LeakyReLU(0.1, inplace=True),
 

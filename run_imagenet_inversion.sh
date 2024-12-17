@@ -4,7 +4,7 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu_free
 #SBATCH --gres=gpu:volta:1
-#SBATCH --time=2:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=mikulas.vanousek@epfl.ch
 
