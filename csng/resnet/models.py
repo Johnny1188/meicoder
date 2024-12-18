@@ -9,6 +9,7 @@ import os
 device = os.environ["DEVICE"]
 utils = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_convnets_processing_utils', )
 
+
 class ResnetExtractor:
     def __init__(self):
         self.resnet50 = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
@@ -147,3 +148,17 @@ class UpsampleModel(nn.Module):
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+MODELS_PATH = os.path.join(os.environ["MODELS_PATH"])
+READIN_PATH =  os.path.join('readin/readin_2024-12-16_21-22-07.pt')
+UPSAMPLE_PATH = os.paht.join('/scratch/izar/vanousek/cs-433-project/models/mlp2497127.pt')
+
+class Decoder(nn.Module):
+    def __init__(self, readin_path=READIN_PATH, upsample_path=UPSAMPLE_PATH):
+        super().__init__()
+        self.readin = torch.load(READIN_PATH).to(cfg["device"], dtype=torch.float32)
+        self.upsample = torch.load(UPSAMPLE_PATH)
+        self.sigmoid = nn.Sigmoid()
+    def forward(self, resp, **kwargs):
+        return self.sigmoid(self.upsample(self.readin(resp)))
