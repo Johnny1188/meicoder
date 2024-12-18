@@ -8,15 +8,15 @@ class CNN(nn.Module):
         self.linear = nn.Sequential(
             nn.Linear(input_size, 4096),
             nn.BatchNorm1d(4096),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Dropout(),
             nn.Linear(4096, 2048),
             nn.BatchNorm1d(2048),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Dropout(),
             nn.Linear(2048, 1024),
             nn.BatchNorm1d(1024),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Dropout(),
             nn.Unflatten(1, (16, 8, 8)),
         )
@@ -24,13 +24,13 @@ class CNN(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(16),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Dropout(),
             nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(16),
         )
 
-        self.relu = nn.SiLU()
+        self.relu = nn.ReLU()
 
         self.output_layer = nn.Sequential(
             nn.Conv2d(16, 4, kernel_size=3, stride=1, padding=1),
