@@ -1,4 +1,4 @@
-# Latent Space Image Representation Project
+# Stable Diffusion VAE Mapping
 
 ## Data Preparation
 
