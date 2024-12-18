@@ -52,7 +52,6 @@ class ReadIn(torch.nn.Module):
         self.inter_shape = (128, 14, 14)
 
         self.model = torch.nn.Sequential(
-            # Linear layer to map input to intermediate feature space
             nn.Dropout(p=0.1),
             torch.nn.Linear(n_features, prod(self.inter_shape), bias=True, device=device, dtype=dtype),
             torch.nn.LeakyReLU(0.1, inplace=True),
@@ -165,8 +164,8 @@ class Decoder(nn.Module):
     """This model is the combination of the ReadIn and UpsampleModel models. It takes the neural stimulation as input and returns the predicted grayscale image."""
     def __init__(self, readin_path=READIN_PATH, upsample_path=UPSAMPLE_PATH):
         super().__init__()
-        self.readin = torch.load(readin_path).to(cfg["device"], dtype=torch.float32)
-        self.upsample = torch.load(upsample_path).to(cfg["device"], dtype=torch.float32)
+        self.readin = torch.load(readin_path)
+        self.upsample = torch.load(upsample_path)
         self.sigmoid = nn.Sigmoid()
     def forward(self, resp, **kwargs):
         return self.sigmoid(self.upsample(self.readin(resp)))
