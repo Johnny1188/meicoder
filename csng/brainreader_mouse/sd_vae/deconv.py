@@ -2,7 +2,7 @@ import torch.nn as nn
 
 
 class Deconv(nn.Module):
-    def __init__(self, input_size=9395, output_size=3, dropout=0.5):
+    def __init__(self, input_size=9395, dropout=0.5):
         super(Deconv, self).__init__()
         self.input_size = input_size
 

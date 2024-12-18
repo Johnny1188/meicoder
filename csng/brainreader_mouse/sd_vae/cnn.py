@@ -30,16 +30,13 @@ class CNN(nn.Module):
             nn.BatchNorm2d(16),
         )
 
-        self.relu = nn.ReLU()
-
         self.output_layer = nn.Sequential(
             nn.Conv2d(16, 4, kernel_size=3, stride=1, padding=1),
         )
 
     def forward(self, x):
         x = self.linear(x)
-        for _ in range(2):
-            x_new = self.conv(x)
-            x = self.relu(x + x_new)
+
+        x = self.conv(x)
 
         return self.output_layer(x)
