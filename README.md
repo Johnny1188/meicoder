@@ -38,3 +38,4 @@ pip install --force-reinstall -v "numpy==1.25.2"
   - `cat_v1/` - Directory with code specific to the cat V1 data (**C**)
   - `mouse_v1/` - Directory with code specific to the SENSORIUM 2022 mouse V1 data (datasets **M-\<mouse id\>** and **M-All**)
   - `brainreader_mouse/` - Directory with code specific to the mouse V1 data from [Cobos E. et al. 2022](https://doi.org/10.1101/2022.12.09.519708) (datasets **B-\<mouse id\>** and **B-All**)
+    - `sd_vae` - Directory with code for training a model to map from mouse V1 responses to the latent space of Stable Diffusion 1-4 variational autoencoder.

@@ -25,3 +25,5 @@ dependencies:
     - focal-frequency-loss
     - lovely-tensors
     - numpy==1.25.2
+    - scikit-learn==1.5.2
+    - diffusers==0.31.0
