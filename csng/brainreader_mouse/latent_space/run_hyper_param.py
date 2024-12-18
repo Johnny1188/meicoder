@@ -1,3 +1,6 @@
+from itertools import product
+
+import numpy as np
 import run
 from utils import load_json, save_json
 
@@ -17,12 +20,11 @@ def run_program(
 
 def main():
     models = ["fully_connected", "cnn", "deconv"]
-    rates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
-    decays = [1, 1e-1, 1e-2, 1e-3, 1e-4]
-    for model_name in models:
-        for lr in rates:
-            for weight_decay in decays:
-                run_program(lr, weight_decay, model_name)
+    rates = np.logspace(-5, 0, 6)
+    decays = np.logspace(-4, 0, 5)
+
+    for model_name, lr, weight_decay in product(models, rates, decays):
+        run_program(lr, weight_decay, model_name)
 
 
 if __name__ == "__main__":

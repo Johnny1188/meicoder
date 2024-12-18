@@ -5,7 +5,8 @@ from pathlib import Path
 
 import numpy as np
 from torch.utils.data import Dataset
-from utils import NumpyToTensor
+
+from csng.utils.data import NumpyToTensor
 
 
 class PerSampleStoredDataset(Dataset):

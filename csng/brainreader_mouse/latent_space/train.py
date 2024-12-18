@@ -16,7 +16,6 @@ class Trainer:
         self.scheduler = scheduler
         self.train_curve = np.array([])
         self.valid_curve = np.array([])
-        self.prev_valid_loss = None
         self.best_test_loss = None
 
     def validation(self):

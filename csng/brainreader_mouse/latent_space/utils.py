@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torchvision
 
+from csng.utils.data import Normalize, NumpyToTensor
+
 
 def get_result_path(setup):
     # create result folder
@@ -77,41 +79,6 @@ def load_json(path):
         print("Invalid path")
 
 
-class NumpyToTensor:
-    def __init__(self, device="cpu", unsqueeze_dims=None):
-        self.unsqueeze_dims = unsqueeze_dims
-        self.device = device
-
-    def __call__(self, x, *args, **kwargs):
-        if self.unsqueeze_dims is not None:
-            x = np.expand_dims(x, self.unsqueeze_dims)
-        return torch.from_numpy(x).float().to(self.device)
-
-
-class Normalize:
-    """Class to normalize data."""
-
-    def __init__(
-        self, mean, std, center_data=True, clip_min=None, clip_max=None
-    ):
-        self.mean = mean
-        self.std = std
-        self.center_data = center_data
-        self.clip_min = clip_min
-        self.clip_max = clip_max
-
-    def __call__(self, values):
-        if self.center_data:
-            out = (values - self.mean) / (self.std + 1e-8)
-        else:
-            out = ((values - self.mean) / (self.std + 1e-8)) + self.mean
-
-        if self.clip_min is not None or self.clip_max is not None:
-            out = np.clip(out, self.clip_min, self.clip_max)
-
-        return out
-
-
 def get_stim_transform(resize=64, device="cpu"):
     stim_transform = torchvision.transforms.Compose(
         [
@@ -132,7 +99,7 @@ def get_stim_transform(resize=64, device="cpu"):
     return stim_transform
 
 
-def get_resp_transform(dataset_dir, session_id=1, device="cpu"):
+def get_resp_transform(dataset_dir="train", session_id=1, device="cpu"):
     resp_mean = torch.from_numpy(
         np.load(
             os.path.join(
