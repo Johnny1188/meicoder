@@ -24,21 +24,32 @@ Configure your model parameters in `setup.json`. Example configuration:
 }
 ```
 
-## Running Models
+## Training
 
 ### Deep Learning Models
+#### Standard Training
+To train a model with predefined configurations:
 1. Modify `setup.json` as needed
 2. Run the training script:
 ```bash
 python run.py
 ```
+
 - Available models are listed in `models.py`
+
+#### Hyperparameter Search
+1. Configure hyperparameter ranges in `run_hyper_param.py`
+1. Run the training script:
+```bash
+python run_hyper_param.py
+```
 
 ### Ridge Regression
 To run ridge regression:
 ```bash
 python run_ridge_regression.py
 ```
+
 - Results will be saved in the `results` folder
 
 ## Generating Image Outputs
