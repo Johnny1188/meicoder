@@ -55,7 +55,7 @@ class PerSampleStoredDataset(Dataset):
         with open(os.path.join(self.latent_dataset_dir, f_name), "rb") as f:
             latent_data = pickle.load(f)
 
-        vals_to_return = [latent_data["latent"], data["resp"]]
+        vals_to_return = [latent_data, data["resp"]]
 
         if self.stim_transform is not None:
             vals_to_return[0] = self.stim_transform(vals_to_return[0])

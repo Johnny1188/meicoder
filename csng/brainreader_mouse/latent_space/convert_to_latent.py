@@ -12,7 +12,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-stim_transform = get_stim_transform(device="cuda")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+stim_transform = get_stim_transform(device=DEVICE)
 
 
 def load_stimulus_data(file_path):
@@ -22,7 +24,7 @@ def load_stimulus_data(file_path):
             data = pickle.load(f)
         return data["stim"], data["resp"]
     except Exception as e:
-        # logger.error(f"Error loading {file_path}: {e}")
+        logger.error(f"Error loading {file_path}: {e}")
         return None, None
 
 
@@ -33,8 +35,6 @@ def transform_image(image):
 
 def store_latent_vector(latent_vector, output_dir, file_name):
     """Store the latent vector in a pickle file with the same name as the stimulus."""
-    # base_name = os.path.splitext(file_name)[0]  # Remove the extension
-    # output_file_path = os.path.join(output_dir, f"latent_{base_name}.pkl")
     output_file_path = os.path.join(output_dir, file_name)
 
     if not os.path.exists(output_dir):
@@ -96,12 +96,11 @@ def reconstruct_image_from_latent(latent_vector, vae):
 def setup_model():
     """Set up the Stable Diffusion model pipeline and return the encoder."""
     model_id = "CompVis/stable-diffusion-v1-4"
-    device = "cuda"
 
     pipe = StableDiffusionPipeline.from_pretrained(
         model_id, torch_dtype=torch.float16
     )
-    pipe = pipe.to(device)
+    pipe = pipe.to(DEVICE)
 
     encoder = pipe.vae
     return encoder
@@ -142,15 +141,29 @@ def main():
         required=True,
         help="Specify the dataset to process (train, valid, or test).",
     )
+    parser.add_argument(
+        "--session_id",
+        type=int,
+        choices=range(1, 23),
+        default=1,
+        required=True,
+        help="Specify the session ID (integer between 1 and 22, inclusive).",
+    )
+
     args = parser.parse_args()
 
     dataset_dir = os.path.join(
-        os.environ["DATA_PATH"], "brainreader", "data", "1", args.dataset
+        os.environ["DATA_PATH"],
+        "brainreader",
+        "data",
+        str(args.session_id),
+        args.dataset,
     )
     output_dir = os.path.join(
         os.environ["DATA_PATH"],
         "brainreader",
         "latent_vectors",
+        str(args.session_id),
         args.dataset,
     )
 
