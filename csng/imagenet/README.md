@@ -1,3 +1,3 @@
-This folder contains the code which implements, trains and evaluates the technique, which attempts to leverage the activations in one of the ResNet50 layers as a latent space. 
+This folder contains the code which implements, trains and evaluates the technique, which attempts to leverage the activations in one of the ResNet50 layers as a latent space. All the model implementations are in `models.py`. The `Readin`, the fist component described in the report, is trained in `readin_training.ipynb`, and the `UpscaleModel` is trained in `upscale_training.ipynb`. Finally, we evaluate the method in `eval.ipynb`.
 
 All training was run on Tesla V100-PCIE-32GB GPU.

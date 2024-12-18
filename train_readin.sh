@@ -22,8 +22,8 @@ cd $HOME/cs-433-project
 export $(cat .env | xargs)
 
 # Using the SLURM job ID to create a unique filename for the output notebook
-OUTPUT_FILE=resnet_inversion_${SLURM_JOB_ID}.ipynb
-jupyter nbconvert --to notebook --execute --allow-errors --output $OUTPUT_FILE csng/imagenet/resnet_inversion.ipynb
+OUTPUT_FILE=readin_training_${SLURM_JOB_ID}.ipynb
+jupyter nbconvert --to notebook --execute --allow-errors --output $OUTPUT_FILE csng/imagenet/readin_training.ipynb
 
 # Remove write permission for everyone, including yourself
 chmod -w $OUTPUT_FILE
