@@ -20,6 +20,9 @@ Pipeline for training GAN-based decoders
 ### 6. `run_comparison.py`
 Script for comparing various decoding models.
 
+### 7. `plot.ipynb`
+Interactive notebook to make plots in the report.
+
 ---
 
 ## Usage
@@ -35,7 +38,6 @@ Run the GAN decoder training pipeline:
 ```bash
 python run_gan_decoder.py
 ```
-- You need to train an encoder using brainreader_mouse/train_encoder.py to run this script.
 
 ### 3. Compare Models
 Evaluate and compare multiple trained models:
