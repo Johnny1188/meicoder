@@ -23,6 +23,21 @@ Script for comparing various decoding models.
 ### 7. `plot.ipynb`
 Interactive notebook to make plots in the report.
 
+### 8. `brainreader_mouse/train_encoder.py`
+Script for training the encoder model (images -> responses).
+
+### 9. `brainreader_mouse/generate_meis.py`
+Script for generating MEIs using the encoder model.
+
+### 10. `brainreader_mouse/encoder_inversion.py`
+Script for performing hyperparameter search for encoder inversion.
+
+### 11. `brainreader_mouse/data.py`
+Utility functions for loading and preprocessing the dataset.
+
+### 12. `brainreader_mouse/encoder.py`
+Utility function for loading the encoder model.
+
 ---
 
 ## Usage
