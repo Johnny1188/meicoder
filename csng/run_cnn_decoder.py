@@ -353,7 +353,7 @@ if "brainreader_mouse" in config["data"]:
     for data_key, dset in zip(_dls["train"]["brainreader_mouse"].data_keys, _dls["train"]["brainreader_mouse"].datasets):
         ### set crop wins and losses
         config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
-        config["decoder"]["loss"]["loss_fn"][data_key] = SSIMLoss(window=config["crop_wins"][data_key], log_loss=True, inp_normalized=True, inp_standardized=False)
+        config["decoder"]["loss"]["loss_fn"][data_key] = MSELoss(window=config["crop_wins"][data_key])
 
         ### append readin
         n_neurons = dset[0].responses.shape[-1]
@@ -397,10 +397,8 @@ if "brainreader_mouse" in config["data"]:
                     (FCReadIn, {
                         "in_shape": n_neurons,
                         "layers_config": [
-                            ("fc", 1728),
-                            # ("fc", 2304),
-                            ("unflatten", 1, (3, 18, 32)),
-                            # ("unflatten", 1, (16, 9, 16)),
+                            ("fc", 36864),
+                            ("unflatten", 1, (64, 18, 32)),
                         ],
                         "act_fn": nn.LeakyReLU,
                         "out_act_fn": nn.Identity,
@@ -798,7 +796,7 @@ if "syn_data" in config["data"]:
 
         ### set crop wins and losses
         config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
-        config["decoder"]["loss"]["loss_fn"][data_key] = SSIMLoss(window=config["crop_wins"][data_key], log_loss=True, inp_normalized=True, inp_standardized=False)
+        config["decoder"]["loss"]["loss_fn"][data_key] = MSELoss(window=config["crop_wins"][data_key])
 
         ### append readin
         n_neurons = dset[0].responses.shape[-1]
@@ -842,8 +840,8 @@ if "syn_data" in config["data"]:
                     (FCReadIn, {
                         "in_shape": n_neurons,
                         "layers_config": [
-                            ("fc", 1728),
-                            ("unflatten", 1, (3, 18, 32)),
+                            ("fc", 36864),
+                            ("unflatten", 1, (64, 18, 32)),
                         ],
                         "act_fn": nn.LeakyReLU,
                         "out_act_fn": nn.Identity,
