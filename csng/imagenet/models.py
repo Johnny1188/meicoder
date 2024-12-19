@@ -44,7 +44,7 @@ class ResnetExtractor:
         return features
 
 class ReadIn(torch.nn.Module):
-    """This model corresponds to the fist component described in the report. Its input is the neural stimulation to the mouse, and the output is predicted representation in the latent space (Resnet50 activation at a certain layer)."""
+    """This model's input is the neural stimulation to the mouse, and the output is predicted representation in the latent space (Resnet50 activation at a certain layer)."""
     def __init__(self, n_features, target_shape, alpha=1.0, device='cpu', dtype=torch.float32):
         super().__init__()
         self.alpha = alpha
@@ -104,7 +104,7 @@ def initialize_weights(module):
 
 class UpsampleModel(nn.Module):
     """
-    This model corresponds to the second component desribed in the report. Its input is the representation in the latent space (Resnet50 activation at a certain layer), and the output is the predicted grayscale image.
+    This model's input is the representation in the latent space (Resnet50 activation at a certain layer), and the output is a predicted grayscale image.
     """
     def __init__(self):
         super(UpsampleModel, self).__init__()
