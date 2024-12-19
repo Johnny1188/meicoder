@@ -1,6 +1,6 @@
 # CS-433: Class Project 2
 
-Code for the second project of the Machine Learning Course (CS-433) at EPFL, as part of the Machine Learning for Science projects. This project focuses on decoding visual scenes from population neural activity recorded in the early visual system. The main contributions include applying methods from prior work to a new dataset, performing ablations and hyperparameter analyses to refine algorithmic decisions, and exploring the use of pre-trained generative models to address challenges in this data-scarce domain. It was done in collaboration with the $JAN INCLUDE THE NAME OF THE LAB$.
+Code for the second project of the Machine Learning Course (CS-433) at EPFL, as part of the Machine Learning for Science projects. This project focuses on decoding visual scenes from population neural activity recorded in the early visual system. The main contributions include applying methods from prior work to a new dataset, performing ablations and hyperparameter analyses to refine algorithmic decisions, and exploring the use of pre-trained generative models to address challenges in this data-scarce domain. It was done in collaboration with the [Computational Systems Neuroscience Group](https://csng.mff.cuni.cz) (CSNG) based at the Faculty of Mathematics and Physics of Charles University, Prague.
 
 In this document, we provide instructions on how to setup your environment to be able to run the code, and information about how the project is organized.
 
