@@ -15,7 +15,7 @@ lt.monkey_patch()
 from csng.models.gan import GAN
 from csng.utils.mix import seed_all, plot_losses, plot_comparison, count_parameters
 from csng.utils.data import standardize, normalize, crop
-from csng.losses import SSIMLoss, Loss, get_metrics
+from csng.losses import SSIMLoss, MSELoss, Loss, get_metrics
 from csng.models.readins import (
     MultiReadIn,
     ConvReadIn,
@@ -267,7 +267,7 @@ config["decoder"] = {
     #     "load_opter_state": False,
     #     "load_history": False,
     #     "reset_best": True,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-19_15-45-08", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-42-04", "decoder.pt"),
     #     "resume_checkpointing": False,
     #     "resume_wandb_id": None,
     # },

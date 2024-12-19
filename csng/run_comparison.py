@@ -141,23 +141,21 @@ config["comparison"] = {
     "load_best": True,
     "eval_all_ckpts": False,
     "find_best_ckpt_according_to": None, # "FID"
+    "eval_tier": "test",
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "test",
+        "inv_enc",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
     #     "overwrite": True,
     #     "path": os.path.join(
-    #         # "results",
-    #         # "test",
-    #         "/home/sobotka/cs-433-project/csng/results/test/2024-12-06_20-18-50.pt",
+    #         "results/test/2024-12-06_20-18-50.pt",
     #     ),
     #     "load_only": None, # 'None' to load all
     #     # "load_only": [
     #     #     "Inverted Encoder",
-    #     #     # "CNN-MEI (M-All)",
     #     #     # "GAN-Conv (M-All)",
     #     # ],
     #     "remap": None,
@@ -168,58 +166,49 @@ config["comparison"] = {
     "losses_to_plot": [
         "SSIML",
         "MSE",
-        "PL",
         "FID",
     ],
 }
 
 ### methods to compare
 config["comparison"]["to_compare"] = {
-    ### --- Baselines ---
-    # "Inverted Encoder": {
-    #     "decoder": EnsembleInvEnc(
-    #         encoder_paths=[
-    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-    #         ],
-    #         encoder_config={
-    #             "img_dims": (1, 36, 64),
-    #             "stim_pred_init": "randn",
-    #             "lr": 1000,
-    #             "n_steps": 1000,
-    #             "img_grad_gauss_blur_sigma": 1.5,
-    #             "jitter": None,
-    #             "mse_reduction": "per_sample_mean_sum",
-    #             "device": config["device"],
-    #         },
-    #         use_brainreader_encoder=True,
-    #         get_encoder_fn=get_encoder_brainreader,
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
-    # },
-    # "Inverted Encoder (FID)": {
-    #     "decoder": EnsembleInvEnc(
-    #         encoder_paths=[
-    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-    #         ],
-    #         encoder_config={
-    #             "img_dims": (1, 36, 64),
-    #             "stim_pred_init": "randn",
-    #             "lr": 2000,
-    #             "n_steps": 1000,
-    #             "img_grad_gauss_blur_sigma": 1,
-    #             "jitter": None,
-    #             "mse_reduction": "per_sample_mean_sum",
-    #             "device": config["device"],
-    #         },
-    #         use_brainreader_encoder=True,
-    #         get_encoder_fn=get_encoder_brainreader,
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
+    ### --- Inverted encoder ---
+    "Inverted Encoder": {
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+                os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+            ],
+            encoder_config={
+                "img_dims": (1, 36, 64),
+                "stim_pred_init": "randn",
+                "lr": 2000,
+                "n_steps": 1000,
+                "img_grad_gauss_blur_sigma": 1,
+                "jitter": None,
+                "mse_reduction": "per_sample_mean_sum",
+                "device": config["device"],
+            },
+            use_brainreader_encoder=True,
+            get_encoder_fn=get_encoder_brainreader,
+            device=config["device"],
+        ),
+        "run_name": None,
+    },
+
+
+    ### --- CNN MSE ---
+    # "CNN": {
+    #     "run_name": "2024-12-17_03-20-48",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-12-17_03-20-48", "decoder.pt"),
     # },
 
-    ### --- Hyperparameter search - number of channels ---
+
+    ### --- Hyperparameter search - number of channels (seed 0) ---
+    ## Seed 0
+    # "GAN (64)": {
+    #     "run_name": "2024-12-14_05-11-25",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_05-11-25", "decoder.pt"),
+    # },
     # "GAN (256)": {
     #     "run_name": "2024-12-09_01-13-05",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-09_01-13-05", "decoder.pt"),
@@ -246,18 +235,92 @@ config["comparison"]["to_compare"] = {
     # },
 
 
+    ### --- Hyperparameter search - number of channels (seed 1) ---
+    # "GAN (64)": {
+    #     "run_name": "2024-12-15_02-24-54",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_02-24-54", "decoder.pt"),
+    # },
+    # "GAN (256)": {
+    #     "run_name": "2024-12-12_09-14-47",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-14-47", "decoder.pt"),
+    # },
+    # "GAN (480)": {
+    #     "run_name": "2024-12-12_09-13-47",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-13-47", "decoder.pt"),
+    # },
+    # "GAN (624)": {
+    #     "run_name": "2024-12-12_09-10-30",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-10-30", "decoder.pt"),
+    # },
+    # "GAN (864)": {
+    #     "run_name": "2024-12-12_09-10-14",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-10-14", "decoder.pt"),
+    # },
+    # "GAN (1028)": {
+    #     "run_name": "2024-12-12_09-12-02",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-12-02", "decoder.pt"),
+    # },
+    # "GAN (1256)": {
+    #     "run_name": "2024-12-12_09-12-56",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-12-56", "decoder.pt"),
+    # },
+
+
+    ### --- Hyperparameter search - number of channels (seed 2) ---
+    # "GAN (64)": {
+    #     "run_name": "2024-12-15_02-25-55",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_02-25-55", "decoder.pt"),
+    # },
+    # "GAN (256)": {
+    #     "run_name": "2024-12-13_03-29-23",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_03-29-23", "decoder.pt"),
+    # },
+    # "GAN (480)": {
+    #     "run_name": "2024-12-13_03-20-42",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_03-20-42", "decoder.pt"),
+    # },
+    # "GAN (624)": {
+    #     "run_name": "2024-12-13_03-17-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_03-17-34", "decoder.pt"),
+    # },
+    # "GAN (864)": {
+    #     "run_name": "2024-12-13_03-10-55",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_03-10-55", "decoder.pt"),
+    # },
+    # "GAN (1028)": {
+    #     "run_name": "2024-12-13_02-49-56",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_02-49-56", "decoder.pt"),
+    # },
+    # "GAN (1256)": {
+    #     "run_name": "2024-12-13_02-49-49",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_02-49-49", "decoder.pt"),
+    # },
+
+
     ### --- Varying number of neurons ---
     # "GAN (100%)": {
     #     "run_name": "2024-12-10_02-52-29",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
     # },
+    # "GAN (87.5%)": {
+    #     "run_name": "2024-12-15_03-54-50",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_03-54-50", "decoder.pt"),
+    # },
     # "GAN (75%)": {
     #     "run_name": "2024-12-11_03-24-58",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-24-58", "decoder.pt"),
     # },
+    # "GAN (62.5%)": {
+    #     "run_name": "2024-12-15_04-23-33",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_04-23-33", "decoder.pt"),
+    # },
     # "GAN (50%)": {
     #     "run_name": "2024-12-11_03-20-53",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-20-53", "decoder.pt"),
+    # },
+    # "GAN (37.5%)": {
+    #     "run_name": "2024-12-15_03-54-43",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_03-54-43", "decoder.pt"),
     # },
     # "GAN (25%)": {
     #     "run_name": "2024-12-11_03-22-07",
@@ -273,6 +336,41 @@ config["comparison"]["to_compare"] = {
     # },
 
 
+    ### --- Varying number of training data batches ---
+    # "GAN (100%)": {
+    #     "run_name": "2024-12-10_02-52-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    # },
+    # "GAN (75%)": {
+    #     "run_name": "2024-12-12_00-40-09",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_00-40-09", "decoder.pt"),
+    # },
+    # "GAN (50%)": {
+    #     "run_name": "2024-12-11_03-53-59",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-53-59", "decoder.pt"),
+    # },
+    # "GAN (25%)": {
+    #     "run_name": "2024-12-11_20-20-59",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_20-20-59", "decoder.pt"),
+    # },
+    # "GAN (10%)": {
+    #     "run_name": "2024-12-11_20-42-02",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_20-42-02", "decoder.pt"),
+    # },
+    # "GAN (5%)": {
+    #     "run_name": "2024-12-12_01-22-10",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_01-22-10", "decoder.pt"),
+    # },
+    # "GAN (2.5%)": {
+    #     "run_name": "2024-12-12_01-22-26",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_01-22-26", "decoder.pt"),
+    # },
+    # "GAN (1%)": {
+    #     "run_name": "2024-12-12_02-04-04",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_02-04-04", "decoder.pt"),
+    # },
+
+
     ### --- B-All ---
     # "GAN (B-All)": {
     #     "run_name": "2024-11-19_15-45-08",
@@ -283,6 +381,10 @@ config["comparison"]["to_compare"] = {
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-44-45", "decoder.pt"),
     # },
     # "GAN (50% B-All + 50% S-All)": {
+    #     "run_name": "2024-11-28_01-03-50",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-28_01-03-50", "decoder.pt"),
+    # },
+    # r"GAN (50% B-All + 50% S-All $\rightarrow$ B-6)": {
     #     "run_name": "2024-11-28_01-03-50",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-28_01-03-50", "decoder.pt"),
     # },
@@ -318,7 +420,64 @@ config["comparison"]["to_compare"] = {
     # },
 
 
-    ### --- Training loss ---
+    ### --- With(out) resp_transform & coordinates (seed 0) ---
+    # "GAN": {
+    #     "run_name": "2024-12-10_02-52-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    # },
+    # "GAN (w/ C)": {
+    #     "run_name": "2024-12-08_20-08-02",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-08_20-08-02", "decoder.pt"),
+    # },
+    # "GAN (w/ T)": {
+    #     "run_name": "2024-12-10_03-29-36",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_03-29-36", "decoder.pt"),
+    # },
+    # "GAN (w/ C & T)": {
+    #     "run_name": "2024-12-08_21-03-52",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-08_21-03-52", "decoder.pt"),
+    # },
+
+
+    ### --- With(out) resp_transform & coordinates (seed 1) ---
+    # "GAN": {
+    #     "run_name": "2024-12-12_09-13-47",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-13-47", "decoder.pt"),
+    # },
+    # "GAN (w/ C)": {
+    #     "run_name": "2024-12-14_03-48-11",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_03-48-11", "decoder.pt"),
+    # },
+    # "GAN (w/ T)": {
+    #     "run_name": "2024-12-14_03-52-10",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_03-52-10", "decoder.pt"),
+    # },
+    # "GAN (w/ C & T)": {
+    #     "run_name": "2024-12-14_03-42-14",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_03-42-14", "decoder.pt"),
+    # },
+
+
+    ### --- With(out) resp_transform & coordinates (seed 2) ---
+    # "GAN": {
+    #     "run_name": "2024-12-13_03-20-42",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_03-20-42", "decoder.pt"),
+    # },
+    # "GAN (w/ C)": {
+    #     "run_name": "2024-12-14_04-35-56",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_04-35-56", "decoder.pt"),
+    # },
+    # "GAN (w/ T)": {
+    #     "run_name": "2024-12-14_05-01-51",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_05-01-51", "decoder.pt"),
+    # },
+    # "GAN (w/ C & T)": {
+    #     "run_name": "2024-12-14_04-37-22",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_04-37-22", "decoder.pt"),
+    # },
+
+
+    # ### --- Training loss (seed 0) ---
     # "GAN (SSIML)": {
     #     "run_name": "2024-12-10_02-52-29",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
@@ -326,6 +485,87 @@ config["comparison"]["to_compare"] = {
     # "GAN (MSE)": {
     #     "run_name": "2024-11-24_13-08-45",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-24_13-08-45", "decoder.pt"),
+    # },
+    # "GAN (MAE)": {
+    #     "run_name": "2024-12-12_02-12-39",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_02-12-39", "decoder.pt"),
+    # },
+
+
+    ### --- Training loss (seed 1) ---
+    # "GAN (SSIML)": {
+    #     "run_name": "2024-12-12_09-13-47",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_09-13-47", "decoder.pt"),
+    # },
+    # "GAN (MSE)": {
+    #     "run_name": "2024-12-14_05-16-56",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-14_05-16-56", "decoder.pt"),
+    # },
+    # "GAN (MAE)": {
+    #     "run_name": "2024-12-13_03-20-42",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_02-12-39", "decoder.pt"),
+    # },
+
+
+    ### --- Training loss (seed 2) ---
+    # "GAN (SSIML)": {
+    #     "run_name": "2024-12-13_03-20-42",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_03-20-42", "decoder.pt"),
+    # },
+    # "GAN (MSE)": {
+    #     "run_name": "2024-12-15_02-18-42",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_02-18-42", "decoder.pt"),
+    # },
+    # "GAN (MAE)": {
+    #     "run_name": "2024-12-15_01-58-58",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-15_01-58-58", "decoder.pt"),
+    # },
+
+
+    ### --- Synthetic training data ---
+    # "GAN (92%)": {
+    #     "run_name": "2024-11-22_00-05-07",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-22_00-05-07", "decoder.pt"),
+    # },
+    # "GAN (92%, shared readin)": {
+    #     "run_name": "2024-11-28_00-48-07",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-28_00-48-07", "decoder.pt"),
+    # },
+    # "GAN (75%)": {
+    #     "run_name": "2024-11-24_02-18-51",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-24_02-18-51", "decoder.pt"),
+    # },
+    # "GAN (75%, shared readin)": {
+    #     "run_name": "2024-12-11_03-42-04",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-42-04", "decoder.pt"),
+    # },
+    # "GAN (75%, shared readin, FT)": {
+    #     "run_name": "2024-12-13_02-26-40",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-13_02-26-40", "decoder.pt"),
+    # },
+    # "GAN (50%)": {
+    #     "run_name": "2024-11-22_00-35-18",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-22_00-35-18", "decoder.pt"),
+    # },
+    # "GAN (50%, shared readin)": {
+    #     "run_name": "2024-11-28_00-38-48",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-28_00-38-48", "decoder.pt"),
+    # },
+    # "GAN (50%, shared readin, FT)": {
+    #     "run_name": "2024-12-11_03-28-54",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-28-54", "decoder.pt"),
+    # },
+    # "GAN (25%)": {
+    #     "run_name": "2024-11-24_02-12-30",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-24_02-12-30", "decoder.pt"),
+    # },
+    # "GAN (25%, shared readin)": {
+    #     "run_name": "2024-11-30_01-36-31",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-11-30_01-36-31", "decoder.pt"),
+    # },
+    # "GAN (25%, shared readin, FT)": {
+    #     "run_name": "2024-12-11_03-35-04",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-35-04", "decoder.pt"),
     # },
 }
 
@@ -440,7 +680,7 @@ def run_comparison(cfg):
             dls, _ = get_dataloaders(config=cfg)
             run_dict["test_losses"].append(eval_decoder(
                 model=decoder,
-                dataloaders=dls["test"],
+                dataloaders=dls[cfg["comparison"]["eval_tier"]],
                 loss_fns=metrics,
                 crop_wins=cfg["crop_wins"],
                 calc_fid="FID" in cfg["comparison"]["losses_to_plot"],
