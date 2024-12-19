@@ -4,6 +4,9 @@ Code for the second project of the Machine Learning Course (CS-433) at EPFL, as 
 
 In this document, we provide instructions on how to setup your environment to be able to run the code, and information about how the project is organized.
 
+## Dataset access
+The mouse dataset was provided to us directly by the original authors from the Andreas Tolias lab, but we did not get the permission to share it with third parties. You can email the original authors for access and use the notebook `csng/brainreader_mouse/preprocess_data.ipynb` to preprocess the raw data.
+
 ## Environment setup
 Setup an environment from the `environment.yaml` file and activate it ([Miniconda](https://docs.anaconda.com/free/miniconda/index.html)):
 ```bash
