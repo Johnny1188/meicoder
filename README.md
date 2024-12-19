@@ -31,7 +31,7 @@ pip install --force-reinstall -v "numpy==1.25.2"
 - `README.md` - This file
 - `setup.py` - Setup file for the `csng` package
 - `environment.yaml` - Environment file with all the dependencies
-- `.env.example` - Example of the `.env` file
+- `.env.example` - Example of the `.env` file. Important to setup your own .env file in the same directory to be able to run the scripts
 - `.gitignore` - Git ignore file
 - `pkgs` - Directory containing modified packages `neuralpredictors`, `nnfabrik`, `featurevis`, and `sensorium`
 - `csng` - Directory containing the main code for the project
@@ -39,3 +39,4 @@ pip install --force-reinstall -v "numpy==1.25.2"
   - `mouse_v1/` - Directory with code specific to the SENSORIUM 2022 mouse V1 data (datasets **M-\<mouse id\>** and **M-All**)
   - `brainreader_mouse/` - Directory with code specific to the mouse V1 data from [Cobos E. et al. 2022](https://doi.org/10.1101/2022.12.09.519708) (datasets **B-\<mouse id\>** and **B-All**)
     - `sd_vae` - Directory with code for training a model to map from mouse V1 responses to the latent space of Stable Diffusion 1-4 variational autoencoder.
+  - `<your-data>/` - Directory with code specific to your data (e.g., `cat_v1/`). This folder should include a dataloading utility that could be then combined with other datasets using the code in `csng/data.py`.
