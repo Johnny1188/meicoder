@@ -19,8 +19,3 @@ tmp*
 slurm
 results
 logs
-
-LOC_synset_mapping.json
-start_kernel.sh
-train_*.sh
-reconstructions_6.pdf

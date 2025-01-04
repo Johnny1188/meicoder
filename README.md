@@ -1,11 +1,11 @@
-# CS-433: Class Project 2
+# Decoding Brain Activity
 
-Code for the second project of the Machine Learning Course (CS-433) at EPFL, as part of the Machine Learning for Science projects. This project focuses on decoding visual scenes from population neural activity recorded in the early visual system. The main contributions include applying methods from prior work to a new dataset, performing ablations and hyperparameter analyses to refine algorithmic decisions, and exploring the use of pre-trained generative models to address challenges in this data-scarce domain. It was done in collaboration with the [Computational Systems Neuroscience Group](https://csng.mff.cuni.cz) (CSNG) based at the Faculty of Mathematics and Physics of Charles University, Prague.
+This project focuses on decoding visual scenes from population neural activity recorded in the early visual system.
 
-In this document, we provide instructions on how to setup your environment to be able to run the code, and information about how the project is organized.
 
-## Dataset access
-The mouse dataset was provided to us directly by the original authors from the Andreas Tolias lab, but we did not get the permission to share it with third parties. You can email the original authors for access and use the notebook `csng/brainreader_mouse/preprocess_data.ipynb` to preprocess the raw data.
+## Data
+For instructions on getting the `cat_v1` and `mouse_v1` datasets, please refer to the README files in the respective directories `csng/cat_v1/` and `csng/mouse_v1/`. The `brainreader_mouse` data was provided to us directly by the original authors from the Andreas Tolias lab, but we did not get the permission to share it with third parties. You can email the original authors for access and use the notebook `csng/brainreader_mouse/preprocess_data.ipynb` to preprocess the raw data.
+
 
 ## Environment setup
 Setup an environment from the `environment.yaml` file and activate it ([Miniconda](https://docs.anaconda.com/free/miniconda/index.html)):
@@ -26,8 +26,6 @@ pip install -e pkgs/neuralpredictors pkgs/nnfabrik pkgs/featurevis pkgs/sensoriu
 
 Create `.env` file in the root directory according to `.env.example` file and make sure to set the path to an existing directory where the data will reside (`DATA_PATH`). You might need to load the environment variable(s) from the `.env` file manually in the terminal: `export $(cat .env | xargs)`
 
-Instructions regarding the data are in README files in the data-specific directories `csng/cat_v1/`, `csng/mouse_v1/`, and `csng/brainreader_mouse/`.
-
 ### Potential issues
 If you encounter the error `UserWarning: Failed to initialize NumPy: _ARRAY_API not found`, run the following within the activated `csng` environment:
 ```bash
@@ -46,5 +44,4 @@ pip install --force-reinstall -v "numpy==1.25.2"
   - `cat_v1/` - Directory with code specific to the cat V1 data (**C**)
   - `mouse_v1/` - Directory with code specific to the SENSORIUM 2022 mouse V1 data (datasets **M-\<mouse id\>** and **M-All**)
   - `brainreader_mouse/` - Directory with code specific to the mouse V1 data from [Cobos E. et al. 2022](https://doi.org/10.1101/2022.12.09.519708) (datasets **B-\<mouse id\>** and **B-All**)
-    - `sd_vae` - Directory with code for training a model to map from mouse V1 responses to the latent space of Stable Diffusion 1-4 variational autoencoder.
   - `<your-data>/` - Directory with code specific to your data (e.g., `cat_v1/`). This folder should include a dataloading utility that could be then combined with other datasets using the code in `csng/data.py`.
