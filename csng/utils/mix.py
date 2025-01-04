@@ -19,9 +19,9 @@ def plot_comparison(target, pred, target_title="Target", pred_title="Reconstruct
     n_rows_per_group = (1 + (n_imgs[0]-1)//n_cols, 1 + (n_imgs[1]-1)//n_cols)
 
     ### plot comparison
-    h_mul_factor = 3 * (target.shape[-2] / target.shape[-1])
+    h_mul_factor = 2 * (target.shape[-2] / target.shape[-1])
     # w_mul_factor = 0.4 + (target.shape[-1] / target.shape[-2])
-    fig = plt.figure(figsize=(22, 2.5 + h_mul_factor * sum(n_rows_per_group)))
+    fig = plt.figure(figsize=(22, 1.5 + h_mul_factor * sum(n_rows_per_group)))
     # fig = plt.figure(figsize=(n_cols * w_mul_factor, 3 + sum(n_rows_per_group) * h_mul_factor))
     
     for i in range(max(n_imgs)):

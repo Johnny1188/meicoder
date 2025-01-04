@@ -25,7 +25,7 @@ from csng.models.readins import (
 DATA_PATH = os.environ["DATA_PATH"]
 
 
-def init_decoder(config):
+def init_decoder(config, merge_configs_fn=None):
     history = {"val_loss": []}
     best = {"val_loss": np.inf, "epoch": 0, "model": None}
 
@@ -33,9 +33,12 @@ def init_decoder(config):
     if config["decoder"]["load_ckpt"] != None:
         print(f"[INFO] Loading checkpoint from {config['decoder']['load_ckpt']['ckpt_path']}...")
         ckpt = torch.load(config["decoder"]["load_ckpt"]["ckpt_path"], map_location=config["device"], pickle_module=dill)
+        ckpt_cfg = ckpt["config"]
+        if merge_configs_fn is not None:
+            config, ckpt_cfg = merge_configs_fn(config, ckpt_cfg)
 
         ### load decoder
-        config["decoder"]["model"] = ckpt["config"]["decoder"]["model"]
+        config["decoder"]["model"] = ckpt_cfg["decoder"]["model"]
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
         decoder.load_from_ckpt(ckpt=ckpt, load_best=config["decoder"]["load_ckpt"]["load_best"],
             load_only_core=config["decoder"]["load_ckpt"]["load_only_core"], strict=config["decoder"]["load_ckpt"]["load_only_core"] is False)

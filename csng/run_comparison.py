@@ -174,27 +174,27 @@ config["comparison"] = {
 ### methods to compare
 config["comparison"]["to_compare"] = {
     ### --- Inverted encoder ---
-    "Inverted Encoder": {
-        "decoder": EnsembleInvEnc(
-            encoder_paths=[
-                os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-            ],
-            encoder_config={
-                "img_dims": (1, 36, 64),
-                "stim_pred_init": "randn",
-                "lr": 2000,
-                "n_steps": 1000,
-                "img_grad_gauss_blur_sigma": 1,
-                "jitter": None,
-                "mse_reduction": "per_sample_mean_sum",
-                "device": config["device"],
-            },
-            use_brainreader_encoder=True,
-            get_encoder_fn=get_encoder_brainreader,
-            device=config["device"],
-        ),
-        "run_name": None,
-    },
+    # "Inverted Encoder": {
+    #     "decoder": EnsembleInvEnc(
+    #         encoder_paths=[
+    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    #         ],
+    #         encoder_config={
+    #             "img_dims": (1, 36, 64),
+    #             "stim_pred_init": "randn",
+    #             "lr": 2000,
+    #             "n_steps": 1000,
+    #             "img_grad_gauss_blur_sigma": 1,
+    #             "jitter": None,
+    #             "mse_reduction": "per_sample_mean_sum",
+    #             "device": config["device"],
+    #         },
+    #         use_brainreader_encoder=True,
+    #         get_encoder_fn=get_encoder_brainreader,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
 
 
     ### --- CNN MSE ---
@@ -392,10 +392,10 @@ config["comparison"]["to_compare"] = {
 
 
     ### --- With(out) coordinates ---
-    # "GAN": {
-    #     "run_name": "2024-12-10_02-52-29",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
-    # },
+    "GAN": {
+        "run_name": "2024-12-10_02-52-29",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    },
     # "GAN (w/ coordinates)": {
     #     "run_name": "2024-12-08_20-08-02",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-08_20-08-02", "decoder.pt"),
