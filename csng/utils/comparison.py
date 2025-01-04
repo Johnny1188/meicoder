@@ -91,12 +91,11 @@ def find_best_ckpt(get_dl_fn, config, ckpt_paths, metrics):
         val_dl = get_dl_fn()
         val_loss = eval_decoder(
             model=decoder,
-            dataloaders={"val": val_dl},
-            loss_fns={config["comparison"]["find_best_ckpt_according_to"]: metrics[config["comparison"]["find_best_ckpt_according_to"]]},
-            config=config,
+            dataloaders=val_dl,
+            loss_fns={data_key: {config["comparison"]["find_best_ckpt_according_to"]: metrics[data_key][config["comparison"]["find_best_ckpt_according_to"]]} for data_key in metrics.keys()},
+            crop_wins=config["crop_wins"],
             calc_fid="fid" in config["comparison"]["find_best_ckpt_according_to"].lower(),
-            max_batches=None,
-        )[config["comparison"]["find_best_ckpt_according_to"]]["total"]
+        )["total"][config["comparison"]["find_best_ckpt_according_to"]]
 
         if val_loss < best_loss:
             best_loss = val_loss

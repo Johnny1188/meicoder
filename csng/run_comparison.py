@@ -145,7 +145,7 @@ config["comparison"] = {
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "inv_enc",
+        "test",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -166,6 +166,7 @@ config["comparison"] = {
     "losses_to_plot": [
         "SSIML",
         "MSE",
+        "PL",
         "FID",
     ],
 }
@@ -337,10 +338,10 @@ config["comparison"]["to_compare"] = {
 
 
     ### --- Varying number of training data batches ---
-    # "GAN (100%)": {
-    #     "run_name": "2024-12-10_02-52-29",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
-    # },
+    "GAN (100%)": {
+        "run_name": "2024-12-10_02-52-29",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    },
     # "GAN (75%)": {
     #     "run_name": "2024-12-12_00-40-09",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_00-40-09", "decoder.pt"),
