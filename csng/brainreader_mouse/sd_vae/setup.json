@@ -1,9 +1,0 @@
-{
-    "lr": 1e-05,
-    "weight_decay": 0.0001,
-    "batch_size": 256,
-    "epochs": 5,
-    "model_name": "fully_connected",
-    "scheduler": false,
-    "session_id": 6
-}
