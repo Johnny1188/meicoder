@@ -737,7 +737,7 @@ def run(cfg):
             b_stim_pred = decoder(s["b_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["b_sample_dataset"]][s["b_sample_data_key"]], data_key=s["b_sample_data_key"]).detach()
             fig = plot_comparison(target=crop(s["b_stim"][:8], cfg["crop_wins"][s["b_sample_data_key"]]).cpu(), pred=crop(b_stim_pred[:8], cfg["crop_wins"][s["b_sample_data_key"]]).cpu(), save_to=make_sample_path(epoch, "b_"), show=False)
         if "cat_v1" in cfg["data"]:
-            c_stim_pred = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach()
+            c_stim_pred = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]][s["c_sample_data_key"]], data_key=s["c_sample_data_key"]).detach()
             fig = plot_comparison(target=crop(s["c_stim"][:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(), pred=crop(c_stim_pred[:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(), save_to=make_sample_path(epoch, "c_"), show=False)
         if "mouse_v1" in cfg["data"]:
             m_stim_pred = decoder(s["m_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["m_sample_dataset"]][s["m_sample_data_key"]], pupil_center=s["m_pupil_center"][:8].to(cfg["device"]), data_key=s["m_sample_data_key"]).detach()
@@ -805,7 +805,7 @@ def run(cfg):
             save_to=os.path.join(cfg["dir"], "b_stim_comparison_best.png") if cfg["save_run"] else None,
         )
     if "cat_v1" in cfg["data"]:
-        c_stim_pred_best = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach().cpu()
+        c_stim_pred_best = decoder(s["c_resp"][:8].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]][s["c_sample_data_key"]], data_key=s["c_sample_data_key"]).detach().cpu()
         fig = plot_comparison(
             target=crop(s["c_stim"][:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(),
             pred=crop(c_stim_pred_best[:8], cfg["crop_wins"][s["c_sample_data_key"]]).cpu(),
