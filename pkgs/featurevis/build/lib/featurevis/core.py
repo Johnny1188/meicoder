@@ -107,7 +107,7 @@ def gradient_ascent(f, x, transform=None, regularization=None, gradient_f=None,
                 x[:] = post_update(x, iteration=i)  # in place so the optimizer still points to the right object
 
         # Report results
-        if i % print_iters == 0:
+        if print_iters is not None and i % print_iters == 0:
             feval = feval.item()
             reg_term = reg_term if regularization is None else reg_term.item()
             x_std = x.std().item()

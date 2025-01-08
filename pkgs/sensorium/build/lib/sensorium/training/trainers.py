@@ -2,6 +2,7 @@ from functools import partial
 import numpy as np
 import torch
 from tqdm import tqdm
+import dill
 
 from neuralpredictors.measures import modules
 from neuralpredictors.training import (
@@ -40,6 +41,7 @@ def standard_trainer(
     cb=None,
     track_training=False,
     detach_core=False,
+    ckpt_path=None,
     **kwargs
 ):
     """
@@ -68,6 +70,7 @@ def standard_trainer(
         min_lr: minimum learning rate
         cb: whether to execute callback function
         track_training: whether to track and print out the training progress
+        ckpt_path: path to save the model checkpoints in each iteration
         **kwargs:
 
     Returns:
@@ -200,6 +203,10 @@ def standard_trainer(
             if (batch_no + 1) % optim_step_count == 0:
                 optimizer.step()
                 optimizer.zero_grad()
+
+        # save model checkpoint
+        if ckpt_path is not None:
+            torch.save(model.state_dict(), ckpt_path, pickle_module=dill)
 
     ##### Model evaluation ####################################################################################################
     model.eval()

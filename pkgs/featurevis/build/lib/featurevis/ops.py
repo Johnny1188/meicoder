@@ -428,8 +428,7 @@ class GaussianBlur():
         x_gaussian = torch.as_tensor(x_gaussian, device=x.device, dtype=x.dtype)
 
         # Blur
-        padded_x = F.pad(x, pad=(x_halfsize, x_halfsize, y_halfsize, y_halfsize),
-                         mode=self.pad_mode)
+        padded_x = F.pad(x, pad=(x_halfsize, x_halfsize, y_halfsize, y_halfsize), mode=self.pad_mode)
         blurred_x = F.conv2d(padded_x, y_gaussian.repeat(num_channels, 1, 1)[..., None],
                              groups=num_channels)
         blurred_x = F.conv2d(blurred_x, x_gaussian.repeat(num_channels, 1, 1, 1),
@@ -481,11 +480,17 @@ class MSE():
     Arguments:
         target (torch.tensor): Tensor to match. Broadcastable with expected input.
     """
-    def __init__(self, target):
+    def __init__(self, target, reduction="mean"):
         self.target = target
+        self.reduction = reduction
 
     def __call__(self, x):
-        return F.mse_loss(x, self.target)
+        if self.reduction == "per_sample_mean_sum":
+            loss = F.mse_loss(x, self.target, reduction="none")
+            if loss.ndim == 1:
+                return loss.mean()
+            return loss.mean(dim=tuple(range(1,loss.ndim))).sum()
+        return F.mse_loss(x, self.target, reduction=self.reduction)
 
 class CosineSimilarity():
     """ Computes cosine similarity between x and a target specified at construction.
