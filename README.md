@@ -4,8 +4,7 @@ This project focuses on decoding visual scenes from population neural activity r
 
 
 ## Data
-For instructions on getting the `cat_v1` and `mouse_v1` datasets, please refer to the README files in the respective directories `csng/cat_v1/` and `csng/mouse_v1/`. The `brainreader_mouse` data was provided to us directly by the original authors from the Andreas Tolias lab, but we did not get the permission to share it with third parties. You can email the original authors for access and use the notebook `csng/brainreader_mouse/preprocess_data.ipynb` to preprocess the raw data.
-
+For instructions on getting the `cat_v1` and `mouse_v1` datasets, please refer to the README files in the respective directories `csng/cat_v1/` and `csng/mouse_v1/`.
 
 ## Environment setup
 Setup an environment from the `environment.yaml` file and activate it ([Miniconda](https://docs.anaconda.com/free/miniconda/index.html)):
