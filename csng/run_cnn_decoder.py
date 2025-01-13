@@ -80,22 +80,20 @@ config["data"]["brainreader_mouse"] = {
 #         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
 #         "image_size": [50, 50],
 #         "crop": False,
-#         "batch_size": 6,
+#         "batch_size": 16,
 #         "stim_keys": ("stim",),
 #         "resp_keys": ("exc_resp", "inh_resp"),
 #         "return_coords": True,
 #         "return_ori": False,
 #         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
 #         "cached": False,
-#         "clamp_neg_resp": True,
 #         "stim_normalize_mean": 46.143,
 #         "stim_normalize_std": 20.420,
-#         "resp_normalize_mean": torch.load(
-#             os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
-#         ),
+#         "resp_normalize_mean": None, # don't center responses
 #         "resp_normalize_std": torch.load(
 #             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
 #         ),
+#         "clamp_neg_resp": False,
 #         # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
 #     },
 # }

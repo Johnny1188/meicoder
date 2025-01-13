@@ -55,8 +55,12 @@ def get_cat_v1_dataloaders(
     ### prepare response transforms
     resp_transform = [NumpyToTensor()]
     if resp_normalize_mean is not None and resp_normalize_std is not None:
+        if clamp_neg_resp:
+            print("[WARNING]: clamp_neg_resp is True, but response normalization is also applied. This may lead to negative responses after normalization which will be clamped to 0.")
         resp_transform.append(torchvision.transforms.Lambda(lambda x: (x - resp_normalize_mean) / resp_normalize_std))
     elif resp_normalize_mean is not None:
+        if clamp_neg_resp:
+            print("[WARNING]: clamp_neg_resp is True, but response normalization is also applied. This may lead to negative responses after normalization which will be clamped to 0.")
         resp_transform.append(torchvision.transforms.Lambda(lambda x: x - resp_normalize_mean))
     elif resp_normalize_std is not None:
         resp_transform.append(torchvision.transforms.Lambda(lambda x: x / resp_normalize_std))

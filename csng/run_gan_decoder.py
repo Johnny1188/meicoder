@@ -86,22 +86,20 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
 #         "image_size": [50, 50],
 #         "crop": False,
-#         "batch_size": 5,
+#         "batch_size": 16,
 #         "stim_keys": ("stim",),
 #         "resp_keys": ("exc_resp", "inh_resp"),
 #         "return_coords": True,
 #         "return_ori": False,
 #         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
 #         "cached": False,
-#         "clamp_neg_resp": True,
 #         "stim_normalize_mean": 46.143,
 #         "stim_normalize_std": 20.420,
-#         "resp_normalize_mean": torch.load(
-#             os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
-#         ),
+#         "resp_normalize_mean": None, # don't center responses
 #         "resp_normalize_std": torch.load(
 #             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
 #         ),
+#         "clamp_neg_resp": False,
 #         # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
 #     },
 # }
@@ -256,9 +254,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-35-04", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-01-10_17-26-27", "ckpt", "decoder_85.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "i15d0lvy",
+    #     "resume_wandb_id": "mx89zono",
     # },
     ### for fine-tuning
     # "load_ckpt": {
