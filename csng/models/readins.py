@@ -584,6 +584,7 @@ class MEIReadIn(ReadIn):
     :param n_neurons: number of neurons
     :param mei_resize_method: method to resize the MEIs (crop or resize)
     :param mei_target_shape: target shape of the MEIs
+    :param meis_trainable: whether the MEIs are trainable
     :param pointwise_conv_config: configuration of the pointwise convolutional layer (set to None if not used)
     :param ctx_net_config: configuration of the context network
     :param apply_resp_transform: whether to apply the clamp log10 transformation to the responses before the first layer
@@ -601,6 +602,7 @@ class MEIReadIn(ReadIn):
         n_neurons,
         mei_resize_method="crop",
         mei_target_shape=(22, 36),
+        meis_trainable=False,
         pointwise_conv_config={
             "out_channels": 256,
             "bias": False,
@@ -642,7 +644,9 @@ class MEIReadIn(ReadIn):
             self.meis = torchvision.transforms.Resize(mei_target_shape)(self.meis)
         else:
             raise ValueError(f"mei_resize_method {mei_resize_method} not recognized")
-        self.meis = self.meis.squeeze(1) # (n_neurons, H, W)
+        self.meis = self.meis.permute(1,0,2,3) # (1, n_neurons, H, W)
+        if meis_trainable:
+            self.meis = nn.Parameter(self.meis)
 
         self.shift_coords = shift_coords
         self.shifter_net = None
@@ -707,10 +711,9 @@ class MEIReadIn(ReadIn):
             neuron_coords[:, torch.arange(n_neurons), :2] += delta.unsqueeze(1)
 
         ### contextually modulate MEIs        
-        out = self.meis.unsqueeze(0)
+        out = self.meis.expand(B, -1, -1, -1) # (B, n_neurons, H, W)
         if out.device != x.device: # fix for data parallelism
             out = out.to(x.device)
-        out = out.repeat(B, 1, 1, 1) # (B, n_neurons, H, W)
         if self.ctx_net_config["in_channels"] > 1:
             ctx_inp = torch.cat([
                 self.resp_transform(x).unsqueeze(-1),

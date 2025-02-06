@@ -231,7 +231,8 @@ config["decoder"] = {
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
     },
-    "val_loss": "FID", # get_metrics(config)["SSIML-PL"],
+    # "val_loss": "FID", # get_metrics(config)["SSIML-PL"],
+    "val_loss": get_metrics(crop_win=(20, 20), device=config["device"])["SSIML-PL"],
     "G_opter_cls": torch.optim.AdamW,
     "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
     "D_opter_cls": torch.optim.AdamW,
@@ -244,7 +245,7 @@ config["decoder"] = {
     "D_fake_loss_mul": 0.5,
     "D_real_stim_labels_noise": 0.05,
     "D_fake_stim_labels_noise": 0.05,
-    "n_epochs": 200,
+    "n_epochs": 250,
     "load_ckpt": None,
 
     ### continue training
@@ -254,9 +255,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-01-10_17-26-27", "ckpt", "decoder_85.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-01-14_09-48-53", "ckpt", "decoder_130.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "mx89zono",
+    #     "resume_wandb_id": "sp4uhbqn",
     # },
     ### for fine-tuning
     # "load_ckpt": {
@@ -345,6 +346,7 @@ if "brainreader_mouse" in config["data"]:
                         "n_neurons": n_neurons,
                         "mei_resize_method": "resize",
                         "mei_target_shape": (36, 64),
+                        "meis_trainable": False,
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
@@ -442,6 +444,7 @@ if "cat_v1" in config["data"]:
                     "n_neurons": 46875,
                     "mei_resize_method": "resize",
                     "mei_target_shape": (20, 20),
+                    "meis_trainable": False,
                     "pointwise_conv_config": {
                         "out_channels": 480,
                         "bias": False,
@@ -536,6 +539,7 @@ if "mouse_v1" in config["data"]:
                         "n_neurons": n_coords.shape[-2],
                         "mei_resize_method": "resize",
                         "mei_target_shape": (22, 36),
+                        "meis_trainable": False,
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
@@ -637,6 +641,7 @@ if "syn_data" in config["data"]:
                         "n_neurons": n_neurons,
                         "mei_resize_method": "resize",
                         "mei_target_shape": (36, 64),
+                        "meis_trainable": False,
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
@@ -747,7 +752,7 @@ def run(cfg):
             plot_losses(history=history, epoch=epoch, show=False, save_to=os.path.join(cfg["dir"], f"losses_{epoch}.png") if cfg["save_run"] else None)
 
         ### save ckpt
-        if cfg["save_run"]:
+        if epoch % 5 == 0 and epoch > 0 and cfg["save_run"]:
             torch.save({
                 "decoder": decoder.state_dict(),
                 "history": history,
