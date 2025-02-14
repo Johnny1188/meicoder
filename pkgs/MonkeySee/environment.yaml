@@ -1,0 +1,25 @@
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - nvidia::cudatoolkit=11.3
+  - python=3.10
+  - pip=23.1.2
+  - dill=0.3.7
+  - lovely-tensors
+  - matplotlib
+  - seaborn
+  - wandb==0.19.5
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu121
+      - torch==2.2.1+cu121
+      - torchvision==0.17.1+cu121
+      - mxnet
+      - tqdm
+      - scikit-image>=0.21.0
+      - datajoint
+      - numpy==1.25.2
+      - scikit-learn==1.5.2
+      - gitpython==3.1.44
+      - gpustat==1.1.1

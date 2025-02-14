@@ -18,6 +18,8 @@ from csng.losses import get_metrics
 from csng.data import get_dataloaders, get_sample_data
 from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
 
+from monkeysee.SpatialBased.decoding_wrapper import MonkeySeeDecoder
+
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
 DATA_PATH_CAT_V1 = os.path.join(DATA_PATH, "cat_V1_spiking_model", "50K_single_trial_dataset")
@@ -48,8 +50,8 @@ config["data"]["brainreader_mouse"] = {
     # "sessions": list(range(1, 23)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
-    "normalize_stim": True,
-    "normalize_resp": False,
+    "normalize_stim": True,  # MUST BE FALSE FOR INVERTED ENCODER
+    "normalize_resp": False,  # MUST BE TRUE FOR MONKEYSEE
     "div_resp_by_std": True,
     "clamp_neg_resp": False,
     "additional_keys": None,
@@ -197,6 +199,17 @@ config["comparison"]["to_compare"] = {
     # },
 
 
+    ### --- MonkeySee ---
+    # "MonkeySee": {
+    #     "decoder": MonkeySeeDecoder(
+    #         ckpt_dir=os.path.join(DATA_PATH, "monkeysee", "runs", "13-02-2025_11-47"),
+    #         train_dl=get_dataloaders(config=config)[0]["train"]["brainreader_mouse"],
+    #         new_data_path=DATA_PATH,
+    #     ),
+    #     "run_name": None,
+    # },
+
+
     ### --- CNN MSE ---
     # "CNN": {
     #     "run_name": "2024-12-17_03-20-48",
@@ -338,10 +351,10 @@ config["comparison"]["to_compare"] = {
 
 
     ### --- Varying number of training data batches ---
-    "GAN (100%)": {
-        "run_name": "2024-12-10_02-52-29",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
-    },
+    # "GAN (100%)": {
+    #     "run_name": "2024-12-10_02-52-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    # },
     # "GAN (75%)": {
     #     "run_name": "2024-12-12_00-40-09",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-12_00-40-09", "decoder.pt"),
@@ -392,10 +405,10 @@ config["comparison"]["to_compare"] = {
 
 
     ### --- With(out) coordinates ---
-    "GAN": {
-        "run_name": "2024-12-10_02-52-29",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
-    },
+    # "GAN": {
+    #     "run_name": "2024-12-10_02-52-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    # },
     # "GAN (w/ coordinates)": {
     #     "run_name": "2024-12-08_20-08-02",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-08_20-08-02", "decoder.pt"),
