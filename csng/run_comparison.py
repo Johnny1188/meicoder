@@ -11,7 +11,7 @@ lt.monkey_patch()
 import csng
 from csng.models.inverted_encoder import InvertedEncoder, InvertedEncoderBrainreader
 from csng.models.ensemble import EnsembleInvEnc
-from csng.utils.mix import seed_all
+from csng.utils.mix import seed_all, check_if_data_zscored
 from csng.utils.data import standardize, normalize, crop
 from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder
 from csng.losses import get_metrics
@@ -142,7 +142,7 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 config["comparison"] = {
     "load_best": True,
     "eval_all_ckpts": False,
-    "find_best_ckpt_according_to": None, # "FID"
+    "find_best_ckpt_according_to": None, # "Alex(5)"
     "eval_tier": "test",
     "save_dir": None,
     "save_dir": os.path.join(
@@ -166,37 +166,39 @@ config["comparison"] = {
     #     # },
     # },
     "losses_to_plot": [
-        "SSIML",
-        "MSE",
-        "PL",
-        "FID",
+        "SSIM",
+        "PixCorr",
+        "Alex(2)",
+        "Alex(5)",
+        "MAE",
+        # "PL",
     ],
 }
 
 ### methods to compare
 config["comparison"]["to_compare"] = {
     ### --- Inverted encoder ---
-    # "Inverted Encoder": {
-    #     "decoder": EnsembleInvEnc(
-    #         encoder_paths=[
-    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-    #         ],
-    #         encoder_config={
-    #             "img_dims": (1, 36, 64),
-    #             "stim_pred_init": "randn",
-    #             "lr": 2000,
-    #             "n_steps": 1000,
-    #             "img_grad_gauss_blur_sigma": 1,
-    #             "jitter": None,
-    #             "mse_reduction": "per_sample_mean_sum",
-    #             "device": config["device"],
-    #         },
-    #         use_brainreader_encoder=True,
-    #         get_encoder_fn=get_encoder_brainreader,
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
-    # },
+    "Inverted Encoder": {
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+                os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+            ],
+            encoder_config={
+                "img_dims": (1, 36, 64),
+                "stim_pred_init": "randn",
+                "lr": 2000,
+                "n_steps": 1000,
+                "img_grad_gauss_blur_sigma": 1,
+                "jitter": None,
+                "mse_reduction": "per_sample_mean_sum",
+                "device": config["device"],
+            },
+            use_brainreader_encoder=True,
+            get_encoder_fn=get_encoder_brainreader,
+            device=config["device"],
+        ),
+        "run_name": None,
+    },
 
 
     ### --- MonkeySee ---
@@ -227,10 +229,10 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2024-12-09_01-13-05",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-09_01-13-05", "decoder.pt"),
     # },
-    # "GAN (480)": {
-    #     "run_name": "2024-12-10_02-52-29",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
-    # },
+    "GAN (480)": {
+        "run_name": "2024-12-10_02-52-29",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    },
     # "GAN (624)": {
     #     "run_name": "2024-12-09_01-22-11",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-09_01-22-11", "decoder.pt"),
@@ -633,7 +635,8 @@ def run_comparison(cfg):
         else:
             _runs_to_compare[run_name] = cfg["comparison"]["to_compare"][run_name]
     runs_to_compare = _runs_to_compare
-    metrics = {data_key: get_metrics(crop_win=cfg["crop_wins"][data_key], device=cfg["device"]) for data_key in cfg["crop_wins"].keys()}
+    inp_zscored = check_if_data_zscored(cfg=cfg)
+    metrics = {data_key: get_metrics(inp_zscored=inp_zscored, crop_win=cfg["crop_wins"][data_key], device=cfg["device"]) for data_key in cfg["crop_wins"].keys()}
 
     ### load and compare models
     for k in runs_to_compare.keys():
@@ -697,7 +700,7 @@ def run_comparison(cfg):
                 dataloaders=dls[cfg["comparison"]["eval_tier"]],
                 loss_fns=metrics,
                 crop_wins=cfg["crop_wins"],
-                calc_fid="FID" in cfg["comparison"]["losses_to_plot"],
+                # calc_fid="FID" in cfg["comparison"]["losses_to_plot"],
             ))
 
     ### save the results
@@ -732,7 +735,6 @@ def run_comparison(cfg):
         plot_metrics(
             runs_to_compare=runs_to_compare,
             losses_to_plot=cfg["comparison"]["losses_to_plot"],
-            bar_width=0.7,
             save_to=os.path.join(cfg["comparison"]["save_dir"], f"metrics.{f_type}") \
                 if cfg["comparison"]["save_dir"] else None,
         )

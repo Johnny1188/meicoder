@@ -20,14 +20,72 @@ from csng.models.readins import MultiReadIn
 from csng.losses import FID
 
 
-def eval_decoder(model, dataloaders, loss_fns, crop_wins, calc_fid=False, max_batches=None):
+# def eval_decoder(model, dataloaders, loss_fns, crop_wins, calc_fid=False, max_batches=None):
+#     model.eval()
+
+#     ### for tracking over whole dataset
+#     losses = {data_key: {loss_fn_name: 0 for loss_fn_name in data_key_loss_fns.keys()} for data_key, data_key_loss_fns in loss_fns.items()}
+#     denom_data_keys = {}
+#     if calc_fid:
+#         preds, targets = defaultdict(list), defaultdict(list)
+
+#     ### run eval
+#     for k, dl in dataloaders.items(): # different data sources (cat_v1, mouse_v1, ...)
+#         for b in dl:
+#             ### combine losses from all data keys
+#             for dp in b:
+#                 ### get predictions
+#                 stim_pred = model(
+#                     dp["resp"],
+#                     data_key=dp["data_key"],
+#                     neuron_coords=dp["neuron_coords"],
+#                     pupil_center=dp["pupil_center"],
+#                 )
+
+#                 ### calc metrics
+#                 for loss_fn_name, loss_fn in loss_fns[dp["data_key"]].items():
+#                     losses[dp["data_key"]][loss_fn_name] += loss_fn(stim_pred, dp["stim"], data_key=dp["data_key"], phase="val").item()
+
+#                 ### append for later fid calculation
+#                 if calc_fid:
+#                     preds[dp["data_key"]].append(crop(stim_pred, crop_wins[dp["data_key"]]).detach().cpu())
+#                     targets[dp["data_key"]].append(crop(dp["stim"], crop_wins[dp["data_key"]]).cpu())
+
+#                 denom_data_keys[dp["data_key"]] = denom_data_keys[dp["data_key"]] + dp["stim"].shape[0] if dp["data_key"] in denom_data_keys else dp["stim"].shape[0]
+
+#             if max_batches is not None and b_idx + 1 >= max_batches:
+#                 break
+
+#     ### average losses
+#     losses["total"] = defaultdict(float)
+#     for data_key in losses:
+#         if data_key == "total": continue
+#         for loss_name in losses[data_key]:
+#             losses[data_key][loss_name] /= denom_data_keys[data_key]
+#             losses["total"][loss_name] += losses[data_key][loss_name]
+#     losses["total"] = {loss_name: losses["total"][loss_name] / (len(losses.keys()) - 1) for loss_name in losses["total"]}
+
+#     ### eval fid
+#     if calc_fid:
+#         losses["total"]["FID"] = 0
+#         for data_key in preds.keys():
+#             fid = FID(inp_standardized=False, device="cpu")
+#             losses[data_key]["FID"] = fid(
+#                 pred_imgs=torch.cat(preds[data_key], dim=0),
+#                 gt_imgs=torch.cat(targets[data_key], dim=0)
+#             )
+#             losses["total"]["FID"] += losses[data_key]["FID"]
+#         losses["total"]["FID"] /= len(preds.keys())
+
+#     return losses
+
+
+def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None):
     model.eval()
 
     ### for tracking over whole dataset
     losses = {data_key: {loss_fn_name: 0 for loss_fn_name in data_key_loss_fns.keys()} for data_key, data_key_loss_fns in loss_fns.items()}
-    denom_data_keys = {}
-    if calc_fid:
-        preds, targets = defaultdict(list), defaultdict(list)
+    preds, targets = defaultdict(list), defaultdict(list)
 
     ### run eval
     for k, dl in dataloaders.items(): # different data sources (cat_v1, mouse_v1, ...)
@@ -42,46 +100,38 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, calc_fid=False, max_ba
                     pupil_center=dp["pupil_center"],
                 )
 
-                ### calc metrics
-                for loss_fn_name, loss_fn in loss_fns[dp["data_key"]].items():
-                    losses[dp["data_key"]][loss_fn_name] += loss_fn(stim_pred, dp["stim"], data_key=dp["data_key"], phase="val").item()
-
-                ### append for later fid calculation
-                if calc_fid:
-                    preds[dp["data_key"]].append(crop(stim_pred, crop_wins[dp["data_key"]]).detach().cpu())
-                    targets[dp["data_key"]].append(crop(dp["stim"], crop_wins[dp["data_key"]]).cpu())
-
-                denom_data_keys[dp["data_key"]] = denom_data_keys[dp["data_key"]] + dp["stim"].shape[0] if dp["data_key"] in denom_data_keys else dp["stim"].shape[0]
+                ### append for batched metric eval
+                preds[dp["data_key"]].append(crop(stim_pred, crop_wins[dp["data_key"]]).detach().cpu())
+                targets[dp["data_key"]].append(crop(dp["stim"], crop_wins[dp["data_key"]]).cpu())
 
             if max_batches is not None and b_idx + 1 >= max_batches:
                 break
 
-    ### average losses
+    ### calculate metrics (batched)
+    preds = {data_key: torch.cat(preds[data_key], dim=0) for data_key in preds.keys()}
+    targets = {data_key: torch.cat(targets[data_key], dim=0) for data_key in targets.keys()}
     losses["total"] = defaultdict(float)
     for data_key in losses:
-        if data_key == "total": continue
-        for loss_name in losses[data_key]:
-            losses[data_key][loss_name] /= denom_data_keys[data_key]
-            losses["total"][loss_name] += losses[data_key][loss_name]
-    losses["total"] = {loss_name: losses["total"][loss_name] / (len(losses.keys()) - 1) for loss_name in losses["total"]}
+        if data_key == "total":
+            continue
 
-    ### eval fid
-    if calc_fid:
-        losses["total"]["FID"] = 0
-        for data_key in preds.keys():
-            fid = FID(inp_standardized=False, device="cpu")
-            losses[data_key]["FID"] = fid(
-                pred_imgs=torch.cat(preds[data_key], dim=0),
-                gt_imgs=torch.cat(targets[data_key], dim=0)
-            )
-            losses["total"]["FID"] += losses[data_key]["FID"]
-        losses["total"]["FID"] /= len(preds.keys())
+        for loss_name, loss_fn in loss_fns[data_key].items():
+            losses[data_key][loss_name] = loss_fn(
+                preds[data_key],
+                targets[data_key],
+                data_key=data_key,
+                sum_over_samples=False,
+                phase="val",
+            ).item()
+            losses["total"][loss_name] += losses[data_key][loss_name] / (len(losses.keys()) - 1)
+    # losses["total"] = {loss_name: losses["total"][loss_name] / (len(losses.keys()) - 1) for loss_name in losses["total"]}
 
     return losses
 
 
 def find_best_ckpt(get_dl_fn, config, ckpt_paths, metrics):
     best_ckpt_path, best_loss = None, np.inf
+
     for ckpt_path in ckpt_paths:
         # decoder, _ = load_decoder_from_ckpt(config=config, ckpt_path=ckpt_path, load_best=False, load_only_core=False)
         decoder, _ = load_decoder_from_ckpt(ckpt_path=ckpt_path, device=config["device"], load_best=False, load_only_core=False, model_init_dict=None, strict=True)
@@ -94,12 +144,13 @@ def find_best_ckpt(get_dl_fn, config, ckpt_paths, metrics):
             dataloaders=val_dl,
             loss_fns={data_key: {config["comparison"]["find_best_ckpt_according_to"]: metrics[data_key][config["comparison"]["find_best_ckpt_according_to"]]} for data_key in metrics.keys()},
             crop_wins=config["crop_wins"],
-            calc_fid="fid" in config["comparison"]["find_best_ckpt_according_to"].lower(),
+            # calc_fid="fid" in config["comparison"]["find_best_ckpt_according_to"].lower(),
         )["total"][config["comparison"]["find_best_ckpt_according_to"]]
 
         if val_loss < best_loss:
             best_loss = val_loss
             best_ckpt_path = ckpt_path
+
     return best_ckpt_path, best_loss
 
 
@@ -181,69 +232,123 @@ def plot_reconstructions(runs, stim, stim_label="Target", data_key=None, manuall
     plt.close(fig)
 
 
-def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
-    c_palette = list(plt.cm.tab10.colors)
+# def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.7, save_to=None):
+#     c_palette = list(plt.cm.tab10.colors)
 
-    ### plot
+#     ### plot
+#     k = list(runs_to_compare.keys())[0]
+#     for run_idx in range(len(runs_to_compare[k]["test_losses"])):
+#         ### bar plot of test losses
+#         fig = plt.figure(figsize=(25 + 6 * len(runs_to_compare[k]["test_losses"]), 12))
+#         ax = fig.add_subplot(111)
+
+#         ### grouped bar plot
+#         for i, (k, run_dict) in enumerate(runs_to_compare.items()):
+#             for j, loss_name in enumerate(losses_to_plot):
+#                 rects = ax.bar(
+#                     i - bar_width / len(losses_to_plot) + j * bar_width / len(losses_to_plot),
+#                     run_dict["test_losses"][run_idx]["total"][loss_name],
+#                     width=bar_width / len(losses_to_plot),
+#                     color=c_palette[j],
+#                 )
+#                 lowest_loss_flag = False
+#                 if run_dict["test_losses"][run_idx]["total"][loss_name] == min(
+#                     [runs_to_compare[_k]["test_losses"][run_idx]["total"][loss_name] for _k in runs_to_compare.keys()]
+#                 ):
+#                     lowest_loss_flag = True
+#                 autolabel(ax=ax, rects=rects, fontsize=18, bold=lowest_loss_flag)
+
+#         ### add legend with color explanation
+#         ax.legend(
+#             handles=[
+#                 mpatches.Patch(color=c_palette[i], label=loss)
+#                 for i, loss in enumerate(losses_to_plot)
+#             ],
+#             loc="upper center",
+#             bbox_to_anchor=(0.5, 1.3),
+#             ncol=len(losses_to_plot),
+#             fontsize=20,
+#             frameon=False,
+#         )
+
+#         ax.set_xticks(range(len(runs_to_compare)))
+#         ax.set_xticklabels(runs_to_compare.keys())
+#         ### rotatate xtick labels
+#         ax.set_xticklabels(
+#             [k for k in runs_to_compare.keys()],
+#             rotation=90,
+#             # y=-0.7,
+#             ha="right",
+#             # va="baseline",
+#         )
+#         ax.set_yticks(ax.get_yticks()[::2])
+#         ax.set_ylim(0, None)
+
+#         ax.tick_params(axis="both", which="major", labelsize=18)
+#         ax.set_xlabel("Decoder", fontsize=22, labelpad=40)
+#         ax.set_ylabel("Loss", fontsize=22, labelpad=40)
+
+#         ### remove top and right spines
+#         ax.spines["top"].set_visible(False)
+#         ax.spines["right"].set_visible(False)
+
+#         plt.show()
+
+#         if save_to is not None:
+#             fig.savefig(save_to, bbox_inches="tight")
+
+#         plt.close(fig)
+
+
+def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.8, save_to=None):
+    sns.set_style("whitegrid")
+    c_palette = sns.color_palette("tab10", n_colors=len(losses_to_plot))
+
+    num_methods = len(runs_to_compare)
+    num_metrics = len(losses_to_plot)
+
+    fig_width = max(5, num_methods * (num_metrics // 2 + 1))
+    fig_height = max(5, num_metrics * 1.5)
+
     k = list(runs_to_compare.keys())[0]
     for run_idx in range(len(runs_to_compare[k]["test_losses"])):
-        ### bar plot of test losses
-        fig = plt.figure(figsize=(25 + 6 * len(runs_to_compare[k]["test_losses"]), 12))
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-        ### grouped bar plot
-        for i, (k, run_dict) in enumerate(runs_to_compare.items()):
+        index = np.arange(num_methods)
+        bar_spacing = bar_width / num_metrics
+
+        for i, (method, run_dict) in enumerate(runs_to_compare.items()):
             for j, loss_name in enumerate(losses_to_plot):
+                value = run_dict["test_losses"][run_idx]["total"].get(loss_name, 0)
                 rects = ax.bar(
-                    i - bar_width / len(losses_to_plot) + j * bar_width / len(losses_to_plot),
-                    run_dict["test_losses"][run_idx]["total"][loss_name],
-                    width=bar_width / len(losses_to_plot),
+                    i - bar_width / 2 + j * bar_spacing,
+                    value,
+                    width=bar_spacing,
                     color=c_palette[j],
+                    label=loss_name if i == 0 else ""
                 )
-                lowest_loss_flag = False
-                if run_dict["test_losses"][run_idx]["total"][loss_name] == min(
-                    [runs_to_compare[_k]["test_losses"][run_idx]["total"][loss_name] for _k in runs_to_compare.keys()]
-                ):
-                    lowest_loss_flag = True
-                autolabel(ax=ax, rects=rects, fontsize=18, bold=lowest_loss_flag)
 
-        ### add legend with color explanation
-        ax.legend(
-            handles=[
-                mpatches.Patch(color=c_palette[i], label=loss)
-                for i, loss in enumerate(losses_to_plot)
-            ],
-            loc="upper center",
-            bbox_to_anchor=(0.5, 1.3),
-            ncol=len(losses_to_plot),
-            fontsize=20,
-            frameon=False,
-        )
+                # min_loss = min(
+                #     runs_to_compare[_k]["test_losses"][run_idx]["total"].get(loss_name, float('inf'))
+                #     for _k in runs_to_compare.keys()
+                # )
+                # is_lowest = value == min_loss
+                # autolabel(ax, rects, fontsize=12, bold=is_lowest)
+                autolabel(ax, rects, fontsize=12, bold=False)
 
-        ax.set_xticks(range(len(runs_to_compare)))
-        ax.set_xticklabels(runs_to_compare.keys())
-        ### rotatate xtick labels
-        ax.set_xticklabels(
-            [k for k in runs_to_compare.keys()],
-            rotation=90,
-            # y=-0.7,
-            ha="right",
-            # va="baseline",
-        )
-        ax.set_yticks(ax.get_yticks()[::2])
-        ax.set_ylim(0, None)
+        ax.set_xticks(index)
+        ax.set_xticklabels(runs_to_compare.keys(), rotation=45, ha="right")
+        ax.set_xlabel("Method", fontsize=14)
+        # ax.set_ylabel("Value", fontsize=14)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=num_metrics, frameon=False, fontsize=12)
 
-        ax.tick_params(axis="both", which="major", labelsize=18)
-        ax.set_xlabel("Decoder", fontsize=22, labelpad=40)
-        ax.set_ylabel("Loss", fontsize=22, labelpad=40)
-
-        ### remove top and right spines
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
+        ax.yaxis.grid(True, alpha=0.4)
+        ax.xaxis.grid(False)
+        sns.despine()
+        plt.tight_layout()
         plt.show()
 
-        if save_to is not None:
+        if save_to:
             fig.savefig(save_to, bbox_inches="tight")
 
         plt.close(fig)

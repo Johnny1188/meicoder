@@ -1,36 +1,63 @@
 from typing import List, Optional, Tuple, Union
+import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 import torchvision
+from torchvision.models.feature_extraction import create_feature_extractor
+from torchvision.models import alexnet, AlexNet_Weights
+from torchvision import transforms
 import torchmetrics
 from focal_frequency_loss import FocalFrequencyLoss as FFL
+from torchmetrics.image.fid import FrechetInceptionDistance
+from torchvision.models.feature_extraction import create_feature_extractor
 
 from csng.utils.data import standardize, normalize, crop
-from torchmetrics.image.fid import FrechetInceptionDistance
 
 
-def get_metrics(crop_win=None, device="cpu"):
+def get_metrics(inp_zscored, crop_win=None, device="cpu"):
     metrics = {
         "SSIM": Loss(config=dict(
             loss_fn=SSIM(),
             window=crop_win,
-            standardize=True,
+            standardize=inp_zscored,
         )),
         "Log SSIML": Loss(config=dict(
             loss_fn=SSIMLoss(
                 log_loss=True,
-                inp_normalized=True,
-                inp_standardized=False,
+                inp_normalized=inp_zscored,
+                inp_standardized=not inp_zscored,
             ),
             window=crop_win,
         )),
         "SSIML": Loss(config=dict(
             loss_fn=SSIMLoss(
                 log_loss=False,
-                inp_normalized=True,
-                inp_standardized=False,
+                inp_normalized=inp_zscored,
+                inp_standardized=not inp_zscored,
+            ),
+            window=crop_win,
+        )),
+        "PixCorr": Loss(config=dict(
+            loss_fn=PixCorr(),
+            window=crop_win,
+        )),
+        "Alex(2)": Loss(config=dict(
+            loss_fn=TwoWayAlexNet(
+                inp_zscored=inp_zscored,
+                feature_layers=["features.4"],
+                avg_across_layers=True,
+                device=device,
+            ),
+            window=crop_win,
+        )),
+        "Alex(5)": Loss(config=dict(
+            loss_fn=TwoWayAlexNet(
+                inp_zscored=inp_zscored,
+                feature_layers=["features.11"],
+                avg_across_layers=True,
+                device=device,
             ),
             window=crop_win,
         )),
@@ -40,36 +67,60 @@ def get_metrics(crop_win=None, device="cpu"):
                 device=device,
             ),
             window=crop_win,
-            standardize=True,
+            standardize=inp_zscored,
         )),
         "FFL": Loss(config=dict(
             loss_fn=FFL(loss_weight=1, alpha=1.0),
             window=crop_win,
-            standardize=True,
+            standardize=inp_zscored,
         )),
+        # "MSE": Loss(config=dict(
+        #     loss_fn=lambda x_hat, x: F.mse_loss(
+        #         standardize(crop(x_hat, crop_win)) if inp_zscored else crop(x_hat, crop_win),
+        #         standardize(crop(x, crop_win)) if inp_zscored else crop(x, crop_win),
+        #         reduction="none",
+        #     ).mean((1,2,3)).sum(),
+        #     window=crop_win,
+        # )),
         "MSE": Loss(config=dict(
-            loss_fn=lambda x_hat, x: F.mse_loss(
-                standardize(crop(x_hat, crop_win)),
-                standardize(crop(x, crop_win)),
-                reduction="none",
-            ).mean((1,2,3)).sum(),
-            window=crop_win,
+            loss_fn=MSELoss(
+                window=crop_win,
+                minmax_normalize=inp_zscored,
+            ),
         )),
-        "MSE-no-standardization": Loss(config=dict(
-            loss_fn=lambda x_hat, x: F.mse_loss(
-                crop(x_hat, crop_win),
-                crop(x, crop_win),
-                reduction="none",
-            ).mean((1,2,3)).sum(),
-            window=crop_win,
+        "MSE w/out min-max normalization": Loss(config=dict(
+            loss_fn=MSELoss(
+                window=crop_win,
+                minmax_normalize=False,
+            ),
         )),
+        # "MSE-no-standardization": Loss(config=dict(
+        #     loss_fn=lambda x_hat, x: F.mse_loss(
+        #         crop(x_hat, crop_win),
+        #         crop(x, crop_win),
+        #         reduction="none",
+        #     ).mean((1,2,3)).sum(),
+        #     window=crop_win,
+        # )),
+        # "MAE": Loss(config=dict(
+        #     loss_fn=lambda x_hat, x: F.l1_loss(
+        #         standardize(crop(x_hat, crop_win)) if inp_zscored else crop(x_hat, crop_win),
+        #         standardize(crop(x, crop_win)) if inp_zscored else crop(x, crop_win),
+        #         reduction="none",
+        #     ).mean((1,2,3)).sum(),
+        #     window=crop_win,
+        # )),
         "MAE": Loss(config=dict(
-            loss_fn=lambda x_hat, x: F.l1_loss(
-                standardize(crop(x_hat, crop_win)),
-                standardize(crop(x, crop_win)),
-                reduction="none",
-            ).mean((1,2,3)).sum(),
-            window=crop_win,
+            loss_fn=MAELoss(
+                window=crop_win,
+                minmax_normalize=inp_zscored,
+            ),
+        )),
+        "MAE w/out min-max normalization": Loss(config=dict(
+            loss_fn=MAELoss(
+                window=crop_win,
+                minmax_normalize=False,
+            ),
         )),
     }
     metrics["SSIML-PL"] = Loss(config=dict(
@@ -118,7 +169,7 @@ class Loss:
             )
         return 0.
 
-    def __call__(self, stim_pred, stim, resp=None, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, phase="train"):
+    def __call__(self, stim_pred, stim, resp=None, data_key=None, neuron_coords=None, pupil_center=None, additional_core_inp=None, sum_over_samples=False, phase="train"):
         assert phase in ("train", "val"), f"phase {phase} not recognized"
 
         ### crop only window
@@ -143,12 +194,18 @@ class Loss:
             loss_fn_kwargs = dict(data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp, phase=phase)
         if phase == "val":
             if hasattr(loss_fn, "reduction"):
-                before_red = loss_fn.reduction
-                loss_fn.reduction = "none"
-                loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).sum(0).mean()
-                loss_fn.reduction = before_red
+                if sum_over_samples:
+                    before_red = loss_fn.reduction
+                    loss_fn.reduction = "none"
+                    loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).sum(0).mean()
+                    loss_fn.reduction = before_red
+                else:
+                    loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).mean()
             else:
-                loss = sum(loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:], **loss_fn_kwargs) for i in range(stim_pred.shape[0]))
+                if sum_over_samples:
+                    loss = sum(loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:], **loss_fn_kwargs) for i in range(stim_pred.shape[0]))
+                else:
+                    loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).mean()
         else:
             loss = loss_fn(stim_pred, stim, **loss_fn_kwargs)
 
@@ -779,9 +836,10 @@ class MS_SSIM(torch.nn.Module):
 
 
 class MSELoss(torch.nn.Module):
-    def __init__(self, window=None, reduction="mean"):
+    def __init__(self, window=None, minmax_normalize=False, reduction="mean"):
         super().__init__()
         self.window = window
+        self.minmax_normalize = minmax_normalize
         self.reduction = reduction
 
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
@@ -789,7 +847,31 @@ class MSELoss(torch.nn.Module):
             pred = crop(pred, win=self.window)
             target = crop(target, win=self.window)
 
+        if self.minmax_normalize:
+            pred = standardize(pred)
+            target = standardize(target)
+
         loss = F.mse_loss(pred, target, reduction=self.reduction)
+        return loss
+
+
+class MAELoss(torch.nn.Module):
+    def __init__(self, window=None, minmax_normalize=False, reduction="mean"):
+        super().__init__()
+        self.window = window
+        self.minmax_normalize = minmax_normalize
+        self.reduction = reduction
+
+    def forward(self, pred: Tensor, target: Tensor) -> Tensor:
+        if self.window is not None:
+            pred = crop(pred, win=self.window)
+            target = crop(target, win=self.window)
+
+        if self.minmax_normalize:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        loss = F.l1_loss(pred, target, reduction=self.reduction)
         return loss
 
 
@@ -837,6 +919,7 @@ class VGGPerceptualLoss(torch.nn.Module):
         self.reduction = reduction
         self.mul_factor = mul_factor
         self.mean_across_layers = mean_across_layers
+        self.device = device
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1))
 
@@ -859,8 +942,8 @@ class VGGPerceptualLoss(torch.nn.Module):
         if inp.shape[1] != 3:
             inp = inp.repeat(1, 3, 1, 1)
             target = target.repeat(1, 3, 1, 1)
-        inp = (inp - self.mean) / self.std
-        target = (target - self.mean) / self.std
+        inp = (inp.to(self.device) - self.mean) / self.std
+        target = (target.to(self.device) - self.mean) / self.std
         if self.resize:
             inp = self.transform(inp, mode="bilinear", size=(224, 224), align_corners=False)
             target = self.transform(target, mode="bilinear", size=(224, 224), align_corners=False)
@@ -918,3 +1001,123 @@ class FID:
         self.fid.update(pred_imgs, real=False)
 
         return self.fid.compute().item()
+
+
+class PixCorr(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    @staticmethod
+    def batchwise_pearson_correlation(Z, B):
+        assert Z.ndim == 2 and B.ndim == 2, "Input tensors must be 2D"
+        assert Z.shape[0] == B.shape[0], "Input tensors must have the same batch size"
+
+        ### calculate and subtract means
+        Z_mean = torch.mean(Z, dim=1, keepdim=True)
+        B_mean = torch.mean(B, dim=1, keepdim=True)
+        Z_centered = Z - Z_mean
+        B_centered = B - B_mean
+
+        ### calculate pearson correlation coefficient
+        num = Z_centered @ B_centered.T
+        Z_centered_norm = torch.linalg.norm(Z_centered, dim=1, keepdim=True)
+        B_centered_norm = torch.linalg.norm(B_centered, dim=1, keepdim=True)
+        denom = Z_centered_norm @ B_centered_norm.T
+
+        pearson_corr = (num / (denom + 1e-6))
+
+        return pearson_corr
+
+    def forward(self, preds: Tensor, targets: Tensor) -> Tensor:
+        assert len(preds) == len(targets), "Number of predicted images must match number of original images"
+
+        targets_flat = targets.view(len(targets), -1)
+        preds_flat = preds.view(len(preds), -1)
+
+        corr_mean = self.batchwise_pearson_correlation(targets_flat, preds_flat).diag().mean()
+
+        return corr_mean
+
+
+class TwoWayAlexNet(torch.nn.Module):
+    """
+    Modified from https://github.com/MedARC-AI/MindEyeV2
+
+    Citation:
+      Scotti, Tripathy, Torrico, Kneeland, Chen, Narang, Santhirasegaran, Xu, Naselaris, Norman, & Abraham.
+      MindEye2: Shared-Subject Models Enable fMRI-To-Image With 1 Hour of Data. International Conference on
+      Machine Learning. (2024). arXiv:2403.11207
+    """
+    def __init__(
+        self,
+        inp_zscored: bool = False,
+        feature_layers=["features.4", "features.11"],
+        avg_across_layers: bool = False,
+        device: str = "cuda",
+    ):
+        super().__init__()
+
+        self.device = device
+        self.inp_zscored = inp_zscored
+        self.feature_layers = feature_layers
+        self.avg_across_layers = avg_across_layers
+
+        ### feature extractor
+        self.alex_model = create_feature_extractor(
+            alexnet(weights=AlexNet_Weights.IMAGENET1K_V1),
+            return_nodes=self.feature_layers,
+        ).to(self.device)
+        self.alex_model.eval().requires_grad_(False)
+
+        ### preprocessing transforms
+        self.preprocess = transforms.Compose([
+            transforms.Lambda(lambda x: x.repeat(1, 3, 1, 1) if x.shape[1] == 1 else x),
+            transforms.Resize(256, interpolation=transforms.InterpolationMode.BILINEAR),
+        ])
+        if not self.inp_zscored:
+            self.preprocess.transforms.append(
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            )
+
+    @torch.no_grad()
+    def two_way_identification(self, all_recons, all_images, feature_layer=None, return_avg=True):
+        ### prepare data
+        preds = self.alex_model(self.preprocess(all_recons).to(self.device))
+        reals = self.alex_model(self.preprocess(all_images).to(self.device))
+        if feature_layer is None:
+            preds = preds.float().flatten(1).cpu().numpy()
+            reals = reals.float().flatten(1).cpu().numpy()
+        else:
+            preds = preds[feature_layer].float().flatten(1).cpu().numpy()
+            reals = reals[feature_layer].float().flatten(1).cpu().numpy()
+
+        ### calculate correlations and success rates
+        r = np.corrcoef(reals, preds)
+        r = r[:len(all_images), len(all_images):]
+        congruents = np.diag(r)
+
+        success = r < congruents
+        success_cnt = np.sum(success, 0)
+
+        if return_avg:
+            perf = np.mean(success_cnt) / (len(all_images) - 1)
+            return perf
+        else:
+            return success_cnt, (len(all_images) - 1)
+
+    def forward(self, preds, targets):
+        results = dict()
+        for feature_layer in self.feature_layers:
+            results[feature_layer] = self.two_way_identification(
+                all_recons=preds,
+                all_images=targets,
+                feature_layer=feature_layer,
+            ).mean()
+
+        if self.avg_across_layers:
+            return sum(results.values()) / len(results)
+
+        return results

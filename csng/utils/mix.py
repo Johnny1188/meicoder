@@ -376,3 +376,21 @@ def timeit(func):
         print(f"> {func.__name__}(): {total_time / 60:.2f} mins = {total_time:.2f} secs = {total_time * 1000:.2f} ms")
         return result
     return timeit_wrapper
+
+
+def check_if_data_zscored(cfg):
+    if "brainreader_mouse" in cfg["data"]:
+        inp_zscored = cfg["data"]["brainreader_mouse"]["normalize_stim"]
+    if "mouse_v1" in cfg["data"]:
+        assert inp_zscored is None or inp_zscored == cfg["data"]["mouse_v1"]["dataset_config"]["normalize"], "Different normalization for brainreader_mouse and mouse_v1"
+        inp_zscored = cfg["data"]["mouse_v1"]["dataset_config"]["normalize"]
+    if "cat_v1" in cfg["data"]:
+        cat_v1_zscored = (
+            cfg["data"]["cat_v1"]["dataset_config"]["stim_normalize_mean"] is not None
+            and cfg["data"]["cat_v1"]["dataset_config"]["stim_normalize_std"] is not None
+            and cfg["data"]["cat_v1"]["dataset_config"]["stim_normalize_std"] != 1
+        )
+        assert inp_zscored is None or inp_zscored == cat_v1_zscored, "Different normalization for cat_v1"
+        inp_zscored = cat_v1_zscored
+
+    return inp_zscored
