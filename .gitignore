@@ -3,6 +3,7 @@
 wandb
 .ipynb_checkpoints
 .conda/**
+__git__
 
 *__pycache__*
 *.egg-info
