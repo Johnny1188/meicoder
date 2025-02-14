@@ -50,7 +50,7 @@ config["data"]["brainreader_mouse"] = {
     # "sessions": list(range(1, 23)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
-    "normalize_stim": True,  # MUST BE FALSE FOR INVERTED ENCODER
+    "normalize_stim": True,
     "normalize_resp": False,  # MUST BE TRUE FOR MONKEYSEE
     "div_resp_by_std": True,
     "clamp_neg_resp": False,
