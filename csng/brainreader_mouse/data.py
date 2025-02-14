@@ -63,6 +63,7 @@ def get_brainreader_mouse_dataloaders(config):
                 dset,
                 batch_size=config["batch_size"],
                 shuffle=True if data_part == "train" else False,
+                drop_last=config.get("drop_last", False),
             )
     
     dls_out = {
