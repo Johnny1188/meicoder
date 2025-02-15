@@ -80,9 +80,7 @@ class MultiReadIn(nn.Module):
 
     def _load_state_dict(self, state_dict, strict=True):
         if self.core.__class__ == GAN:
-            core_state_dict = {".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "G" in k or "D" in k}
-            self.core.G.load_state_dict(core_state_dict["G"], strict=strict)
-            self.core.D.load_state_dict(core_state_dict["D"], strict=strict)
+            self.core.load_state_dict(state_dict={".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" not in k.lower()})
             self.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" in k.lower()}, strict=strict)
         elif self.core.__class__ == CNN:
             self.load_state_dict(state_dict, strict=strict)

@@ -43,6 +43,10 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
             loss_fn=PixCorr(),
             window=crop_win,
         )),
+        "PixCorr Loss": Loss(config=dict(
+            loss_fn=HigherBetterMetricToLossWrapper(metric=PixCorr(), metric_range=(0, 1)),
+            window=crop_win,
+        )),
         "Alex(2)": Loss(config=dict(
             loss_fn=TwoWayAlexNet(
                 inp_zscored=inp_zscored,
@@ -52,12 +56,36 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
             ),
             window=crop_win,
         )),
+        "Alex(2) Loss": Loss(config=dict(
+            loss_fn=HigherBetterMetricToLossWrapper(
+                metric=TwoWayAlexNet(
+                    inp_zscored=inp_zscored,
+                    feature_layers=["features.4"],
+                    avg_across_layers=True,
+                    device=device,
+                ),
+                metric_range=(0, 1),
+            ),
+            window=crop_win,
+        )),
         "Alex(5)": Loss(config=dict(
             loss_fn=TwoWayAlexNet(
                 inp_zscored=inp_zscored,
                 feature_layers=["features.11"],
                 avg_across_layers=True,
                 device=device,
+            ),
+            window=crop_win,
+        )),
+        "Alex(5) Loss": Loss(config=dict(
+            loss_fn=HigherBetterMetricToLossWrapper(
+                metric=TwoWayAlexNet(
+                    inp_zscored=inp_zscored,
+                    feature_layers=["features.11"],
+                    avg_across_layers=True,
+                    device=device,
+                ),
+                metric_range=(0, 1),
             ),
             window=crop_win,
         )),
@@ -230,6 +258,23 @@ class Loss:
             loss += self.noise_data_aug_mul * self._noise_data_aug_loss_fn(stim=stim, resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center)
 
         return loss
+
+
+class HigherBetterMetricToLossWrapper:
+    def __init__(self, metric, metric_range=None):
+        assert metric_range is None or type(metric_range) in (list, tuple), "metric_range should be a list or tuple"
+        assert metric_range is None or len(metric_range) == 2, "metric_range should have 2 elements"
+        assert metric_range is None or metric_range[0] < metric_range[1], "metric_range should be increasing"
+
+        self.metric = metric
+        self.metric_range = metric_range
+
+    def __call__(self, *args, **kwargs):
+        if self.metric_range is None:
+            return -self.metric(*args, **kwargs)
+        else: # squash to [0, 1]
+            metric_val = self.metric(*args, **kwargs)
+            return 1 - (metric_val - self.metric_range[0]) / (self.metric_range[1] - self.metric_range[0])
 
 
 ### source of SSIM-based losses and associated utility functions: https://github.com/VainF/pytorch-msssim/blob/master/pytorch_msssim/ssim.py

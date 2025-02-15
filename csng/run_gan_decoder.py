@@ -13,7 +13,7 @@ import lovely_tensors as lt
 lt.monkey_patch()
 
 from csng.models.gan import GAN
-from csng.utils.mix import seed_all, plot_losses, plot_comparison, count_parameters
+from csng.utils.mix import seed_all, plot_losses, plot_comparison, count_parameters, check_if_data_zscored
 from csng.utils.data import standardize, normalize, crop
 from csng.losses import SSIMLoss, MSELoss, Loss, get_metrics
 from csng.models.readins import (
@@ -23,7 +23,8 @@ from csng.models.readins import (
     MEIReadIn,
 )
 from csng.data import get_dataloaders, get_sample_data
-from csng.models.utils.gan import init_decoder, setup_run_dir, setup_wandb_run, train, val
+from csng.models.utils.gan import init_decoder, setup_run_dir, setup_wandb_run, train
+from csng.utils.comparison import eval_decoder
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
@@ -170,6 +171,7 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 
 
 ### decoder
+inp_zscored = check_if_data_zscored(cfg=config)
 config["decoder"] = {
     "readin_type": (readin_type := "mei"), # "conv", "fc", "mei"
     "model": {
@@ -231,8 +233,7 @@ config["decoder"] = {
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
     },
-    # "val_loss": "FID", # get_metrics(config)["SSIML-PL"],
-    "val_loss": get_metrics(crop_win=(20, 20), device=config["device"])["SSIML-PL"],
+    "eval_loss_name": "Alex(5) Loss",  # for "higher is better" metrics, use "<name> Loss"
     "G_opter_cls": torch.optim.AdamW,
     "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
     "D_opter_cls": torch.optim.AdamW,
@@ -678,6 +679,7 @@ def run(cfg):
     resp, sample_dataset, sample_data_key = s["resp"], s["sample_dataset"], s["sample_data_key"]
 
     ### init decoder (and load ckpt if needed)
+    seed_all(cfg["seed"])
     cfg, decoder, loss_fn, history, best, ckpt = init_decoder(config=cfg)
     with torch.no_grad():
         print(
@@ -697,12 +699,20 @@ def run(cfg):
     ### prepare wandb logging
     wdb_run = setup_wandb_run(config=cfg, decoder=decoder)
 
-    ### setup (e)val loss
-    val_loss_fn = cfg["decoder"]["val_loss"] or Loss(model=decoder, config=cfg["decoder"]["loss"])
+    ### setup (e)val metric
+    inp_zscored = check_if_data_zscored(cfg=cfg)
+    val_metrics = {data_key: {
+        cfg["decoder"]["eval_loss_name"]: get_metrics(
+            inp_zscored=inp_zscored,
+            crop_win=cfg["crop_wins"][data_key],
+            device=cfg["device"])[cfg["decoder"]["eval_loss_name"]]
+        } for data_key in cfg["crop_wins"].keys()
+    }
 
     ### train
     print(f"[INFO] cfg:\n{json.dumps(cfg, indent=2, default=str)}")
     start, end = len(history["val_loss"]), cfg["decoder"]["n_epochs"]
+    seed_all(cfg["seed"])
     for epoch in range(start, end):
         print(f"[{epoch}/{end}]")
 
@@ -717,12 +727,12 @@ def run(cfg):
             wdb_run=wdb_run,
             wdb_commit=False,
         )
-        val_loss = val(
+        val_loss = eval_decoder(
             model=decoder,
             dataloaders=dls["val"],
-            loss_fn=val_loss_fn,
+            loss_fns=val_metrics,
             crop_wins=cfg["crop_wins"],
-        )
+        )["total"][cfg["decoder"]["eval_loss_name"]]
 
         ### save best model
         if val_loss < best["val_loss"]:
@@ -761,7 +771,9 @@ def run(cfg):
             }, os.path.join(cfg["dir"], "ckpt", f"decoder_{epoch}.pt"), pickle_module=dill)
 
     ### final evaluation + logging + saving
-    print("\n" + "-" * 10 + f"\nBest val loss: {best['val_loss']:.4f} at epoch {best['epoch']}")
+    seed_all(cfg["seed"])
+    decoder.eval()
+    print("\n" + "-" * 10 + f"\nBest val {cfg['decoder']['eval_loss_name']}: {best['val_loss']:.4f} at epoch {best['epoch']}")
 
     ### save final ckpt
     if cfg["save_run"]:
@@ -775,28 +787,27 @@ def run(cfg):
     ### eval on test set w/ current params
     print("Evaluating on test set with current model...")
     dls, neuron_coords = get_dataloaders(config=cfg)
-    curr_test_loss = val(
+    curr_test_loss = eval_decoder(
         model=decoder,
         dataloaders=dls["test"],
-        loss_fn=val_loss_fn,
+        loss_fns=val_metrics,
         crop_wins=cfg["crop_wins"],
-    )
-    print(f"  Test loss (current model): {curr_test_loss:.4f}")
+    )["total"][cfg["decoder"]["eval_loss_name"]]
+    print(f"  Test {cfg['decoder']['eval_loss_name']} (current model): {curr_test_loss:.4f}")
 
     ### load best model
-    decoder.core.load_state_dict({".".join(k.split(".")[1:]):v for k,v in best["decoder"].items() if "G" in k or "D" in k})
-    decoder.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in best["decoder"].items() if "readin" in k})
+    decoder.load_from_ckpt(ckpt={"best": best}, load_best=True, load_only_core=False, strict=True)
 
     ### eval on test set w/ best params
     print("Evaluating on test set with the best model...")
     dls, neuron_coords = get_dataloaders(config=cfg)
-    final_test_loss = val(
+    final_test_loss = eval_decoder(
         model=decoder,
         dataloaders=dls["test"],
-        loss_fn=val_loss_fn,
+        loss_fns=val_metrics,
         crop_wins=cfg["crop_wins"],
-    )
-    print(f"  Test loss (best model): {final_test_loss:.4f}")
+    )["total"][cfg["decoder"]["eval_loss_name"]]
+    print(f"  Test {cfg['decoder']['eval_loss_name']} (best model): {final_test_loss:.4f}")
 
     ### plot reconstructions of the final model
     if "brainreader_mouse" in cfg["data"]:
