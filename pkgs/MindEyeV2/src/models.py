@@ -9,7 +9,7 @@ from functools import partial
 import random
 import json
 from tqdm import tqdm
-import src.utils
+import pkgs.MindEyeV2.src.utils
 
 from diffusers.models.vae import Decoder
 class BrainNetwork(nn.Module):

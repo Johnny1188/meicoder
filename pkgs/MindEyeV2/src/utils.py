@@ -250,7 +250,7 @@ def select_annotations(annots, random=True):
     txt = txt.flatten()
     return txt
 
-from sgm.util import append_dims
+from pkgs.MindEyeV2.src.generative_models.sgm.util import append_dims
 def unclip_recon(x, diffusion_engine, vector_suffix,
                  num_samples=1, offset_noise_level=0.04):
     assert x.ndim==3
