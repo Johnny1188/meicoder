@@ -1222,7 +1222,7 @@ class BrainDistance(torch.nn.Module):
         self.encoder.requires_grad_(False)
 
     def _compute_brain_similarity(self, stim_pred: Tensor, stim: Tensor, resp: Tensor, **kwargs) -> Tensor:
-        resp = resp.to(self.device) if self.use_gt_resp else self.encoder(stim_pred.to(self.device), **kwargs)
+        resp = resp.to(self.device) if self.use_gt_resp else self.encoder(stim.to(self.device), **kwargs)
         stim_pred_resp = self.encoder(stim_pred.to(self.device), **kwargs)
         return self.resp_loss_fn(stim_pred_resp, resp)
 
