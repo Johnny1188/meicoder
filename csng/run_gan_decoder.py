@@ -25,6 +25,7 @@ from csng.models.readins import (
 from csng.data import get_dataloaders, get_sample_data
 from csng.models.utils.gan import init_decoder, setup_run_dir, setup_wandb_run, train
 from csng.utils.comparison import eval_decoder
+from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
@@ -232,6 +233,18 @@ config["decoder"] = {
         "loss_fn": dict(),
         "l1_reg_mul": 0,
         "l2_reg_mul": 0,
+        # "brain_distance_mul": 0.1,
+        # "brain_distance_config": { # TODO: only works with brainreader data
+        #     "encoder": get_encoder_brainreader(
+        #         ckpt_path=os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+        #         eval_mode=True,
+        #         device=config["device"],
+        #     ),
+        #     "use_gt_resp": True,
+        #     "resp_loss_fn": F.mse_loss,
+        #     "zscore_inp": False,
+        #     "minmax_normalize_inp": False,
+        # },
     },
     "eval_loss_name": "Alex(5) Loss",  # for "higher is better" metrics, use "<name> Loss"
     "G_opter_cls": torch.optim.AdamW,

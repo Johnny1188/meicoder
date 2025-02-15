@@ -160,9 +160,11 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
 
 
 class Loss:
-    def __init__(self, config, model=None):
+    def __init__(self, config, update_loss_fn_kwargs_with_items=None, model=None):
         self.model = model
+        self.update_loss_fn_kwargs_with_items = update_loss_fn_kwargs_with_items
         self.loss_fn = config["loss_fn"]() if type(config["loss_fn"]) == type else config["loss_fn"]
+
         self.l1_reg_mul = config.get("l1_reg_mul", 0.)
         self.l2_reg_mul = config.get("l2_reg_mul", 0.)
         self.standardize = config.get("standardize", False)
@@ -178,6 +180,24 @@ class Loss:
         self.noise_data_aug = config.get("noise_data_aug", None)
         self.noise_data_aug_loss_fn = config.get("noise_data_aug_loss_fn", None)
         self.noise_data_aug_mul = config.get("noise_data_aug_mul", 0.)
+
+        ### brain distance
+        self.brain_distance_loss_fn = None
+        self.brain_distance_mul = config.get("brain_distance_mul", None)
+        if self.brain_distance_mul is not None and self.brain_distance_mul > 0:
+            self.brain_distance_loss_fn = BrainDistance(**config["brain_distance_config"])
+
+    def _brain_distance_aux_loss_fn(self, stim_pred, stim, resp, data_key, neuron_coords=None, pupil_center=None):
+        if self.brain_distance_loss_fn is not None:
+            return self.brain_distance_loss_fn(
+                pred=stim_pred,
+                target=stim,
+                resp=resp,
+                data_key=data_key,
+                neuron_coords=neuron_coords,
+                pupil_center=pupil_center,
+            )
+        return 0.
 
     def _noise_reg_loss_fn(self, stim_pred, resp, data_key, neuron_coords=None, pupil_center=None):
         if self.noise_reg is not None:
@@ -217,9 +237,18 @@ class Loss:
         loss_fn = self.loss_fn
         if type(loss_fn) == dict: # different loss functions for different data keys
             loss_fn = loss_fn[data_key]
+
         loss_fn_kwargs = {}
         if loss_fn.__class__ == Loss:
-            loss_fn_kwargs = dict(data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp, phase=phase)
+            loss_fn_kwargs = dict(resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center, additional_core_inp=additional_core_inp, phase=phase)
+        if self.update_loss_fn_kwargs_with_items is not None:
+            if "resp" in self.update_loss_fn_kwargs_with_items: loss_fn_kwargs["resp"] = resp
+            if "data_key" in self.update_loss_fn_kwargs_with_items: loss_fn_kwargs["data_key"] = data_key
+            if "neuron_coords" in self.update_loss_fn_kwargs_with_items: loss_fn_kwargs["neuron_coords"] = neuron_coords
+            if "pupil_center" in self.update_loss_fn_kwargs_with_items: loss_fn_kwargs["pupil_center"] = pupil_center
+            if "additional_core_inp" in self.update_loss_fn_kwargs_with_items: loss_fn_kwargs["additional_core_inp"] = additional_core_inp
+            if "phase" in self.update_loss_fn_kwargs_with_items: loss_fn_kwargs["phase"] = phase
+
         if phase == "val":
             if hasattr(loss_fn, "reduction"):
                 if sum_over_samples:
@@ -256,6 +285,10 @@ class Loss:
         ### noise data augmentation
         if self.noise_data_aug is not None and phase == "train":
             loss += self.noise_data_aug_mul * self._noise_data_aug_loss_fn(stim=stim, resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center)
+
+        ### brain distance auxiliary loss
+        if self.brain_distance_loss_fn is not None and phase == "train":
+            loss += self.brain_distance_mul * self._brain_distance_aux_loss_fn(stim_pred=stim_pred, stim=stim, resp=resp, data_key=data_key, neuron_coords=neuron_coords, pupil_center=pupil_center)
 
         return loss
 
@@ -1166,3 +1199,40 @@ class TwoWayAlexNet(torch.nn.Module):
             return sum(results.values()) / len(results)
 
         return results
+
+
+class BrainDistance(torch.nn.Module):
+    def __init__(
+        self,
+        encoder,
+        use_gt_resp: bool = True,
+        resp_loss_fn = F.mse_loss,
+        zscore_inp: bool = False,
+        minmax_normalize_inp: bool = False,
+        device="cuda",
+    ):
+        super().__init__()
+        self.use_gt_resp = use_gt_resp
+        self.zscore_inp = zscore_inp
+        self.minmax_normalize_inp = minmax_normalize_inp
+        self.resp_loss_fn = resp_loss_fn
+        self.device = device
+        self.encoder = encoder
+        self.encoder.to(self.device)
+        self.encoder.requires_grad_(False)
+
+    def _compute_brain_similarity(self, stim_pred: Tensor, stim: Tensor, resp: Tensor, **kwargs) -> Tensor:
+        resp = resp.to(self.device) if self.use_gt_resp else self.encoder(stim_pred.to(self.device), **kwargs)
+        stim_pred_resp = self.encoder(stim_pred.to(self.device), **kwargs)
+        return self.resp_loss_fn(stim_pred_resp, resp)
+
+    def forward(self, pred: Tensor, target: Tensor, resp: Tensor, **kwargs) -> Tensor:
+        if self.zscore_inp:
+            pred = normalize(pred)
+            target = normalize(target)
+
+        if self.minmax_normalize_inp:
+            pred = standardize(pred)
+            target = standardize(target)
+
+        return self._compute_brain_similarity(stim_pred=pred, stim=target, resp=resp, **kwargs)

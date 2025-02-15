@@ -40,8 +40,12 @@ def init_decoder(config, merge_configs_fn=None):
         ### load decoder
         config["decoder"]["model"] = ckpt_cfg["decoder"]["model"]
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
-        decoder.load_from_ckpt(ckpt=ckpt, load_best=config["decoder"]["load_ckpt"]["load_best"],
-            load_only_core=config["decoder"]["load_ckpt"]["load_only_core"], strict=config["decoder"]["load_ckpt"]["load_only_core"] is False)
+        decoder.load_from_ckpt(
+            ckpt=ckpt,
+            load_best=config["decoder"]["load_ckpt"]["load_best"],
+            load_only_core=config["decoder"]["load_ckpt"]["load_only_core"],
+            strict=config["decoder"]["load_ckpt"]["load_only_core"] is False,
+        )
 
         ### init optimizers (and load their states)
         decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])
@@ -161,7 +165,7 @@ def get_training_losses(model, resp, stim, data_key, neuron_coords, loss_fn, con
     fake_stim_pred_for_G = model.core.D(crop(stim_pred, config["crop_win"] if crop_win is None else crop_win), data_key=data_key)
     G_loss_adv = torch.mean((fake_stim_pred_for_G - 1.)**2) * config["decoder"]["G_adv_loss_mul"]
     # reconstruction quality
-    G_loss_stim = config["decoder"]["G_stim_loss_mul"] * loss_fn(stim_pred, stim, data_key=data_key, phase="train", neuron_coords=neuron_coords)
+    G_loss_stim = config["decoder"]["G_stim_loss_mul"] * loss_fn(stim_pred, stim, resp=resp, data_key=data_key, phase="train", neuron_coords=neuron_coords)
     G_loss = G_loss_adv + G_loss_stim
 
     return G_loss, G_loss_stim, G_loss_adv, D_loss, real_stim_loss, fake_stim_loss, stim_pred
