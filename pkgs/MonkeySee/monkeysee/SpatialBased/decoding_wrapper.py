@@ -37,7 +37,6 @@ class MonkeySeeDecoder(nn.Module):
         ### initialize model
         seed_all(self.cfg["seed"])
         self.generator = Generator(**self.cfg["decoder"]["gen"], device=self.cfg["device"])
-        print(f"[INFO] Generator: {self.generator}")
 
         ### load checkpoints
         print(f"[INFO] Loading checkpoint from {self.cfg['decoder']['load_ckpt']} ...")

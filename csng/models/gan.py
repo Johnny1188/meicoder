@@ -260,11 +260,12 @@ class GAN(nn.Module):
 
         return state_dict
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict, load_optimizers=True):
         self.G.load_state_dict(state_dict["G"])
         self.D.load_state_dict(state_dict["D"])
-        self.G_optim.load_state_dict(state_dict["G_optim"])
-        self.D_optim.load_state_dict(state_dict["D_optim"])
+        if load_optimizers:
+            self.G_optim.load_state_dict(state_dict["G_optim"])
+            self.D_optim.load_state_dict(state_dict["D_optim"])
 
     def forward(self, x):
         return self.G(x)

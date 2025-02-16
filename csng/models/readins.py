@@ -80,7 +80,8 @@ class MultiReadIn(nn.Module):
 
     def _load_state_dict(self, state_dict, strict=True):
         if self.core.__class__ == GAN:
-            self.core.load_state_dict(state_dict={".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" not in k.lower()})
+            print(f"[WARNING] Loading GAN state_dict without the optimizer states.")
+            self.core.load_state_dict(state_dict={".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" not in k.lower()}, load_optimizers=False)
             self.readins.load_state_dict({".".join(k.split(".")[1:]):v for k,v in state_dict.items() if "readin" in k.lower()}, strict=strict)
         elif self.core.__class__ == CNN:
             self.load_state_dict(state_dict, strict=strict)

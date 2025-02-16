@@ -144,6 +144,7 @@ config["comparison"] = {
     "eval_all_ckpts": False,
     "find_best_ckpt_according_to": None, # "Alex(5)"
     "eval_tier": "test",
+    "max_n_reconstruction_samples": 10,
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
@@ -178,38 +179,40 @@ config["comparison"] = {
 ### methods to compare
 config["comparison"]["to_compare"] = {
     ### --- Inverted encoder ---
-    "Inverted Encoder": {
-        "decoder": EnsembleInvEnc(
-            encoder_paths=[
-                os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-            ],
-            encoder_config={
-                "img_dims": (1, 36, 64),
-                "stim_pred_init": "randn",
-                "lr": 2000,
-                "n_steps": 1000,
-                "img_grad_gauss_blur_sigma": 1,
-                "jitter": None,
-                "mse_reduction": "per_sample_mean_sum",
-                "device": config["device"],
-            },
-            use_brainreader_encoder=True,
-            get_encoder_fn=get_encoder_brainreader,
-            device=config["device"],
-        ),
-        "run_name": None,
-    },
-
-
-    ### --- MonkeySee ---
-    # "MonkeySee": {
-    #     "decoder": MonkeySeeDecoder(
-    #         ckpt_dir=os.path.join(DATA_PATH, "monkeysee", "runs", "13-02-2025_11-47"),
-    #         train_dl=get_dataloaders(config=config)[0]["train"]["brainreader_mouse"],
-    #         new_data_path=DATA_PATH,
+    # "Inverted Encoder": {
+    #     "decoder": EnsembleInvEnc(
+    #         encoder_paths=[
+    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    #         ],
+    #         encoder_config={
+    #             "img_dims": (1, 36, 64),
+    #             "stim_pred_init": "randn",
+    #             "lr": 2000,
+    #             "n_steps": 1000,
+    #             "img_grad_gauss_blur_sigma": 1,
+    #             "jitter": None,
+    #             "mse_reduction": "per_sample_mean_sum",
+    #             "device": config["device"],
+    #         },
+    #         use_brainreader_encoder=True,
+    #         get_encoder_fn=get_encoder_brainreader,
+    #         device=config["device"],
     #     ),
     #     "run_name": None,
     # },
+
+
+    ### --- MonkeySee ---
+    "MonkeySee": {
+        "decoder": MonkeySeeDecoder(
+            # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "13-02-2025_11-47")),
+            ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "15-02-2025_10-31")),
+            train_dl=get_dataloaders(config=config)[0]["train"]["brainreader_mouse"],
+            new_data_path=DATA_PATH,
+        ),
+        "use_data_config": torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
+        "run_name": None,
+    },
 
 
     ### --- CNN MSE ---
@@ -229,10 +232,10 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2024-12-09_01-13-05",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-09_01-13-05", "decoder.pt"),
     # },
-    "GAN (480)": {
-        "run_name": "2024-12-10_02-52-29",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
-    },
+    # "GAN (480)": {
+    #     "run_name": "2024-12-10_02-52-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-10_02-52-29", "decoder.pt"),
+    # },
     # "GAN (624)": {
     #     "run_name": "2024-12-09_01-22-11",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-09_01-22-11", "decoder.pt"),
@@ -583,6 +586,28 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2024-12-11_03-35-04",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-35-04", "decoder.pt"),
     # },
+
+    ### --- Other ablation studies ---
+    # "GAN": {
+    #     "run_name": "2025-02-15_23-28-30",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_23-28-30", "decoder.pt"),
+    # },
+    # "GAN, all-ones MEIs": {
+    #     "run_name": "2025-02-15_13-31-01",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_13-31-01", "decoder.pt"),
+    # },
+    # "GAN, BDfR L2": {
+    #     "run_name": "2025-02-15_16-43-09",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_16-43-09", "decoder.pt"),
+    # },
+    # "GAN, BDfR L1": {
+    #     "run_name": "2025-02-15_16-45-54",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_16-45-54", "decoder.pt"),
+    # },
+    # "GAN, BDfS L1": {
+    #     "run_name": "2025-02-15_16-48-29",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_16-48-29", "decoder.pt"),
+    # },
 }
 
 
@@ -599,15 +624,10 @@ def run_comparison(cfg):
     assert cfg["comparison"]["eval_all_ckpts"] is True or cfg["comparison"]["find_best_ckpt_according_to"] is None
     assert cfg["comparison"]["find_best_ckpt_according_to"] is None or cfg["comparison"]["load_best"] is False
 
-    ### get data samples for plotting
-    dls, neuron_coords = get_dataloaders(config=cfg)
-    s = get_sample_data(dls=dls, config=cfg, sample_from_tier="test")
-    stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
-
     ### load previous comparison results
     runs_to_compare = dict()
     if cfg["comparison"]["load_ckpt"] is not None:
-        print(f"Loading checkpoint from {cfg['comparison']['load_ckpt']['path']}...")
+        print(f"[INFO] Loading checkpoint from {cfg['comparison']['load_ckpt']['path']}...")
         loaded_runs = torch.load(cfg["comparison"]["load_ckpt"]["path"], map_location=cfg["device"], pickle_module=dill)["runs"]
 
         ### filter loaded runs
@@ -640,9 +660,9 @@ def run_comparison(cfg):
 
     ### load and compare models
     for k in runs_to_compare.keys():
-        print(f"Loading {k} model from ckpt (run name: {runs_to_compare[k]['run_name']})...")
+        print(f"\n-----\n[INFO] Loading {k} model from ckpt (run name: {runs_to_compare[k]['run_name']})...")
         if "test_losses" in runs_to_compare[k]: # already loaded
-            print(f"  Skipping...")
+            print(f"[INFO] Skipping (evaluation results already present)...")
             continue
 
         run_dict = runs_to_compare[k]
@@ -663,16 +683,17 @@ def run_comparison(cfg):
 
             ### find best ckpt according to the specified metric
             if cfg["comparison"]["find_best_ckpt_according_to"] is not None:
-                print(f"  Finding the best ckpt out of {len(run_dict['ckpt_paths'])} according to {cfg['comparison']['find_best_ckpt_according_to']}...")
+                print(f"[INFO] Finding the best ckpt out of {len(run_dict['ckpt_paths'])} according to {cfg['comparison']['find_best_ckpt_according_to']}...")
                 get_val_dl_fn = lambda: get_dataloaders(config=cfg)[0]["val"]
                 run_dict["ckpt_paths"] = [find_best_ckpt(get_dl_fn=get_val_dl_fn, config=cfg, ckpt_paths=run_dict["ckpt_paths"], metrics=metrics)[0]]
-                print(f"    > best ckpt: {run_dict['ckpt_paths'][0]}")
+                print(f"[INFO] Best checkpoint found: {run_dict['ckpt_paths'][0]}")
 
         ### eval ckpts
-        print(f"  Evaluating checkpoints on the test set...")
+        print(f"[INFO] Evaluating checkpoints on the test set...")
         for ckpt_path in run_dict["ckpt_paths"]:
+            ### get decoder
             if "decoder" in run_dict and run_dict["decoder"] is not None:
-                print(f"  Using {k} model from run_dict...")
+                print(f"[INFO] Using {k} model from run_dict...")
                 decoder = run_dict["decoder"]
                 ckpt = None
             else:
@@ -681,6 +702,38 @@ def run_comparison(cfg):
                 run_dict["configs"].append(ckpt["config"])
                 run_dict["histories"].append(ckpt["history"])
                 run_dict["best_val_losses"].append(ckpt["best"]["val_loss"])
+            decoder.eval()
+
+            ### get data samples for plotting and eval
+            seed_all(cfg["seed"])
+            if run_dict.get("use_data_config", None) is not None:
+                ### prevent mismatching data
+                assert "brainreader" not in run_dict["use_data_config"]["data"] or "brainreader" in cfg["data"], \
+                    "Brainreader data must be present in the main config."
+                assert "mouse_v1" not in run_dict["use_data_config"]["data"] or "mouse_v1" in cfg["data"], \
+                    "Mouse V1 data must be present in the main config."
+                assert "cat_v1" not in run_dict["use_data_config"]["data"] or "cat_v1" in cfg["data"], \
+                    "Cat V1 data must be present in the main config."
+                assert "brainreader" not in run_dict["use_data_config"]["data"] or run_dict["use_data_config"]["data"]["brainreader"]["sessions"] == cfg["data"]["brainreader"]["sessions"], \
+                    "Brainreader sessions must be the same for the comparison across all runs."
+                assert "mouse_v1" not in run_dict["use_data_config"]["data"] or run_dict["use_data_config"]["data"]["mouse_v1"]["dataset_config"]["paths"] == cfg["data"]["mouse_v1"]["dataset_config"]["paths"], \
+                    "Mouse V1 sessions (dataset_config.paths) must be the same for the comparison across all runs."
+
+                ### data samples
+                dls, neuron_coords = get_dataloaders(config=run_dict["use_data_config"])
+                s = get_sample_data(dls=dls, config=run_dict["use_data_config"], sample_from_tier="test")
+                stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
+
+                ### eval data
+                eval_dls, _ = get_dataloaders(config=run_dict["use_data_config"])
+            else:
+                ### data samples
+                dls, neuron_coords = get_dataloaders(config=cfg)
+                s = get_sample_data(dls=dls, config=cfg, sample_from_tier="test")
+                stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
+
+                ### eval data
+                eval_dls, _ = get_dataloaders(config=cfg)
 
             ### get sample reconstructions
             stim_pred_best = dict()
@@ -690,53 +743,58 @@ def run_comparison(cfg):
                 stim_pred_best[s["c_sample_data_key"]] = decoder(s["c_resp"].to(cfg["device"]), neuron_coords=neuron_coords[s["c_sample_dataset"]], data_key=s["c_sample_data_key"]).detach().cpu()
             if "mouse_v1" in cfg["data"]:
                 stim_pred_best[s["m_sample_data_key"]] = decoder(s["m_resp"].to(cfg["device"]), neuron_coords=neuron_coords[s["m_sample_dataset"]][s["m_sample_data_key"]], pupil_center=s["m_pupil_center"].to(cfg["device"]), data_key=s["m_sample_data_key"]).detach().cpu()
+            if cfg["comparison"]["max_n_reconstruction_samples"] is not None:
+                for k in stim_pred_best.keys():
+                    stim_pred_best[k] = stim_pred_best[k][:cfg["comparison"]["max_n_reconstruction_samples"]]
             run_dict["stim_pred_best"].append(stim_pred_best)
 
             ### eval
             seed_all(cfg["seed"])
-            dls, _ = get_dataloaders(config=cfg)
             run_dict["test_losses"].append(eval_decoder(
                 model=decoder,
-                dataloaders=dls[cfg["comparison"]["eval_tier"]],
+                dataloaders=eval_dls[cfg["comparison"]["eval_tier"]],
                 loss_fns=metrics,
                 crop_wins=cfg["crop_wins"],
-                # calc_fid="FID" in cfg["comparison"]["losses_to_plot"],
             ))
+        print("-----\n")
 
     ### save the results
     if cfg["comparison"]["save_dir"]:
-        print(f"Saving the results to {cfg['comparison']['save_dir']}")
+        print(f"[INFO] Saving the results to {cfg['comparison']['save_dir']}")
         os.makedirs(cfg["comparison"]["save_dir"], exist_ok=True)
         torch.save({
                 "runs": runs_to_compare,
                 "config": cfg,
-            },
-            os.path.join(cfg["comparison"]["save_dir"], f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pt"),
+            }, os.path.join(cfg["comparison"]["save_dir"], f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pt"),
             pickle_module=dill,
         )
 
     ### plot reconstructions
-    print(f"Plotting reconstructions...")
+    print(f"[INFO] Plotting reconstructions...")
     for f_type in ("png", "pdf"):
         for data_key in cfg["crop_wins"].keys():
             plot_reconstructions(
                 runs=runs_to_compare,
-                stim=stim,
+                stim=stim[:cfg["comparison"]["max_n_reconstruction_samples"]] if cfg["comparison"]["max_n_reconstruction_samples"] is not None else stim,
                 stim_label="Target",
                 data_key=data_key,
                 crop_win=cfg["crop_wins"][data_key],
-                save_to=os.path.join(cfg["comparison"]["save_dir"], f"reconstructions_{data_key}.{f_type}") \
-                    if cfg["comparison"]["save_dir"] else None,
+                save_to=os.path.join(
+                    cfg["comparison"]["save_dir"],
+                    f"reconstructions_{data_key}.{f_type}"
+                ) if cfg["comparison"]["save_dir"] else None,
             )
 
     ### plot metrics
-    print(f"Plotting metrics...")
+    print(f"[INFO] Plotting metrics...")
     for f_type in ("png", "pdf"):
         plot_metrics(
             runs_to_compare=runs_to_compare,
             losses_to_plot=cfg["comparison"]["losses_to_plot"],
-            save_to=os.path.join(cfg["comparison"]["save_dir"], f"metrics.{f_type}") \
-                if cfg["comparison"]["save_dir"] else None,
+            save_to=os.path.join(
+                cfg["comparison"]["save_dir"],
+                f"metrics.{f_type}"
+            ) if cfg["comparison"]["save_dir"] else None,
         )
 
 
