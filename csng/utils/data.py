@@ -334,6 +334,7 @@ class PerSampleStoredDataset(Dataset):
             f_name for f_name in os.listdir(self.dataset_dir)
             if f_name.endswith(".pkl") or f_name.endswith(".pickle")
         ])
+        self.file_names = np.sort(self.file_names)
         self.parent_dir = Path(self.dataset_dir).parent.absolute()
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor(device=device)
         self.resp_transform = resp_transform if resp_transform is not None else NumpyToTensor(device=device)
