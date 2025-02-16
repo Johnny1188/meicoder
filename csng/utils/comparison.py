@@ -170,6 +170,33 @@ def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=Fa
     return decoder, ckpt
 
 
+class SavedReconstructionsDecoder:
+    def __init__(self, reconstructions, data_key, zscore_reconstructions=False, device="cuda"):
+        self.recons = reconstructions
+        self.data_key = data_key
+        self.zscore_preds = zscore_reconstructions
+        self.device = device
+
+        if zscore_reconstructions:
+            self.recons = normalize(self.recons)
+        self.recon_idx = 0
+
+    def reset_counter(self):
+        self.recon_idx = 0
+
+    def eval(self):
+        pass
+
+    def __call__(self, resp, data_key=None, neuron_coords=None, pupil_center=None):
+        assert data_key is None or data_key == self.data_key, "Data key must be the same as the one used for obtaining the reconstructions"
+        assert self.recon_idx + resp.shape[0] <= len(self.recons), "Not enough reconstructions"
+
+        recons = self.recons[self.recon_idx:self.recon_idx+resp.shape[0]]
+        self.recon_idx += resp.shape[0]
+
+        return recons.to(self.device)
+
+
 ##### Plotting utils #####
 def autolabel(ax, rects, fontsize=15, bold=False):
     """Attach a text label above each bar in *rects*, displaying its height.

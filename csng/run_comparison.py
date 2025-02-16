@@ -11,9 +11,9 @@ lt.monkey_patch()
 import csng
 from csng.models.inverted_encoder import InvertedEncoder, InvertedEncoderBrainreader
 from csng.models.ensemble import EnsembleInvEnc
-from csng.utils.mix import seed_all, check_if_data_zscored
+from csng.utils.mix import seed_all, check_if_data_zscored, update_config_paths
 from csng.utils.data import standardize, normalize, crop
-from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder
+from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder, SavedReconstructionsDecoder
 from csng.losses import get_metrics
 from csng.data import get_dataloaders, get_sample_data
 from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
@@ -46,7 +46,7 @@ config["data"]["brainreader_mouse"] = {
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
     # "batch_size": 4,
-    "batch_size": 16,
+    "batch_size": 32,
     # "sessions": list(range(1, 23)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
@@ -144,11 +144,11 @@ config["comparison"] = {
     "eval_all_ckpts": False,
     "find_best_ckpt_according_to": None, # "Alex(5)"
     "eval_tier": "test",
-    "max_n_reconstruction_samples": 10,
+    "max_n_reconstruction_samples": None,
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "test",
+        "all",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -179,27 +179,27 @@ config["comparison"] = {
 ### methods to compare
 config["comparison"]["to_compare"] = {
     ### --- Inverted encoder ---
-    # "Inverted Encoder": {
-    #     "decoder": EnsembleInvEnc(
-    #         encoder_paths=[
-    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-    #         ],
-    #         encoder_config={
-    #             "img_dims": (1, 36, 64),
-    #             "stim_pred_init": "randn",
-    #             "lr": 2000,
-    #             "n_steps": 1000,
-    #             "img_grad_gauss_blur_sigma": 1,
-    #             "jitter": None,
-    #             "mse_reduction": "per_sample_mean_sum",
-    #             "device": config["device"],
-    #         },
-    #         use_brainreader_encoder=True,
-    #         get_encoder_fn=get_encoder_brainreader,
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
-    # },
+    "Inverted Encoder": {
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+                os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+            ],
+            encoder_config={
+                "img_dims": (1, 36, 64),
+                "stim_pred_init": "randn",
+                "lr": 2000,
+                "n_steps": 1000,
+                "img_grad_gauss_blur_sigma": 1,
+                "jitter": None,
+                "mse_reduction": "per_sample_mean_sum",
+                "device": config["device"],
+            },
+            use_brainreader_encoder=True,
+            get_encoder_fn=get_encoder_brainreader,
+            device=config["device"],
+        ),
+        "run_name": None,
+    },
 
 
     ### --- MonkeySee ---
@@ -207,10 +207,25 @@ config["comparison"]["to_compare"] = {
         "decoder": MonkeySeeDecoder(
             # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "13-02-2025_11-47")),
             ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "15-02-2025_10-31")),
-            train_dl=get_dataloaders(config=config)[0]["train"]["brainreader_mouse"],
+            train_dl=get_dataloaders(config=(monkeysee_config := update_config_paths(
+                config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
+                new_data_path=DATA_PATH,
+            )))[0]["train"]["brainreader_mouse"],
             new_data_path=DATA_PATH,
         ),
-        "use_data_config": torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
+        "use_data_config": monkeysee_config,
+        "run_name": None,
+    },
+
+
+    ### --- MindEye ---
+    "MindEye2": {
+        "decoder": SavedReconstructionsDecoder(
+            reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_zscored", "reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+            data_key="6",
+            zscore_reconstructions=True,
+            device=config["device"],
+        ),
         "run_name": None,
     },
 
@@ -588,10 +603,10 @@ config["comparison"]["to_compare"] = {
     # },
 
     ### --- Other ablation studies ---
-    # "GAN": {
-    #     "run_name": "2025-02-15_23-28-30",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_23-28-30", "decoder.pt"),
-    # },
+    "GAN": {
+        "run_name": "2025-02-15_23-28-30",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_23-28-30", "decoder.pt"),
+    },
     # "GAN, all-ones MEIs": {
     #     "run_name": "2025-02-15_13-31-01",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_13-31-01", "decoder.pt"),
@@ -747,6 +762,8 @@ def run_comparison(cfg):
                 for k in stim_pred_best.keys():
                     stim_pred_best[k] = stim_pred_best[k][:cfg["comparison"]["max_n_reconstruction_samples"]]
             run_dict["stim_pred_best"].append(stim_pred_best)
+            if isinstance(decoder, SavedReconstructionsDecoder):
+                decoder.reset_counter()
 
             ### eval
             seed_all(cfg["seed"])

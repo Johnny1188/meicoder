@@ -318,7 +318,7 @@ def update_config_paths(config, new_data_path):
             elif isinstance(v, list) or isinstance(v, tuple):
                 for _v in v:
                     update_config_paths(_v, new_data_path)
-            elif k in ["data_dir", "ckpt_path", "save_path", "meis_path", "dir"] and isinstance(v, str):
+            elif k in ["data_dir", "ckpt_path", "save_path", "save_dir", "meis_path", "dir"] and isinstance(v, str):
                 config[k] = update_path_str(v, new_data_path)
             else:
                 update_config_paths(v, new_data_path)
