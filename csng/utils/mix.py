@@ -294,11 +294,11 @@ def update_config(config, config_updates):
     """
     for k, new_val in config_updates.items():
         target_keys = k.split("__")
-        target = cfg
+        target = config
         for tk in target_keys[:-1]:
             target = target[tk]
         target[target_keys[-1]] = new_val
-    return cfg
+    return config
 
 
 def update_config_paths(config, new_data_path):
