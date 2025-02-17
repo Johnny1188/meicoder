@@ -10,7 +10,13 @@ from csng.data import get_dataloaders
 
 
 class MonkeySeeDecoder(nn.Module):
-    def __init__(self, ckpt_dir, train_dl, new_data_path=None):
+    def __init__(
+        self,
+        ckpt_dir,
+        train_dl,
+        ckpt_key_to_load="state_dict",
+        new_data_path=None
+    ):
         super().__init__()
 
         self.ckpt_dir = ckpt_dir
@@ -40,7 +46,7 @@ class MonkeySeeDecoder(nn.Module):
 
         ### load checkpoints
         print(f"[INFO] Loading checkpoint from {self.cfg['decoder']['load_ckpt']} ...")
-        self.generator.load_state_dict(ckpt["state_dict"])
+        self.generator.load_state_dict(self.get_state_dict_to_load(ckpt, ckpt_key_to_load=ckpt_key_to_load))
 
         ### collect statistics
         self.transform_inputs = lambda x: x
@@ -51,6 +57,14 @@ class MonkeySeeDecoder(nn.Module):
             self.mean = mean.unsqueeze(-1).unsqueeze(-1)
             self.std = std.unsqueeze(-1).unsqueeze(-1)
             self.transform_inputs = lambda x: (x - self.mean) / (self.std + 1e-6)
+
+    def get_state_dict_to_load(self, ckpt, ckpt_key_to_load="state_dict"):
+        ckpt_key_to_load_split = ckpt_key_to_load.split("__")  # nested keys
+        state_dict_to_load = ckpt
+        for key in ckpt_key_to_load_split:
+            print(key, state_dict_to_load.keys())
+            state_dict_to_load = state_dict_to_load[key]
+        return state_dict_to_load
 
     def forward(self, x, data_key, neuron_coords=None, pupil_center=None):
         assert data_key == "6", "MonkeySeeDecoder only supports data_key='6'."

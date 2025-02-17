@@ -207,6 +207,7 @@ config["comparison"]["to_compare"] = {
         "decoder": MonkeySeeDecoder(
             # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "13-02-2025_11-47")),
             ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "15-02-2025_10-31")),
+            ckpt_key_to_load="best_l1",
             train_dl=get_dataloaders(config=(monkeysee_config := update_config(
                     config=update_config_paths(
                         config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
