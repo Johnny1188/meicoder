@@ -353,6 +353,10 @@ class PerSampleStoredDataset(Dataset):
     def __len__(self):
         return len(self.file_names)
 
+    @property
+    def n_neurons(self):
+        return self[0].responses.shape[-1]
+
     def __getitem__(self, idx):
         f_name = self.file_names[idx]
         with open(os.path.join(self.dataset_dir, f_name), "rb") as f:
