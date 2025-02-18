@@ -618,6 +618,10 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-02-15_13-31-01",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_13-31-01", "decoder.pt"),
     # },
+    # "GAN, trainable MEIs": {
+    #     "run_name": "2025-02-16_16-36-57",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-16_16-36-57", "decoder.pt"),
+    # },
     # "GAN, BDfR L2": {
     #     "run_name": "2025-02-15_16-43-09",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-15_16-43-09", "decoder.pt"),
