@@ -19,6 +19,7 @@ from monkeysee.SpatialBased.discriminator import Discriminator
 from monkeysee.SpatialBased.generator import Generator
 from csng.data import get_dataloaders
 from csng.utils.mix import seed_all
+from csng.losses import get_metrics
 
 DATA_PATH_BRAINREADER = os.path.join(os.environ["DATA_PATH"], "brainreader")
 DATA_PATH_MONKEYSEE = os.path.join(os.environ["DATA_PATH"], "monkeysee")
@@ -107,6 +108,7 @@ cfg = {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
+    # "wandb": None,
     "wandb": {
         "project": os.environ["WANDB_PROJECT"],
         "group": "monkeysee",
@@ -150,19 +152,20 @@ cfg["decoder"] = {
         # "lr": 0.001,
         "betas": (0.5, 0.999),
         # "betas": (0.9, 0.999),
-        "weight_decay": 0,
-        # "weight_decay": 3e-4,
+        # "weight_decay": 0,
+        "weight_decay": 3e-3,
     },
     "dis": {
         "input_channels": 1,
         "lr": 0.0002,
         # "lr": 0.001,
         "betas": (0.5, 0.999),
-        "weight_decay": 0,
-        # "weight_decay": 3e-4,
+        # "weight_decay": 0,
+        "weight_decay": 3e-3,
     },
     "sum_rfs_out": True,
     "standardize_inputs": True,
+    "early_stopping_loss_fn": "Alex(5) Loss",
     "epochs": 300,
     "load_ckpt": None,
     # "load_ckpt": "/home/jan/Desktop/Dev/MonkeySee/data/models/03-02-2025_00-37"
@@ -194,16 +197,19 @@ if __name__ == '__main__':
     RFs = get_RFs(**cfg["rfs"])
 
     ### w&b
-    wdb_run = wandb.init(**cfg["wandb"], name=cfg["run_name"], config=cfg, save_code=True,
-        tags=["MonkeySee", "Inv-Ret-Map" if cfg["decoder"]["gen"]["inverse_retinotopic_mapping_cfg"] is not None else "MEIs"])
-    wdb_run.log_code(".", include_fn=lambda path, root: path.endswith(".py") or path.endswith(".ipynb") or path.endswith(".yaml") or path.endswith(".yml"))
+    wdb_run = None
+    if cfg["wandb"] is not None:
+        wdb_run = wandb.init(**cfg["wandb"], name=cfg["run_name"], config=cfg, save_code=True,
+            tags=["MonkeySee", "Inv-Ret-Map" if cfg["decoder"]["gen"]["inverse_retinotopic_mapping_cfg"] is not None else "MEIs"])
+        wdb_run.log_code(".", include_fn=lambda path, root: path.endswith(".py") or path.endswith(".ipynb") or path.endswith(".yaml") or path.endswith(".yml"))
 
     ### initialize models
     seed_all(cfg["seed"])
     discriminator = Discriminator(**cfg["decoder"]["dis"], device=cfg["device"])
     generator = Generator(**cfg["decoder"]["gen"], device=cfg["device"])
-    wdb_run.watch(discriminator, log="all")
-    wdb_run.watch(generator, log="all")
+    if wdb_run is not None:
+        wdb_run.watch(discriminator, log="all")
+        wdb_run.watch(generator, log="all")
     print(f"[INFO] Discriminator: {discriminator}\n\n[INFO] Generator: {generator}")
 
     ### load checkpoints
@@ -216,7 +222,14 @@ if __name__ == '__main__':
         history = ckpt_gen["history"]
     else:
         print("[INFO] No checkpoint loaded.")
-        history = {k: [] for k in ['D_loss_train', 'G_loss_train', 'G_loss_D_train', 'G_loss_vgg_train', 'G_loss_pix_train', 'G_loss_vgg_val', 'G_loss_pix_val']}
+        history = {k: [] for k in ['D_loss_train', 'G_loss_train', 'G_loss_D_train', 'G_loss_vgg_train', 'G_loss_pix_train', 'G_loss_vgg_val', 'G_loss_pix_val', "G_loss_vgg_val", "G_loss_es_val"]}
+
+    ### select early stopping loss function
+    es_loss_fn = get_metrics(
+        inp_zscored=cfg["data"]["brainreader_mouse"]["normalize_stim"],
+        crop_win=None,
+        device=cfg["device"],
+    )[cfg["decoder"]["early_stopping_loss_fn"]]
 
     ### collect statistics
     transform_inputs = lambda x: x
@@ -231,6 +244,7 @@ if __name__ == '__main__':
         transform_inputs = lambda x: (x - mean) / (std + 1e-6)
 
     ### train
+    best_es = {"epoch": None, "val_loss": np.inf, "recon": None, "generator": None, "discriminator": None}
     best_l1 = {"epoch": None, "val_loss_vgg": np.inf, "val_loss_l1": np.inf, "recon": None, "generator": None, "discriminator": None}
     best_vgg = {"epoch": None, "val_loss_vgg": np.inf, "val_loss_l1": np.inf, "recon": None, "generator": None, "discriminator": None}
     seed_all(cfg["seed"])
@@ -275,6 +289,7 @@ if __name__ == '__main__':
         generator.eval()
         with torch.no_grad():
             vgg_loss, l1_loss, n_samples = 0, 0, 0
+            all_targets, all_recons = [], []
             for batch in val_dl:
                 brains = torch.cat([dp["resp"] for dp in batch], dim=0).unsqueeze(-1).to(cfg["device"])
                 targets = torch.cat([dp["stim"] for dp in batch], dim=0).to(cfg["device"])
@@ -285,12 +300,22 @@ if __name__ == '__main__':
                 _vgg_loss = generator._lossfun._vgg(recons, targets, reduction="none")
                 vgg_loss += torch.stack([vgg_layer_loss.mean(dim=(1, 2, 3)) for vgg_layer_loss in _vgg_loss], dim=1).mean(dim=1).sum().item()
                 l1_loss += F.l1_loss(recons, targets, reduction="none").mean(dim=(1, 2, 3)).sum().item()
+
+                all_targets.append(targets.cpu())
+                all_recons.append(recons.cpu().detach())
                 n_samples += len(recons)
+
             vgg_loss /= n_samples
             l1_loss /= n_samples
-            print(f"  val. VGG: {vgg_loss:.4f}\n  val. L1: {l1_loss:.4f}")
+            es_loss = es_loss_fn(
+                torch.cat(all_recons, dim=0),
+                torch.cat(all_targets, dim=0)
+            ).mean().item()
+
+            print(f"  val. VGG: {vgg_loss:.4f}\n  val. L1: {l1_loss:.4f}\n  val. ES: {es_loss:.4f}")
             history["G_loss_vgg_val"].append(vgg_loss)
             history["G_loss_pix_val"].append(l1_loss)
+            history["G_loss_es_val"].append(es_loss)
 
             ### save if best
             if l1_loss < best_l1["val_loss_l1"]:
@@ -306,6 +331,12 @@ if __name__ == '__main__':
                 best_vgg["val_loss_l1"] = l1_loss
                 best_vgg["generator"] = deepcopy(generator.state_dict())
                 best_vgg["discriminator"] = deepcopy(discriminator.state_dict())
+
+            if es_loss < best_es["val_loss"]:
+                best_es["epoch"] = ep
+                best_es["val_loss"] = es_loss
+                best_es["generator"] = deepcopy(generator.state_dict())
+                best_es["discriminator"] = deepcopy(discriminator.state_dict())
 
         ### plot reconstructions
         fig = plt.figure(figsize=(15, 6))
@@ -333,20 +364,26 @@ if __name__ == '__main__':
         if best_vgg["epoch"] == ep:
             fig.savefig(f"{cfg['save_dir']}/recons_best_vgg.png")
             best_vgg["recon"] = fig
+        if best_es["epoch"] == ep:
+            fig.savefig(f"{cfg['save_dir']}/recons_best_es.png")
+            best_es["recon"] = fig
         plt.close(fig)
 
         ### log
-        wdb_run.log({
-            "D_loss_train": np.mean(history["D_loss_train"][-len(train_dl):]),
-            "G_loss_train": np.mean(history["G_loss_train"][-len(train_dl):]),
-            "G_loss_D_train": np.mean(history["G_loss_D_train"][-len(train_dl):]),
-            "G_loss_vgg_train": np.mean(history["G_loss_vgg_train"][-len(train_dl):]),
-            "G_loss_vgg_val": history["G_loss_vgg_val"][-1],
-            "G_loss_pix_val": history["G_loss_pix_val"][-1],
-            "reconstructions": fig,
-            "best_l1_reconstructions": best_l1["recon"],
-            "best_vgg_reconstructions": best_vgg["recon"],
-        })
+        if wdb_run is not None:
+            wdb_run.log({
+                "D_loss_train": np.mean(history["D_loss_train"][-len(train_dl):]),
+                "G_loss_train": np.mean(history["G_loss_train"][-len(train_dl):]),
+                "G_loss_D_train": np.mean(history["G_loss_D_train"][-len(train_dl):]),
+                "G_loss_vgg_train": np.mean(history["G_loss_vgg_train"][-len(train_dl):]),
+                "G_loss_vgg_val": history["G_loss_vgg_val"][-1],
+                "G_loss_pix_val": history["G_loss_pix_val"][-1],
+                "G_loss_es_val": history["G_loss_es_val"][-1],
+                "reconstructions": fig,
+                "best_l1_reconstructions": best_l1["recon"],
+                "best_vgg_reconstructions": best_vgg["recon"],
+                "best_es_reconstructions": best_es["recon"],
+            })
         plt.close(fig)
 
         ### save
@@ -358,6 +395,8 @@ if __name__ == '__main__':
             "best_vgg": best_vgg["generator"],
             "best_vgg_val_loss_l1": best_vgg["val_loss_l1"],
             "best_vgg_val_loss_vgg": best_vgg["val_loss_vgg"],
+            "best_es": best_es["generator"],
+            "best_es_val_loss": best_es["val_loss"],
             "config": cfg,
             "history": history,
         }, f"{cfg['save_dir']}/generator.pt", pickle_module=dill)
@@ -369,10 +408,13 @@ if __name__ == '__main__':
             "best_vgg": best_vgg["discriminator"],
             "best_vgg_val_loss_l1": best_vgg["val_loss_l1"],
             "best_vgg_val_loss_vgg": best_vgg["val_loss_vgg"],
+            "best_es": best_es["discriminator"],
+            "best_es_val_loss": best_es["val_loss"],
             "config": cfg,
             "history": history,
         }, f"{cfg['save_dir']}/discriminator.pt", pickle_module=dill)
 
         print(f"Best L1 val. loss: {best_l1['val_loss_l1']:.4f} (VGG logg loss: {best_l1['val_loss_vgg']:.4f}) at epoch {best_l1['epoch']}")
         print(f"Best VGG val. loss: {best_vgg['val_loss_vgg']:.4f} (L1 loss: {best_vgg['val_loss_l1']:.4f}) at epoch {best_vgg['epoch']}")
+        print(f"Best ES val. loss: {best_es['val_loss']:.4f} at epoch {best_es['epoch']}")
         print(f"Saved models to {cfg['save_dir']}")
