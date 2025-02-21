@@ -379,6 +379,7 @@ def timeit(func):
 
 
 def check_if_data_zscored(cfg):
+    inp_zscored = None
     if "brainreader_mouse" in cfg["data"]:
         inp_zscored = cfg["data"]["brainreader_mouse"]["normalize_stim"]
     if "mouse_v1" in cfg["data"]:

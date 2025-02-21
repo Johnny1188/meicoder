@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from tqdm import tqdm
 import lovely_tensors as lt
@@ -17,14 +18,11 @@ lt.monkey_patch()
 from monkeysee.SpatialBased.discriminator import Discriminator
 from monkeysee.SpatialBased.generator import Generator
 from csng.data import get_dataloaders
-from csng.utils.mix import seed_all, check_if_data_zscored
-from csng.utils.data import crop
+from csng.utils.mix import seed_all
 from csng.losses import get_metrics
 
-DATA_PATH_MONKEYSEE = os.path.join(os.environ["DATA_PATH"], "monkeysee")
 DATA_PATH_BRAINREADER = os.path.join(os.environ["DATA_PATH"], "brainreader")
-DATA_PATH_CAT_V1 = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
-DATA_PATH_MOUSE_V1 = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
+DATA_PATH_MONKEYSEE = os.path.join(os.environ["DATA_PATH"], "monkeysee")
 
 
 ### load RFs
@@ -107,14 +105,9 @@ cfg = {
     "device": os.environ.get("DEVICE", "cpu"),
     "seed": 0,
     "data": {
-        "data_name": "brainreader_mouse",
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
-        "target_transforms": {
-            "brainreader_mouse": lambda x: x,
-            "mouse_v1": lambda x: crop(x, (22, 36)),
-            "cat_v1": lambda x: crop(x, (20, 20)),
-        },
+        "data_name": "brainreader_mouse",
     },
     # "wandb": None,
     "wandb": {
@@ -142,7 +135,7 @@ if cfg["data"]["data_name"] == "brainreader_mouse":
         "avg_test_resp": True,
     }
 elif cfg["data"]["data_name"] == "mouse_v1":
-    cfg["data"]["mouse_v1"] = {
+    config["data"]["mouse_v1"] = {
         "dataset_fn": "sensorium.datasets.static_loaders",
         "dataset_config": {
             "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
@@ -153,19 +146,18 @@ elif cfg["data"]["data_name"] == "mouse_v1":
                 # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
             ],
             "normalize": True,
-            "z_score_responses": True,
             "scale": 0.25, # 256x144 -> 64x36
             "include_behavior": False,
             "add_behavior_as_channels": False,
-            "include_eye_position": True,
+            "include_eye_position": False,
             "exclude": None,
             "file_tree": True,
-            "cuda": "cuda" in cfg["device"],
+            "cuda": "cuda" in config["device"],
             "batch_size": 32,
-            "drop_last": True,
-            "seed": cfg["seed"],
+            "seed": config["seed"],
             "use_cache": False,
         },
+        "crop_win": (22, 36),
         "skip_train": False,
         "skip_val": False,
         "skip_test": False,
@@ -173,41 +165,14 @@ elif cfg["data"]["data_name"] == "mouse_v1":
         "average_test_multitrial": True,
         "save_test_multitrial": True,
         "test_batch_size": 7,
-        "device": cfg["device"],
+        "device": config["device"],
     }
-elif cfg["data"]["data_name"] == "cat_v1":
-    cfg["data"]["cat_v1"] = {
-        "dataset_config": {
-            "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
-            "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
-            "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
-            "image_size": [50, 50],
-            "crop": False,
-            "batch_size": 32,
-            "stim_keys": ("stim",),
-            "resp_keys": ("exc_resp", "inh_resp"),
-            "return_coords": True,
-            "return_ori": False,
-            "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
-            "cached": False,
-            "stim_normalize_mean": 46.143,
-            "stim_normalize_std": 20.420,
-            "resp_normalize_mean": torch.load(
-                os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
-            ),
-            "resp_normalize_std": torch.load(
-                os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
-            ),
-            "clamp_neg_resp": False,
-        },
-    }
-
 
 ### model
 cfg["decoder"] = {
     "gen": {
-        "input_channels": 480,
-        "normalized": check_if_data_zscored(cfg=cfg),
+        "input_channels": 768,
+        "normalized": cfg["data"]["brainreader_mouse"]["normalize_stim"],
         "inverse_retinotopic_mapping_cfg": None,
 
         # "input_channels": 1,
@@ -223,15 +188,19 @@ cfg["decoder"] = {
         "beta_vgg": 0.9,
         "beta_pix": 0.09,
         "lr": 0.0002,
+        # "lr": 0.001,
         "betas": (0.5, 0.999),
-        "weight_decay": 3e-4,
+        # "betas": (0.9, 0.999),
+        # "weight_decay": 0,
+        "weight_decay": 3e-2,
     },
     "dis": {
         "input_channels": 1,
-        "inp_shape": cfg["data"]["target_transforms"][cfg["data"]["data_name"]](next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["stim"]).shape[1:],
         "lr": 0.0002,
+        # "lr": 0.001,
         "betas": (0.5, 0.999),
-        "weight_decay": 3e-4,
+        # "weight_decay": 0,
+        "weight_decay": 3e-2,
     },
     "sum_rfs_out": True,
     "standardize_inputs": True,
@@ -244,11 +213,7 @@ cfg["rfs"] = {
     "meis_path": None,
     # "meis_path": os.path.join(DATA_PATH_BRAINREADER, "meis", "6", "meis.pt"),
     # "spatial_embeddings_path": None,
-    "spatial_embeddings_path": os.path.join(
-        DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
-    # "spatial_embeddings_path": os.path.join(
-    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "20-02-2025_17-32", "embedding.pt"), # mouse_v1 (M-1)
-    # "spatial_embeddings_path": os.path.join(...), # cat_v1
+    "spatial_embeddings_path": os.path.join(DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"),
     "device": cfg["device"],
 }
 
@@ -256,10 +221,8 @@ cfg["rfs"] = {
 if __name__ == '__main__':
     print(f"... Running on {cfg['device']} ...")
 
-    assert (
-        ("brainreader_mouse" not in cfg["data"] or cfg["data"]["brainreader_mouse"]["sessions"] == [6]) and
-        ("mouse_v1" not in cfg["data"] or cfg["data"]["mouse_v1"]["dataset_config"]["paths"] == [os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip")])
-    ), "Only B-6 and M-1 are supported now."
+    assert cfg["data"]["brainreader_mouse"]["sessions"] == [6], \
+        "Only session 6 is supported for now."
 
     ### config
     cfg["run_name"] = datetime.now().strftime("%d-%m-%Y_%H-%M")
@@ -302,7 +265,7 @@ if __name__ == '__main__':
 
     ### select early stopping loss function
     es_loss_fn = get_metrics(
-        inp_zscored=check_if_data_zscored(cfg=cfg),
+        inp_zscored=cfg["data"]["brainreader_mouse"]["normalize_stim"],
         crop_win=None,
         device=cfg["device"],
     )[cfg["decoder"]["early_stopping_loss_fn"]]
@@ -312,13 +275,12 @@ if __name__ == '__main__':
     if cfg["decoder"]["standardize_inputs"]:
         print("[INFO] Collecting statistics ...")
         dls, _ = get_dataloaders(config=cfg)
-        train_dl = dls["train"][cfg["data"]["data_name"]]
+        train_dl = dls["train"]["brainreader_mouse"]
         mean, std = compute_mean_std(dl=train_dl, config=cfg, RFs=RFs)
         print(f"  mean: {mean}\n  std: {std}")
         mean = mean.unsqueeze(-1).unsqueeze(-1)
         std = std.unsqueeze(-1).unsqueeze(-1)
         transform_inputs = lambda x: (x - mean) / (std + 1e-6)
-    transform_targets = cfg["data"]["target_transforms"][cfg["data"]["data_name"]]
 
     ### train
     best_es = {"epoch": None, "val_loss": np.inf, "recon": None, "generator": None, "discriminator": None}
@@ -329,7 +291,7 @@ if __name__ == '__main__':
         generator.train()
         discriminator.train()
         dls, _ = get_dataloaders(config=cfg)
-        train_dl, val_dl = dls["train"][cfg["data"]["data_name"]], dls["val"][cfg["data"]["data_name"]]
+        train_dl, val_dl = dls["train"]["brainreader_mouse"], dls["val"]["brainreader_mouse"]
         print(
             f"[E {ep+1}/{cfg['decoder']['epochs']}  {datetime.now().strftime('%H:%M:%S')}]\n  "
             + '\n  '.join([f'{k}: {np.mean(v[-len(train_dl):]):.4f}' for k, v in history.items()] if ep > 0 else [])
@@ -338,7 +300,7 @@ if __name__ == '__main__':
         for batch in tqdm(train_dl, total=len(train_dl)):
             ### prepare inputs
             brains = torch.cat([dp["resp"] for dp in batch], dim=0).unsqueeze(-1).to(cfg["device"])
-            targets = transform_targets(torch.cat([dp["stim"] for dp in batch], dim=0)).to(cfg["device"])
+            targets = torch.cat([dp["stim"] for dp in batch], dim=0).to(cfg["device"])
             inputs = get_inputs(brains=brains, config=cfg, transform_inputs_fn=transform_inputs, RFs=RFs)
 
             ### compute losses
@@ -369,7 +331,7 @@ if __name__ == '__main__':
             all_targets, all_recons = [], []
             for batch in val_dl:
                 brains = torch.cat([dp["resp"] for dp in batch], dim=0).unsqueeze(-1).to(cfg["device"])
-                targets = transform_targets(torch.cat([dp["stim"] for dp in batch], dim=0)).to(cfg["device"])
+                targets = torch.cat([dp["stim"] for dp in batch], dim=0).to(cfg["device"])
                 inputs = get_inputs(brains=brains, config=cfg, transform_inputs_fn=transform_inputs, RFs=RFs)
 
                 recons, inv_ret_maps = generator(inputs, return_inv_ret_maps=True)

@@ -73,12 +73,13 @@ class Lossfun:
 
 
 class Network(nn.Module):
-    def __init__(self, count: int, depth: int) -> None:
+    def __init__(self, count: int, depth: int, inp_shape) -> None:
         super(Network, self).__init__()
         self._count = count
         self._depth = depth
+        self._inp_shape = inp_shape
 
-        self.layers = nn.Sequential(
+        self.layers = [
             nn.Conv2d(depth, 64, kernel_size=4, stride=1, padding=1),
             nn.LeakyReLU(0.2),
             nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1, bias=False),
@@ -92,9 +93,15 @@ class Network(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Conv2d(512, count, kernel_size=3, stride=2, padding=1),
             nn.Flatten(),
-            nn.Linear(28, 1),
-            nn.Sigmoid()
-        )
+        ]
+
+        ### last layer
+        x = torch.randn(1, *inp_shape)
+        for layer in self.layers:
+            x = layer(x)
+        self.layers.append(nn.Linear(x.view(-1).size(0), 1))
+        self.layers.append(nn.Sigmoid())
+        self.layers = nn.Sequential(*self.layers)
 
         self.initialize_weights()
 
@@ -124,6 +131,7 @@ class Discriminator(nn.Module):
     def __init__(
         self,
         input_channels: int,
+        inp_shape: tuple,
         lr: float = 0.0002,
         betas: tuple = (0.5, 0.999),
         weight_decay: float = 0.0,
@@ -133,7 +141,7 @@ class Discriminator(nn.Module):
         self._history = History(50)
         self._device = device
         self._lossfun = Lossfun(1.0)
-        self._network = Network(1, input_channels).to(self.device)
+        self._network = Network(1, input_channels, inp_shape).to(self.device)
         self._optimizer = optim.Adam(self._network.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
 
     @property

@@ -15,6 +15,11 @@ lt.monkey_patch()
 
 from csng.data import get_dataloaders
 from csng.utils.mix import seed_all
+from csng.utils.data import crop
+
+DATA_PATH_BRAINREADER = os.path.join(os.environ["DATA_PATH"], "brainreader")
+DATA_PATH_CAT_V1 = os.path.join(os.environ["DATA_PATH"], "cat_V1_spiking_model", "50K_single_trial_dataset")
+DATA_PATH_MOUSE_V1 = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 
 
 class InceptionV1FeatureExtractor(nn.Module):
@@ -89,33 +94,75 @@ cfg = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
+        "data_name": "mouse_v1",
+    },
+    "crop_wins": {
+        "mouse_v1": (22, 36),
+        "brainreader_mouse": None,
     },
 }
 
-cfg["data"]["brainreader_mouse"] = {
-    "device": cfg["device"],
-    "mixing_strategy": cfg["data"]["mixing_strategy"],
-    "max_batches": None,
-    "data_dir": os.path.join((DATA_PATH_BRAINREADER := os.path.join(os.environ["DATA_PATH"], "brainreader")), "data"),
-    "batch_size": 32,
-    # "sessions": list(range(1, 23)),
-    "sessions": [6],
-    "resize_stim_to": (36, 64),
-    "normalize_stim": True,
-    "normalize_resp": True,
-    "div_resp_by_std": True,
-    "clamp_neg_resp": False,
-    "additional_keys": None,
-    "avg_test_resp": True,
-}
+### data
+if cfg["data"]["data_name"] == "brainreader_mouse":
+    cfg["data"]["brainreader_mouse"] = {
+        "device": cfg["device"],
+        "mixing_strategy": cfg["data"]["mixing_strategy"],
+        "max_batches": None,
+        "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
+        "batch_size": 32,
+        # "sessions": list(range(1, 23)),
+        "sessions": [6],
+        "resize_stim_to": (36, 64),
+        "normalize_stim": True,
+        "normalize_resp": True,
+        "div_resp_by_std": True,
+        "clamp_neg_resp": False,
+        "additional_keys": None,
+        "avg_test_resp": True,
+    }
+elif cfg["data"]["data_name"] == "mouse_v1":
+    cfg["data"]["mouse_v1"] = {
+        "dataset_fn": "sensorium.datasets.static_loaders",
+        "dataset_config": {
+            "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+                os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+                # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+                # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+                # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+                # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+            ],
+            "normalize": True,
+            "z_score_responses": True,
+            "scale": 0.25, # 256x144 -> 64x36
+            "include_behavior": False,
+            "add_behavior_as_channels": False,
+            "include_eye_position": True,
+            "exclude": None,
+            "file_tree": True,
+            "cuda": "cuda" in cfg["device"],
+            "batch_size": 32,
+            "seed": cfg["seed"],
+            "use_cache": False,
+        },
+        "skip_train": False,
+        "skip_val": False,
+        "skip_test": False,
+        "normalize_neuron_coords": True,
+        "average_test_multitrial": True,
+        "save_test_multitrial": True,
+        "test_batch_size": 7,
+        "device": cfg["device"],
+    }
 
+### model
 cfg["model"] = {
     "feature_extractor": {
         "layer": "conv2.conv.weight",
     },
     "spatial_embedding": {
-        "n_neurons": 8587,
-        "feature_shape": (64, 36, 64),
+        "n_neurons": get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]].datasets[0].n_neurons,
+        # "feature_shape": (64, 36, 64),
+        "feature_shape": (64, 22, 36),
     },
     "loss": {
         "lambda_1": 5e-1,
@@ -148,7 +195,8 @@ if __name__ == "__main__":
 
     ### data prep
     transform = transforms.Compose([
-        transforms.Lambda(lambda x: x.expand(-1, 3, -1, -1) if x.shape[1] == 1 else x), # Grayscale to RGB
+        transforms.Lambda(lambda x: crop(x, cfg["crop_wins"][cfg["data"]["data_name"]])), # crop
+        transforms.Lambda(lambda x: x.expand(-1, 3, -1, -1) if x.shape[1] == 1 else x), # grayscale to RGB
         transforms.Resize((
             cfg["model"]["spatial_embedding"]["feature_shape"][-2] * 4,
             cfg["model"]["spatial_embedding"]["feature_shape"][-1] * 4
@@ -162,7 +210,7 @@ if __name__ == "__main__":
     for ep in range(cfg["model"]["epochs"]):
         embedding.train()
         dls, _ = get_dataloaders(config=cfg)
-        train_dl, val_dl = dls["train"]["brainreader_mouse"], dls["val"]["brainreader_mouse"]
+        train_dl = dls["train"][cfg["data"]["data_name"]]
         print(
             f"[E {ep+1}/{cfg['model']['epochs']}  {datetime.now().strftime('%H:%M:%S')}]\n  "
             + '\n  '.join([f'{k}: {np.mean(v[-len(train_dl):]):.4f}' for k, v in history.items()] if ep > 0 else [])

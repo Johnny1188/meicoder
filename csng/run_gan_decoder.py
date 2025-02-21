@@ -61,8 +61,11 @@ config["data"]["brainreader_mouse"] = {
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
     # "batch_size": 4,
+    # "batch_size": 5,
     "batch_size": 16,
+    # "batch_size": 16,
     # "sessions": list(range(1, 23)),
+    # "sessions": list(range(1, 7)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
     "normalize_stim": True,
@@ -118,6 +121,7 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
 #         ],
 #         "normalize": True,
+#         "z_score_responses": False,
 #         "scale": 0.25, # 256x144 -> 64x36
 #         "include_behavior": False,
 #         "add_behavior_as_channels": False,
