@@ -246,6 +246,8 @@ class MixedBatchLoader:
                 if self.mixing_strategy == "parallel_min":
                     ### end the whole loop
                     empty_dataloader_idxs = set(self.dataloader_iters.keys())
+                    to_return = []
+                    break
                 elif self.mixing_strategy == "parallel_max":
                     ### continue with the remaining ones
                     empty_dataloader_idxs.add(dl_idx)
