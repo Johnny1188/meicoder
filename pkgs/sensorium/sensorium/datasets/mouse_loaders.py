@@ -22,6 +22,7 @@ from neuralpredictors.data.samplers import SubsetSequentialSampler
 def static_loader(
     path: str = None,
     batch_size: int = None,
+    drop_last: bool = False,
     areas: list = None,
     layers: list = None,
     tier: str = None,
@@ -35,6 +36,7 @@ def static_loader(
     get_key: bool = False,
     cuda: bool = True,
     normalize: bool = True,
+    z_score_responses=False,
     exclude: str = None,
     include_behavior: bool = False,
     add_behavior_as_channels: bool = True,
@@ -181,7 +183,7 @@ def static_loader(
             more_transforms.insert(
                 0,
                 NeuroNormalizer(
-                    dat, exclude=exclude, inputs_mean=inputs_mean, inputs_std=inputs_std
+                    dat, exclude=exclude, inputs_mean=inputs_mean, inputs_std=inputs_std, z_score_responses=z_score_responses
                 ),
             )
         except:
@@ -272,7 +274,7 @@ def static_loader(
             if tier == "train"
             else SubsetSequentialSampler(subset_idx)
         )
-        dataloaders[tier] = DataLoader(dat, sampler=sampler, batch_size=batch_size)
+        dataloaders[tier] = DataLoader(dat, sampler=sampler, batch_size=batch_size, drop_last=drop_last)
 
     return (data_key, dataloaders) if get_key else dataloaders
 
@@ -280,6 +282,7 @@ def static_loader(
 def static_loaders(
     paths,
     batch_size: int,
+    drop_last: bool = False,
     seed: int = None,
     areas: list = None,
     layers: list = None,
@@ -293,6 +296,7 @@ def static_loaders(
     image_base_seed=None,
     cuda: bool = True,
     normalize: bool = True,
+    z_score_responses: bool = False,
     include_behavior: bool = False,
     add_behavior_as_channels: bool = True,
     exclude: str = None,
@@ -364,6 +368,7 @@ def static_loaders(
         out = static_loader(
             path,
             batch_size,
+            drop_last=drop_last,
             areas=areas,
             layers=layers,
             cuda=cuda,
@@ -377,6 +382,7 @@ def static_loaders(
             image_n=image_n,
             image_base_seed=image_base_seed,
             normalize=normalize,
+            z_score_responses=z_score_responses,
             include_behavior=include_behavior,
             add_behavior_as_channels=add_behavior_as_channels,
             exclude=exclude,

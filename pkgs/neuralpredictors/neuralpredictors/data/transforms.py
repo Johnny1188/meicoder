@@ -317,7 +317,7 @@ class NeuroNormalizer(MovieTransform, StaticTransform, Invertible):
             1% of the mean std (to avoid division by 0)
     """
 
-    def __init__(self, data, stats_source="all", exclude=None, inputs_mean=None, inputs_std=None):
+    def __init__(self, data, stats_source="all", exclude=None, inputs_mean=None, inputs_std=None, z_score_responses=False):
 
         self.exclude = exclude or []
 
@@ -342,8 +342,13 @@ class NeuroNormalizer(MovieTransform, StaticTransform, Invertible):
         itransforms[in_name] = lambda x: x * self._inputs_std + self._inputs_mean
 
         # -- responses
-        transforms[out_name] = lambda x: x * self._response_precision
-        itransforms[out_name] = lambda x: x / self._response_precision
+        if z_score_responses:
+            resp_means = np.array(data.statistics[out_name][stats_source]["mean"])
+            transforms[out_name] = lambda x: (x - resp_means) * self._response_precision
+            itransforms[out_name] = lambda x: (x / self._response_precision) + resp_means
+        else:
+            transforms[out_name] = lambda x: x * self._response_precision
+            itransforms[out_name] = lambda x: x / self._response_precision
 
         # -- behavior
         transforms["behavior"] = lambda x: x
