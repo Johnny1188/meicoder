@@ -107,6 +107,7 @@ cfg = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
+        "data_name": "brainreader_mouse",
     },
     # "wandb": None,
     "wandb": {
@@ -114,25 +115,65 @@ cfg = {
         "group": "monkeysee",
     },
 }
-cfg["data"]["brainreader_mouse"] = {
-    "device": cfg["device"],
-    "mixing_strategy": cfg["data"]["mixing_strategy"],
-    "max_batches": None,
-    "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    "batch_size": 32,
-    # "sessions": list(range(1, 23)),
-    "sessions": [6],
-    "resize_stim_to": (36, 64),
-    "normalize_stim": True,
-    "normalize_resp": True,
-    "div_resp_by_std": True,
-    "clamp_neg_resp": False,
-    "additional_keys": None,
-    "avg_test_resp": True,
-}
+
+### data
+if cfg["data"]["data_name"] == "brainreader_mouse":
+    cfg["data"]["brainreader_mouse"] = {
+        "device": cfg["device"],
+        "mixing_strategy": cfg["data"]["mixing_strategy"],
+        "max_batches": None,
+        "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
+        "batch_size": 32,
+        # "sessions": list(range(1, 23)),
+        "sessions": [6],
+        "resize_stim_to": (36, 64),
+        "normalize_stim": True,
+        "normalize_resp": True,
+        "div_resp_by_std": True,
+        "clamp_neg_resp": False,
+        "additional_keys": None,
+        "avg_test_resp": True,
+    }
+elif cfg["data"]["data_name"] == "mouse_v1":
+    cfg["data"]["mouse_v1"] = {
+        "dataset_fn": "sensorium.datasets.static_loaders",
+        "dataset_config": {
+            "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+                os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+                # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+                # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+                # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+                # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+            ],
+            "normalize": True,
+            "z_score_responses": True,
+            "scale": 0.25, # 256x144 -> 64x36
+            "include_behavior": False,
+            "add_behavior_as_channels": False,
+            "include_eye_position": True,
+            "exclude": None,
+            "file_tree": True,
+            "cuda": "cuda" in config["device"],
+            "batch_size": 32,
+            "seed": cfg["seed"],
+            "use_cache": False,
+        },
+        "crop_win": (22, 36),
+        "skip_train": False,
+        "skip_val": False,
+        "skip_test": False,
+        "normalize_neuron_coords": True,
+        "average_test_multitrial": True,
+        "save_test_multitrial": True,
+        "test_batch_size": 7,
+        "device": cfg["device"],
+    }
+
+
+### model
 cfg["decoder"] = {
     "gen": {
-        "input_channels": 480,
+        "input_channels": 768,
         "normalized": cfg["data"]["brainreader_mouse"]["normalize_stim"],
         "inverse_retinotopic_mapping_cfg": None,
 
@@ -153,7 +194,7 @@ cfg["decoder"] = {
         "betas": (0.5, 0.999),
         # "betas": (0.9, 0.999),
         # "weight_decay": 0,
-        "weight_decay": 3e-3,
+        "weight_decay": 0,
     },
     "dis": {
         "input_channels": 1,
@@ -161,7 +202,7 @@ cfg["decoder"] = {
         # "lr": 0.001,
         "betas": (0.5, 0.999),
         # "weight_decay": 0,
-        "weight_decay": 3e-3,
+        "weight_decay": 0,
     },
     "sum_rfs_out": True,
     "standardize_inputs": True,
@@ -174,7 +215,10 @@ cfg["rfs"] = {
     "meis_path": None,
     # "meis_path": os.path.join(DATA_PATH_BRAINREADER, "meis", "6", "meis.pt"),
     # "spatial_embeddings_path": None,
-    "spatial_embeddings_path": os.path.join(DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"),
+    # "spatial_embeddings_path": os.path.join(
+    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse
+    "spatial_embeddings_path": os.path.join(
+        DATA_PATH_MONKEYSEE, "spatial_embedding", "20-02-2025_17-32", "embedding.pt"), # mouse_v1
     "device": cfg["device"],
 }
 
