@@ -85,7 +85,7 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
 #         "cached": False,
 #         "stim_normalize_mean": 46.143,
-#         "stim_normalize_std": 20.420,
+#         "stim_normalize_std": 24.960,
 #         "resp_normalize_mean": torch.load(
 #             os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
 #         ),
