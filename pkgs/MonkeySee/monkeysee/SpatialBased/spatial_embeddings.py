@@ -94,11 +94,12 @@ cfg = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
-        "data_name": "mouse_v1",
+        "data_name": "cat_v1",
     },
     "crop_wins": {
-        "mouse_v1": (22, 36),
         "brainreader_mouse": None,
+        "mouse_v1": (22, 36),
+        "cat_v1": (20, 20),
     },
 }
 
@@ -153,6 +154,32 @@ elif cfg["data"]["data_name"] == "mouse_v1":
         "test_batch_size": 7,
         "device": cfg["device"],
     }
+elif cfg["data"]["data_name"] == "cat_v1":
+    cfg["data"]["cat_v1"] = {
+        "dataset_config": {
+            "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
+            "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
+            "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
+            "image_size": [50, 50],
+            "crop": False,
+            "batch_size": 32,
+            "stim_keys": ("stim",),
+            "resp_keys": ("exc_resp", "inh_resp"),
+            "return_coords": True,
+            "return_ori": False,
+            "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
+            "cached": False,
+            "stim_normalize_mean": 46.143,
+            "stim_normalize_std": 24.960,
+            "resp_normalize_mean": torch.load(
+                os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
+            ),
+            "resp_normalize_std": torch.load(
+                os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
+            ),
+            "clamp_neg_resp": False,
+        },
+    }
 
 ### model
 cfg["model"] = {
@@ -160,9 +187,10 @@ cfg["model"] = {
         "layer": "conv2.conv.weight",
     },
     "spatial_embedding": {
-        "n_neurons": get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]].datasets[0].n_neurons,
+        "n_neurons": next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["resp"].shape[-1],
         # "feature_shape": (64, 36, 64),
-        "feature_shape": (64, 22, 36),
+        # "feature_shape": (64, 22, 36),
+        "feature_shape": (64, 20, 20),
     },
     "loss": {
         "lambda_1": 5e-1,

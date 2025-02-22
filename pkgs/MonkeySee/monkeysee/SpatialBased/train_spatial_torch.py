@@ -107,7 +107,7 @@ cfg = {
     "device": os.environ.get("DEVICE", "cpu"),
     "seed": 0,
     "data": {
-        "data_name": "brainreader_mouse",
+        "data_name": "mouse_v1",
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
         "target_transforms": {
@@ -191,7 +191,7 @@ elif cfg["data"]["data_name"] == "cat_v1":
             "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
             "cached": False,
             "stim_normalize_mean": 46.143,
-            "stim_normalize_std": 20.420,
+            "stim_normalize_std": 24.960,
             "resp_normalize_mean": torch.load(
                 os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
             ),
@@ -224,14 +224,14 @@ cfg["decoder"] = {
         "beta_pix": 0.09,
         "lr": 0.0002,
         "betas": (0.5, 0.999),
-        "weight_decay": 3e-4,
+        "weight_decay": 0,
     },
     "dis": {
         "input_channels": 1,
         "inp_shape": cfg["data"]["target_transforms"][cfg["data"]["data_name"]](next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["stim"]).shape[1:],
         "lr": 0.0002,
         "betas": (0.5, 0.999),
-        "weight_decay": 3e-4,
+        "weight_decay": 0,
     },
     "sum_rfs_out": True,
     "standardize_inputs": True,
@@ -244,10 +244,10 @@ cfg["rfs"] = {
     "meis_path": None,
     # "meis_path": os.path.join(DATA_PATH_BRAINREADER, "meis", "6", "meis.pt"),
     # "spatial_embeddings_path": None,
-    "spatial_embeddings_path": os.path.join(
-        DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
     # "spatial_embeddings_path": os.path.join(
-    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "20-02-2025_17-32", "embedding.pt"), # mouse_v1 (M-1)
+    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
+    "spatial_embeddings_path": os.path.join(
+        DATA_PATH_MONKEYSEE, "spatial_embedding", "20-02-2025_17-32", "embedding.pt"), # mouse_v1 (M-1)
     # "spatial_embeddings_path": os.path.join(...), # cat_v1
     "device": cfg["device"],
 }
