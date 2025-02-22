@@ -252,7 +252,7 @@ def select_annotations(annots, random=True):
 
 from pkgs.MindEyeV2.src.generative_models.sgm.util import append_dims
 def unclip_recon(x, diffusion_engine, vector_suffix,
-                 num_samples=1, offset_noise_level=0.04):
+                 num_samples=1, offset_noise_level=0.04, clamp=True):
     assert x.ndim==3
     if x.shape[0]==1:
         x = x[[0]]
@@ -289,7 +289,10 @@ def unclip_recon(x, diffusion_engine, vector_suffix,
 
         samples_z = diffusion_engine.sampler(denoiser, noised_z, cond=c, uc=uc)
         samples_x = diffusion_engine.decode_first_stage(samples_z)
-        samples = torch.clamp((samples_x*.8+.2), min=0.0, max=1.0)
+        if clamp:
+            samples = torch.clamp((samples_x*.8+.2), min=0.0, max=1.0)
+        else:
+            samples = samples_x
         # samples = torch.clamp((samples_x + .5) / 2.0, min=0.0, max=1.0)
         return samples
 
