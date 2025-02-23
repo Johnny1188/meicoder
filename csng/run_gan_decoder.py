@@ -63,8 +63,8 @@ config["data"]["brainreader_mouse"] = {
     # "batch_size": 4,
     # "batch_size": 5,
     "batch_size": 16,
-    # "batch_size": 16,
     # "sessions": list(range(1, 23)),
+    # "sessions": list(range(1, 9)),
     # "sessions": list(range(1, 7)),
     "sessions": [6],
     "resize_stim_to": (36, 64),
@@ -273,9 +273,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-01-14_09-48-53", "ckpt", "decoder_130.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-19_13-18-05", "ckpt", "decoder_55.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "sp4uhbqn",
+    #     "resume_wandb_id": "59qmw83x",
     # },
     ### for fine-tuning
     # "load_ckpt": {
