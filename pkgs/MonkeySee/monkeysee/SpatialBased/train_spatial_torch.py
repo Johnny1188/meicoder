@@ -236,6 +236,7 @@ cfg["decoder"] = {
     "sum_rfs_out": True,
     "standardize_inputs": True,
     "early_stopping_loss_fn": "Alex(5) Loss",
+    "early_stopping_eval_for_n_samples": 500, 
     "epochs": 300,
     "load_ckpt": None,
     # "load_ckpt": "/home/jan/Desktop/Dev/MonkeySee/data/models/03-02-2025_00-37"
@@ -366,9 +367,9 @@ if __name__ == '__main__':
         ### eval generator
         generator.eval()
         with torch.no_grad():
-            vgg_loss, l1_loss, n_samples = 0, 0, 0
+            vgg_loss, l1_loss, es_loss, n_samples, es_loss_n_samples_counter = 0, 0, 0, 0, 0
             all_targets, all_recons = [], []
-            for batch in val_dl:
+            for b_i, batch in enumerate(val_dl):
                 brains = torch.cat([dp["resp"] for dp in batch], dim=0).unsqueeze(-1).to(cfg["device"])
                 targets = transform_targets(torch.cat([dp["stim"] for dp in batch], dim=0)).to(cfg["device"])
                 inputs = get_inputs(brains=brains, config=cfg, transform_inputs_fn=transform_inputs, RFs=RFs)
@@ -382,13 +383,24 @@ if __name__ == '__main__':
                 all_targets.append(targets.cpu())
                 all_recons.append(recons.cpu().detach())
                 n_samples += len(recons)
+                es_loss_n_samples_counter += len(recons)
+
+                ### eval early stopping loss and average at the end (to prevent OOM)
+                if b_i == len(val_dl) - 1 \
+                   or (
+                        cfg["decoder"]["early_stopping_eval_for_n_samples"] is not None
+                        and es_loss_n_samples_counter >= cfg["decoder"]["early_stopping_eval_for_n_samples"]
+                    ):
+                    es_loss += es_loss_fn(
+                        torch.cat(all_recons, dim=0),
+                        torch.cat(all_targets, dim=0)
+                    ).mean().item() * es_loss_n_samples_counter
+                    all_targets, all_recons = [], []
+                    es_loss_n_samples_counter = 0
 
             vgg_loss /= n_samples
             l1_loss /= n_samples
-            es_loss = es_loss_fn(
-                torch.cat(all_recons, dim=0),
-                torch.cat(all_targets, dim=0)
-            ).mean().item()
+            es_loss /= n_samples
 
             print(f"  val. VGG: {vgg_loss:.4f}\n  val. L1: {l1_loss:.4f}\n  val. ES: {es_loss:.4f}")
             history["G_loss_vgg_val"].append(vgg_loss)
