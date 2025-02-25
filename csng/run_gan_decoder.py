@@ -50,6 +50,8 @@ config = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
+        "max_eval_batches": None,
+        "eval_every_n_samples": None,
     },
     "crop_wins": dict(),
 }
@@ -129,7 +131,9 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #         "exclude": None,
 #         "file_tree": True,
 #         "cuda": "cuda" in config["device"],
-#         "batch_size": 5,
+#         # "batch_size": 5,
+#         "batch_size": 16,
+#         "drop_last": True,
 #         "seed": config["seed"],
 #         "use_cache": False,
 #     },
@@ -263,7 +267,7 @@ config["decoder"] = {
     "D_fake_loss_mul": 0.5,
     "D_real_stim_labels_noise": 0.05,
     "D_fake_stim_labels_noise": 0.05,
-    "n_epochs": 250,
+    "n_epochs": 300,
     "load_ckpt": None,
 
     ### continue training
@@ -273,9 +277,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-19_13-18-05", "ckpt", "decoder_55.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-22_13-17-12", "ckpt", "decoder_215.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "59qmw83x",
+    #     "resume_wandb_id": "a065quyh",
     # },
     ### for fine-tuning
     # "load_ckpt": {
@@ -478,7 +482,9 @@ if "cat_v1" in config["data"]:
                         "dropout": 0.15,
                         "batch_norm": True,
                     },
+                    "apply_resp_transform": False,
                     "shift_coords": False,
+                    "neuron_idxs": None,
                     "device": config["device"],
                 }),
             ],
@@ -563,17 +569,19 @@ if "mouse_v1" in config["data"]:
                             "bias": False,
                             "batch_norm": True,
                             "act_fn": nn.LeakyReLU,
-                            "dropout": 0.1,
+                            "dropout": 0.15,
                         },
                         "ctx_net_config": {
-                            "in_channels": 3, # resp, x, y
-                            "layers_config": [("fc", 32), ("fc", 128), ("fc", 22*36)],
+                            "in_channels": 1, # resp, x, y
+                            "layers_config": [("fc", 8), ("fc", 128), ("fc", 22*36)],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
-                            "dropout": 0.1,
+                            "dropout": 0.15,
                             "batch_norm": True,
                         },
+                        "apply_resp_transform": False,
                         "shift_coords": False,
+                        "neuron_idxs": None,
                         "device": config["device"],
                     }),
                 ],
@@ -749,6 +757,8 @@ def run(cfg):
             dataloaders=dls["val"],
             loss_fns=val_metrics,
             crop_wins=cfg["crop_wins"],
+            max_batches=cfg["data"]["max_eval_batches"],
+            eval_every_n_samples=cfg["data"]["eval_every_n_samples"],
         )["total"][cfg["decoder"]["eval_loss_name"]]
 
         ### save best model

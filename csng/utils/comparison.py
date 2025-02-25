@@ -80,12 +80,33 @@ from csng.losses import FID
 #     return losses
 
 
-def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None):
+def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval_every_n_samples=None):
+    assert "total" not in loss_fns, "Please provide loss functions for each data key separately"
     model.eval()
 
-    ### for tracking over whole dataset
+    ### for tracking over whole dataset (or mini-batches)
     losses = {data_key: {loss_fn_name: 0 for loss_fn_name in data_key_loss_fns.keys()} for data_key, data_key_loss_fns in loss_fns.items()}
+    n_samples_counter = {data_key: 0 for data_key in loss_fns.keys()}
+    n_samples_counter_total = {data_key: 0 for data_key in loss_fns.keys()}
     preds, targets = defaultdict(list), defaultdict(list)
+
+    def update_evals(batch_preds, batch_targets, batch_data_key):
+        ### calculate metrics (mini-batched)
+        assert batch_data_key != "total", "Data key cannot be 'total'"
+        batch_preds = torch.cat(batch_preds, dim=0)
+        batch_targets = torch.cat(batch_targets, dim=0)
+        assert (B := n_samples_counter[batch_data_key]) == batch_preds.shape[0] == batch_targets.shape[0], \
+            "Number of samples in preds and targets must be the same"
+
+        for loss_name, loss_fn in loss_fns[batch_data_key].items():
+            losses[batch_data_key][loss_name] += loss_fn(
+                batch_preds,
+                batch_targets,
+                data_key=batch_data_key,
+                sum_over_samples=False,
+                phase="val",
+            ).item() * B
+        n_samples_counter_total[batch_data_key] += B
 
     ### run eval
     for k, dl in dataloaders.items(): # different data sources (cat_v1, mouse_v1, ...)
@@ -103,28 +124,26 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None):
                 ### append for batched metric eval
                 preds[dp["data_key"]].append(crop(stim_pred, crop_wins[dp["data_key"]]).detach().cpu())
                 targets[dp["data_key"]].append(crop(dp["stim"], crop_wins[dp["data_key"]]).cpu())
+                n_samples_counter[dp["data_key"]] += dp["stim"].shape[0]
+
+                ### eval metrics
+                if eval_every_n_samples and n_samples_counter[dp["data_key"]] >= eval_every_n_samples:
+                    update_evals(batch_preds=preds[dp["data_key"]], batch_targets=targets[dp["data_key"]], batch_data_key=dp["data_key"])
+                    preds[dp["data_key"]], targets[dp["data_key"]] = [], []
+                    n_samples_counter[dp["data_key"]] = 0
 
             if max_batches is not None and b_idx + 1 >= max_batches:
                 break
 
-    ### calculate metrics (batched)
-    preds = {data_key: torch.cat(preds[data_key], dim=0) for data_key in preds.keys()}
-    targets = {data_key: torch.cat(targets[data_key], dim=0) for data_key in targets.keys()}
+    ### final evaluation of metrics + aggregation across data keys
     losses["total"] = defaultdict(float)
-    for data_key in losses:
-        if data_key == "total":
-            continue
+    for data_key in preds.keys():
+        if len(preds[data_key]) > 0:
+            update_evals(batch_preds=preds[data_key], batch_targets=targets[data_key], batch_data_key=data_key)
 
         for loss_name, loss_fn in loss_fns[data_key].items():
-            losses[data_key][loss_name] = loss_fn(
-                preds[data_key],
-                targets[data_key],
-                data_key=data_key,
-                sum_over_samples=False,
-                phase="val",
-            ).item()
-            losses["total"][loss_name] += losses[data_key][loss_name] / (len(losses.keys()) - 1)
-    # losses["total"] = {loss_name: losses["total"][loss_name] / (len(losses.keys()) - 1) for loss_name in losses["total"]}
+            losses[data_key][loss_name] /= n_samples_counter_total[data_key]
+            losses["total"][loss_name] += losses[data_key][loss_name] / len(preds.keys())
 
     return losses
 
