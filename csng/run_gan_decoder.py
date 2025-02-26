@@ -51,7 +51,7 @@ config = {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
         "max_eval_batches": None,
-        "eval_every_n_samples": None,
+        "eval_every_n_samples": 500,
     },
     "crop_wins": dict(),
 }
@@ -111,7 +111,7 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #     },
 # }
 
-# ### mouse v1 data
+### mouse v1 data
 # config["data"]["mouse_v1"] = {
 #     "dataset_fn": "sensorium.datasets.static_loaders",
 #     "dataset_config": {
@@ -465,7 +465,7 @@ if "cat_v1" in config["data"]:
                     "meis_path": os.path.join(DATA_PATH_CAT_V1, "meis", "cat_v1",  "meis.pt"),
                     "n_neurons": 46875,
                     "mei_resize_method": "resize",
-                    "mei_target_shape": (20, 20),
+                    "mei_target_shape": config["crop_wins"]["cat_v1"],
                     "meis_trainable": False,
                     "pointwise_conv_config": {
                         "out_channels": 480,
@@ -475,8 +475,8 @@ if "cat_v1" in config["data"]:
                         "dropout": 0.15,
                     },
                     "ctx_net_config": {
-                        "in_channels": 3, # resp, x, y
-                        "layers_config": [("fc", 64), ("fc", 128), ("fc", 20*20)],
+                        "in_channels": 1, # resp, x, y
+                        "layers_config": [("fc", 8), ("fc", 128), ("fc", np.prod(config["crop_wins"]["cat_v1"]))],
                         "act_fn": nn.LeakyReLU,
                         "out_act_fn": nn.Identity,
                         "dropout": 0.15,
@@ -562,7 +562,7 @@ if "mouse_v1" in config["data"]:
                         "meis_path": os.path.join(DATA_PATH_MOUSE_V1, "meis", data_key,  "meis.pt"),
                         "n_neurons": n_coords.shape[-2],
                         "mei_resize_method": "resize",
-                        "mei_target_shape": (22, 36),
+                        "mei_target_shape": config["crop_wins"][data_key],
                         "meis_trainable": False,
                         "pointwise_conv_config": {
                             "out_channels": 480,
@@ -573,7 +573,7 @@ if "mouse_v1" in config["data"]:
                         },
                         "ctx_net_config": {
                             "in_channels": 1, # resp, x, y
-                            "layers_config": [("fc", 8), ("fc", 128), ("fc", 22*36)],
+                            "layers_config": [("fc", 8), ("fc", 128), ("fc", np.prod(config["crop_wins"][data_key]))],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
                             "dropout": 0.15,
