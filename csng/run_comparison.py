@@ -144,11 +144,12 @@ config["comparison"] = {
     "eval_all_ckpts": False,
     "find_best_ckpt_according_to": None, # "Alex(5)"
     "eval_tier": "test",
+    "eval_every_n_samples": None, # to prevent OOM but not accurate for some losses
     "max_n_reconstruction_samples": None,
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "all",
+        "test",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -783,6 +784,7 @@ def run_comparison(cfg):
                 dataloaders=eval_dls[cfg["comparison"]["eval_tier"]],
                 loss_fns=metrics,
                 crop_wins=cfg["crop_wins"],
+                eval_every_n_samples=cfg["comparison"]["eval_every_n_samples"],
             ))
         print("-----\n")
 
