@@ -80,7 +80,7 @@ from csng.losses import FID
 #     return losses
 
 
-def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval_every_n_samples=None):
+def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval_every_n_samples=None, device=None):
     assert "total" not in loss_fns, "Please provide loss functions for each data key separately"
     model.eval()
 
@@ -113,6 +113,9 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval
         for b in dl:
             ### combine losses from all data keys
             for dp in b:
+                if device is not None:
+                    dp = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k,v in dp.items()}
+
                 ### get predictions
                 stim_pred = model(
                     dp["resp"],

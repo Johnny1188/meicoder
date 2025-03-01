@@ -329,6 +329,25 @@ def update_config_paths(config, new_data_path):
     return config
 
 
+def update_config_keys_to_value(config, keys_to_update, new_val):
+    if isinstance(config, dict):
+        for k, v in config.items():
+            if isinstance(v, dict):
+                update_config_keys_to_value(v, keys_to_update, new_val)
+            elif isinstance(v, list) or isinstance(v, tuple):
+                for _v in v:
+                    update_config_keys_to_value(_v, keys_to_update, new_val)
+            elif k in keys_to_update and isinstance(v, str):
+                config[k] = new_val
+            else:
+                update_config_keys_to_value(v, keys_to_update, new_val)
+    elif isinstance(config, list) or isinstance(config, tuple):
+        for v in config:
+            update_config_keys_to_value(v, keys_to_update, new_val)
+
+    return config
+
+
 def correct_path(path_to_correct, new_data_path_start):
     raise NotImplementedError("This function has not yet been fully tested.")
     

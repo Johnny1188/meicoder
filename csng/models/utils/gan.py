@@ -38,6 +38,8 @@ def init_decoder(config, merge_configs_fn=None):
             config, ckpt_cfg = merge_configs_fn(config, ckpt_cfg)
 
         ### load decoder
+        print(f"[INFO] Loading the {'latest' if not config['decoder']['load_ckpt']['load_best'] else 'best'} model...")
+        print(f"[INFO] Loading the {'core of the' if config['decoder']['load_ckpt']['load_only_core'] else 'full'} model...")
         config["decoder"]["model"] = ckpt_cfg["decoder"]["model"]
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
         decoder.load_from_ckpt(
@@ -48,9 +50,16 @@ def init_decoder(config, merge_configs_fn=None):
         )
 
         ### init optimizers (and load their states)
-        decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])
-        decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
+        decoder.core.G_optim = config["decoder"].get("G_opter_cls", ckpt_cfg["decoder"]["G_opter_cls"])(
+            [*decoder.core.G.parameters(), *decoder.readins.parameters()],
+            **config["decoder"].get("G_opter_kwargs", ckpt_cfg["decoder"]["G_opter_kwargs"])
+        )
+        decoder.core.D_optim = config["decoder"].get("D_opter_cls", ckpt_cfg["decoder"]["D_opter_cls"])(
+            decoder.core.D.parameters(),
+            **config["decoder"].get("D_opter_kwargs", ckpt_cfg["decoder"]["D_opter_kwargs"])
+        )
         if config["decoder"]["load_ckpt"]["load_opter_state"]:
+            print(f"[INFO] Loading the optimizer states...")
             if config["decoder"]["load_ckpt"]["load_best"]:
                 core_state_dict = {".".join(k.split(".")[1:]):v for k,v in ckpt["best"]["decoder"].items() if "G" in k or "D" in k}
             else:
@@ -65,12 +74,12 @@ def init_decoder(config, merge_configs_fn=None):
             best = ckpt["best"]
     else:
         print("[INFO] Initializing the model from scratch...")
-        ckpt = None
+        ckpt, ckpt_cfg = None, dict()
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
         decoder.core.G_optim = config["decoder"]["G_opter_cls"]([*decoder.core.G.parameters(), *decoder.readins.parameters()], **config["decoder"]["G_opter_kwargs"])
         decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
 
-    loss_fn = Loss(model=decoder, config=config["decoder"]["loss"])
+    loss_fn = Loss(model=decoder, config=config["decoder"].get("loss", ckpt_cfg.get("loss", None)))
 
     ### data parallelism
     # decoder = TransparentDataParallel(decoder).to(config["device"])
@@ -240,7 +249,7 @@ def update_D(model, D_loss, config, data_keys=None):
 
 
 # @timeit
-def train(model, dataloaders, loss_fn, config, history, log_freq=100, wdb_run=None, wdb_commit=True):
+def train(model, dataloaders, loss_fn, config, history, log_freq=100, wdb_run=None, wdb_commit=True, device=None):
     for k in ("G_mean_abs_grad_first_layer", "G_mean_abs_grad_last_layer", "D_mean_abs_grad_first_layer", "D_mean_abs_grad_last_layer",
         "D_loss", "G_loss", "G_loss_stim", "G_loss_adv", "D_loss_real", "D_loss_fake"):
         if k not in history.keys(): history[k] = []
@@ -267,6 +276,9 @@ def train(model, dataloaders, loss_fn, config, history, log_freq=100, wdb_run=No
 
             ### combine from all data keys
             for dp in b:
+                if device is not None:
+                    dp = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k,v in dp.items()}
+
                 ### get losses
                 G_loss_b, G_loss_stim_b, G_loss_adv_b, D_loss_b, D_real_stim_loss_b, D_fake_stim_loss_b, stim_pred = get_training_losses(
                     model=model,

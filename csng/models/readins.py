@@ -15,12 +15,12 @@ from csng.utils.data import crop
 
 
 class MultiReadIn(nn.Module):
-    """Decoder that consists of multiple ReadIn blocks for different data keys and a shared core block.
+    """Decoder that consists of a single core module and multiple ReadIn blocks for different data keys (data key ~ dataset name).
     
     :param readins_config: list of dictionaries, each containing the configuration of a ReadIn block.
     :param core_cls: class of the core
     :param core_config: configuration of the core
-    :param crop_stim_fn: function to crop the stimulus after the core block
+    :param crop_stim_fn (optional): function to crop the stimulus after the core block
     """
 
     def __init__(self, readins_config, core_cls, core_config, crop_stim_fn=None):
@@ -577,21 +577,23 @@ class ConvReadIn(ReadIn):
 class MEIReadIn(ReadIn):
     """Most Exciting Input (MEI) ReadIn block.
 
-    Contextually modulates the MEIs based on the responses and neuron coordinates, and applies a pointwise convolutional layer to the modulated MEIs.
+    Contextually modulates MEIs based on the responses (and neuron coordinates),
+    and then applies a pointwise convolutional layer to the modulated MEIs.
 
     :param meis_path: path to the MEIs
     :param n_neurons: number of neurons
+    :param mei_target_shape: target shape of the MEIs (H, W)
     :param mei_resize_method: method to resize the MEIs (crop or resize)
-    :param mei_target_shape: target shape of the MEIs
-    :param meis_trainable: whether the MEIs are trainable
+    :param meis_trainable: whether the MEIs are trainable, i.e. optimized along with other parameters
     :param pointwise_conv_config: configuration of the pointwise convolutional layer (set to None if not used)
     :param ctx_net_config: configuration of the context network
-    :param apply_resp_transform: whether to apply the clamp log10 transformation to the responses before the first layer
+    :param apply_resp_transform: whether to apply the clamp-log10 transformation to the responses before the first layer
     :param shift_coords: whether to shift the MEIs based on the pupil center
     :param shifter_net_layers: list of tuples, each containing the configuration of a layer of the shifter network
     :param shifter_net_act_fn: activation function of the shifter network
     :param shifter_net_out_act_fn: output activation function of the shifter network
     :param out_channels: number of output channels (if None, it is set automatically)
+    :param neuron_idxs: selection of neurons to use (if None, all neurons are used)
     :param device: device
     """
 
@@ -599,8 +601,8 @@ class MEIReadIn(ReadIn):
         self,
         meis_path,
         n_neurons,
-        mei_resize_method="crop",
-        mei_target_shape=(22, 36),
+        mei_target_shape,
+        mei_resize_method="resize",
         meis_trainable=False,
         pointwise_conv_config={
             "out_channels": 256,
@@ -617,7 +619,7 @@ class MEIReadIn(ReadIn):
             "batch_norm": False,
         },
         apply_resp_transform=False,
-        shift_coords=True,
+        shift_coords=False,
         shifter_net_layers=[("fc", 10), ("fc", 10), ("fc", 2)],
         shifter_net_act_fn=nn.LeakyReLU,
         shifter_net_out_act_fn=nn.Tanh,
@@ -630,8 +632,10 @@ class MEIReadIn(ReadIn):
         self.requires_neuron_coords = True
         self.requires_pupil_center = True
         self.neuron_idxs = neuron_idxs
-
         self.n_neurons = n_neurons if neuron_idxs is None else len(neuron_idxs)
+        self.device = device
+
+        ### setup MEIs
         self.meis_path = meis_path
         self.meis = torch.load(meis_path)["meis"].to(device)
         if self.neuron_idxs is not None:
@@ -647,6 +651,7 @@ class MEIReadIn(ReadIn):
         if meis_trainable:
             self.meis = nn.Parameter(self.meis)
 
+        ### shifter network
         self.shift_coords = shift_coords
         self.shifter_net = None
         if shift_coords:
@@ -659,6 +664,7 @@ class MEIReadIn(ReadIn):
                 batch_norm=False,
             )
 
+        ### pointwise convolutional layer
         self.pointwise_conv_config = pointwise_conv_config
         self.pointwise_conv = nn.Identity()
         if pointwise_conv_config is not None:
@@ -677,11 +683,10 @@ class MEIReadIn(ReadIn):
             )
         self.out_channels = pointwise_conv_config["out_channels"] if out_channels is None else out_channels
 
+        ### context network
         self.resp_transform = self._resp_transform if apply_resp_transform else nn.Identity()
         self.ctx_net_config = ctx_net_config
         self.ctx_net = build_layers(**ctx_net_config)
-
-        self.device = device
 
     @staticmethod
     def _resp_transform(x):
@@ -692,6 +697,7 @@ class MEIReadIn(ReadIn):
         :param x: neuronal responses (B, N_neurons)
         :param neuron_coords: neuronal coordinates (B, N_neurons, 2 or 3) or None if not used
         :param pupil_center: pupil center (B, 2) or None if shift_coords=False
+
         :return: channel reduced contextualized MEIs (B, N_reduced, H, W)
         """
         ### filter neurons
@@ -701,7 +707,7 @@ class MEIReadIn(ReadIn):
 
         B, n_neurons = x.shape
 
-        ### prepare neuron_coords
+        ### prepare neuron coordinates
         if self.ctx_net_config["in_channels"] != 1 and neuron_coords.ndim == 2:
             neuron_coords = neuron_coords.unsqueeze(0).repeat(B, 1, 1)
         if self.shift_coords:
