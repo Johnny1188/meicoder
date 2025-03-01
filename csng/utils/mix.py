@@ -301,14 +301,15 @@ def update_config(config, config_updates):
     return config
 
 
-def update_config_paths(config, new_data_path):
+def update_config_paths(config, new_data_path, replace_until_folder="csng"):
     def update_path_str(old_path, new_path):
         ### count number of folders in new_dat_path from the root "/1/2/3/4/5" -> 5,
         ###   and then replace only the first 5 folders in the old path
         old_data_path_split = old_path.split("/")
-        new_data_path_split = new_path.split("/")
-        n_folders = len(new_data_path_split)
-        return os.path.join("/", *new_data_path_split[:n_folders], *old_data_path_split[n_folders:])
+        if replace_until_folder not in old_data_path_split:
+            return old_path
+        n_folders_old = old_data_path_split.index(replace_until_folder) + 1
+        return os.path.join(new_data_path, *old_data_path_split[n_folders_old:])
 
     ### update paths that use remote DATA_PATH with new_data_path
     if isinstance(config, dict):
