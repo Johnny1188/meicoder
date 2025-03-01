@@ -1,0 +1,199 @@
+import os
+import numpy as np
+import json
+import dill
+from pathlib import Path
+import torch
+from collections import OrderedDict
+from nnfabrik.builder import get_model, get_trainer
+from sensorium.utility import get_correlations
+from sensorium.utility.scores import get_poisson_loss
+from sensorium.utility.measure_helpers import get_df_for_scores
+
+from csng.utils.mix import seed_all
+from csng.cat_v1.data import get_cat_v1_dataloaders
+
+
+DATA_PATH = os.environ["DATA_PATH"]
+DATA_PATH_CAT_V1 = os.path.join(DATA_PATH, "cat_V1_spiking_model", "50K_single_trial_dataset")
+
+
+
+### setup config
+config = {
+    "device": os.environ["DEVICE"],
+    "seed": 0,
+    "data": {
+        "mixing_strategy": "sequential", # needed only with multiple base dataloaders
+        "max_training_batches": None,
+    },
+    "save_path": os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    "train": True,
+}
+
+### cat v1 data
+config["data"]["cat_v1"] = {
+    "dataset_config": {
+        "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
+        "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
+        "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
+        "image_size": [50, 50],
+        "crop": False,
+        "batch_size": 128,
+        "stim_keys": ("stim",),
+        "resp_keys": ("exc_resp", "inh_resp"),
+        "return_coords": True,
+        "return_ori": False,
+        "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
+        "cached": False,
+        "stim_normalize_mean": 46.143,
+        "stim_normalize_std": 24.960,
+        "resp_normalize_mean": None, # don't center responses
+        "resp_normalize_std": torch.load(
+            os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
+        ),
+        "clamp_neg_resp": False,
+    },
+}
+
+### model
+_dls = get_cat_v1_dataloaders(**config["data"]["cat_v1"]["dataset_config"])
+config["model_fn"] = "sensorium.models.stacked_core_full_gauss_readout"
+config["model_config"] = {
+    ### cobos et al. 2022?
+    # "layers": 3,
+    # "input_kern": 15,
+    # "hidden_channels": 32,
+    # "depth_separable": False,
+    # "laplace_pyramid": True,
+
+    "pad_input": False,
+    "layers": 4,
+    "input_kern": 9,
+    "gamma_input": 6.3831,
+    "gamma_readout": 0.0076,
+    "hidden_kern": 7,
+    "hidden_channels": 64,
+    "hidden_padding": 3,
+    "depth_separable": True,
+    # "grid_mean_predictor": None, # neuron coords are not available
+    "grid_mean_predictor": {
+        "type": "cortex",
+        "input_dimensions": 2,
+        "hidden_layers": 1,
+        "hidden_features": 30,
+        "final_tanh": True,
+    },
+    "init_sigma": 0.1,
+    "init_mu_range": 0.3,
+    "gauss_type": "full",
+    "shifter": False,
+    "stack": -1,
+    "mean_activity_dict": {
+        "cat_v1": torch.load(
+            os.path.join(DATA_PATH_CAT_V1, "responses_mean.pt")
+        ).to(config["device"])
+    },
+}
+del _dls
+
+### trainer config
+config["trainer_fn"] = "sensorium.training.standard_trainer"
+config["trainer_config"] = {
+    "max_iter": 100,
+    "verbose": True,
+    "lr_decay_steps": 4,
+    "avg_loss": False,
+    "lr_init": 0.009,
+    "track_training": True,
+    "weight_decay": 0.,
+    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_c_latest_ckpt.pt"),
+}
+
+class Neurons:
+    def __init__(self, coords):
+        self.cell_motor_coordinates = coords
+
+
+### encoder training pipeline
+def run_training(cfg):
+    print(f"... Running on {cfg['device']} ...")
+    seed_all(cfg["seed"])
+
+    ### prepare dataloaders compatible w/ nnfabrik
+    _dls = get_cat_v1_dataloaders(**cfg["data"]["cat_v1"]["dataset_config"])
+    for k in _dls.keys():
+        _dls[k].dataset.neurons = Neurons(coords=_dls[k].dataset.coords["all"].numpy())
+    dls = OrderedDict({
+        "train": OrderedDict({"cat_v1": _dls["train"]}),
+        "validation": OrderedDict({"cat_v1": _dls["val"]}),
+        "test": OrderedDict({"cat_v1": _dls["test"]}),
+    })
+
+    ### build the encoder model
+    model = get_model(
+        model_fn=cfg["model_fn"],
+        model_config=cfg["model_config"],
+        dataloaders=dls,
+        seed=cfg["seed"],
+    )
+
+    ### load ckpt
+    if cfg.get("load_ckpt", None) is not None:
+        print(f"[INFO] Loading ckpt from {cfg['load_ckpt']}")
+        model.load_state_dict(torch.load(cfg["load_ckpt"], pickle_module=dill)["model"])
+    model.to(cfg["device"])
+    print(f"[INFO] Config: {json.dumps(cfg, indent=2, default=str)}")
+
+    ### train
+    if cfg["train"]:
+        seed_all(cfg["seed"])
+        trainer = get_trainer(trainer_fn=cfg["trainer_fn"], trainer_config=cfg["trainer_config"])
+        print(f"[INFO] Training starts...")
+        seed_all(cfg["seed"])
+        validation_score, trainer_output, state_dict = trainer(model, dls, seed=cfg["seed"])
+        print(f"{trainer_output=}")
+        print(f"{validation_score=}")
+
+        ### save
+        print(f"[INFO] Saving the model...")
+        torch.save({
+            "config": cfg,
+            "model": model.state_dict(),
+            "val_score": validation_score,
+            "trainer_output": trainer_output,
+            "state_dict": state_dict,
+        }, cfg["save_path"], pickle_module=dill)
+
+    ### evaluate
+    model.eval()
+    print(f"[INFO] Evaluating correlation to average...")
+    seed_all(cfg["seed"])
+    correlation_to_avg = get_correlations(model, dls, tier="test", device=cfg["device"], as_dict=True)
+    df_corr_avg = get_df_for_scores(session_dict=correlation_to_avg, measure_attribute="Correlation to Average").groupby("dataset").mean()
+    print(df_corr_avg)
+
+    print(f"[INFO] Evaluating validation and test loss...")
+    print("Validation loss: ", get_poisson_loss(
+        model,
+        dls["validation"],
+        device=cfg["device"],
+        as_dict=False,
+        avg=True,
+        per_neuron=False,
+        eps=1e-12,
+    ))
+    print("Test loss: ", get_poisson_loss(
+        model,
+        dls["test"],
+        device=cfg["device"],
+        as_dict=False,
+        avg=True,
+        per_neuron=False,
+        eps=1e-12,
+    ))
+
+
+if __name__ == "__main__":
+    run_training(cfg=config)
