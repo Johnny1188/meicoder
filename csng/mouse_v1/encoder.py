@@ -13,7 +13,7 @@ DATA_PATH_MOUSE_V1 = os.path.join(DATA_PATH, "mouse_v1_sensorium22")
 def get_encoder(ckpt_path, eval_mode=True, device="cpu"):
     print(f"[INFO] Loading encoder checkpoint from {ckpt_path}")
     ckpt = torch.load(ckpt_path, pickle_module=dill, map_location=device)
-    ckpt["config"] = update_config_paths(config=ckpt["config"], new_data_path=DATA_PATH_MOUSE_V1)
+    ckpt["config"] = update_config_paths(config=ckpt["config"], new_data_path=DATA_PATH_MOUSE_V1, replace_until_folder="mouse_v1_sensorium22")
     ckpt["config"]["data"]["mouse_v1"]["device"] = device
 
     ### prepare dataloaders compatible w/ nnfabrik
