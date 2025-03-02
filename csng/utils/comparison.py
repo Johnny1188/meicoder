@@ -110,7 +110,7 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval
 
     ### run eval
     for k, dl in dataloaders.items(): # different data sources (cat_v1, mouse_v1, ...)
-        for b in dl:
+        for b_idx, b in enumerate(dl):
             ### combine losses from all data keys
             for dp in b:
                 if device is not None:
