@@ -9,7 +9,6 @@ from csng.utils.mix import update_config_paths, seed_all
 from csng.data import get_dataloaders
 
 
-
 class MonkeySeeDecoder(nn.Module):
     def __init__(
         self,

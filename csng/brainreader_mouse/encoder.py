@@ -12,7 +12,7 @@ DATA_PATH_BRAINREADER = os.path.join(os.environ["DATA_PATH"], "brainreader")
 def get_encoder(ckpt_path, eval_mode=True, device="cpu"):
     print(f"[INFO] Loading encoder checkpoint from {ckpt_path}")
     ckpt = torch.load(ckpt_path, pickle_module=dill, map_location=device)
-    ckpt["config"] = update_config_paths(config=ckpt["config"], new_data_path=DATA_PATH_BRAINREADER)
+    ckpt["config"] = update_config_paths(config=ckpt["config"], new_data_path=DATA_PATH_BRAINREADER, replace_until_folder="brainreader")
     ckpt["config"]["data"]["brainreader_mouse"]["device"] = device
 
     ### prepare dataloaders compatible w/ nnfabrik

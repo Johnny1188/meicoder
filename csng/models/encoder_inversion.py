@@ -39,9 +39,9 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 config = {
     "device": os.environ["DEVICE"],
     "seed": 0,
-    "data": dict(),
+    "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "brainreader_mouse",
+    "data_name": "mouse_v1",
 }
 
 ### data config
@@ -52,7 +52,7 @@ if config["data_name"] == "brainreader_mouse":
         "mixing_strategy": "sequential",
         "max_batches": None,
         "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-        "batch_size": 16,
+        "batch_size": 32,
         "sessions": [6],
         "resize_stim_to": (36, 64),
         "normalize_stim": True,
@@ -63,7 +63,7 @@ if config["data_name"] == "brainreader_mouse":
         "avg_test_resp": True,
     }
     config["crop_win"] = None
-elif config["data_name"] == "cat_V1":
+elif config["data_name"] == "cat_v1":
     config["data"]["cat_v1"] = {
         "dataset_config": {
             "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
@@ -88,7 +88,7 @@ elif config["data_name"] == "cat_V1":
         },
     }
     config["crop_win"] = (20, 20)
-elif config["data_name"] == "mouse_V1":
+elif config["data_name"] == "mouse_v1":
     config["data"]["mouse_v1"] = {
         "dataset_fn": "sensorium.datasets.static_loaders",
         "dataset_config": {
@@ -108,7 +108,7 @@ elif config["data_name"] == "mouse_V1":
             "exclude": None,
             "file_tree": True,
             "cuda": "cuda" in config["device"],
-            "batch_size": 16,
+            "batch_size": 32,
             "drop_last": True,
             "seed": config["seed"],
             "use_cache": False,
@@ -131,7 +131,9 @@ elif config["data_name"] == "mouse_V1":
 config["enc_inv"] = {
     "model": {
         "encoder_paths": [
-            os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+            # os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+            # os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
+            os.path.join(DATA_PATH, "models", "encoders", "encoder_mall.pt"),
         ],
         "encoder_config": {
             "img_dims": (1, 36, 64),
