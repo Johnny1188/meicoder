@@ -137,7 +137,7 @@ config["enc_inv"] = {
             os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
         ],
         "encoder_config": {
-            "img_dims": (1, 36, 64),
+            "img_dims": (1, 50, 50),
             "stim_pred_init": "randn",
             "lr": 2000,
             "n_steps": 1000,
@@ -155,7 +155,7 @@ config["enc_inv"] = {
     "loss_fns": get_metrics(inp_zscored=check_if_data_zscored(cfg=config), crop_win=config["crop_win"], device=config["device"]),
     "save_dir": os.path.join(DATA_PATH, "models", "inverted_encoder"),
     "find_best_ckpt_according_to": "Alex(5) Loss",
-    "max_batches": None,
+    "max_batches": 30,
 }
 
 ### hyperparam runs config - either manually selected or grid search

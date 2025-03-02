@@ -137,7 +137,7 @@ class MultiReadIn(nn.Module):
         if data_key is not None:
             for l in self.readins[data_key]:
                 if isinstance(l, ReadIn):
-                    x = l(x, neuron_coords=neuron_coords, pupil_center=pupil_center)
+                    x = l(x, neuron_coords=neuron_coords[data_key] if isinstance(neuron_coords, dict) else neuron_coords, pupil_center=pupil_center)
                 else:
                     x = l(x)
 

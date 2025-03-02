@@ -45,7 +45,7 @@ class MonkeySeeDecoder(nn.Module):
         elif "cat_v1" in self.cfg["data"]:
             print(
                 f"[WARNING] MonkeySee decoder expects images {'z-scored' if (self.cfg['data']['cat_v1']['dataset_config']['stim_normalize_mean'] and self.cfg['data']['cat_v1']['dataset_config']['stim_normalize_std']) else 'in [0, 1] range'}"
-                f" and responses {'z-scored (per-neuron)' if (self.cfg['data']['cat_v1']['dataset_config']['resp_normalize_mean'] and self.cfg['data']['cat_v1']['dataset_config']['resp_normalize_std']) else 'not z-scored'}."
+                f" and responses {'z-scored (per-neuron)' if (self.cfg['data']['cat_v1']['dataset_config']['resp_normalize_mean'] is not None and self.cfg['data']['cat_v1']['dataset_config']['resp_normalize_std'] is not None) else 'not z-scored'}."
             )
         else:
             raise ValueError("Unknown dataset.")
