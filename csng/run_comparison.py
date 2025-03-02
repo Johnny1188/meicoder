@@ -54,7 +54,7 @@ config = {
 #     "drop_last": True,
 #     "resize_stim_to": (36, 64),
 #     "normalize_stim": True,
-#     "normalize_resp": False,  # MUST BE TRUE FOR MONKEYSEE
+#     "normalize_resp": False,
 #     "div_resp_by_std": True,
 #     "clamp_neg_resp": False,
 #     "additional_keys": None,
@@ -236,9 +236,8 @@ config["comparison"]["to_compare"] = {
     #                     new_data_path=DATA_PATH,
     #                 ),
     #                 config_updates={
-    #                     "data__brainreader_mouse__batch_size": 40,
-    #                     # "data__brainreader_mouse__batch_size": 36,
-    #                     # "data__brainreader_mouse__drop_last": True,
+    #                     "data__brainreader_mouse__batch_size": config["data"]["brainreader_mouse"]["batch_size"],
+    #                     "data__brainreader_mouse__drop_last": config["data"]["brainreader_mouse"]["drop_last"],
     #                 }
     #             )
     #         ))[0]["train"]["brainreader_mouse"],
@@ -255,9 +254,10 @@ config["comparison"]["to_compare"] = {
                     config=update_config_paths(
                         config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
                         new_data_path=DATA_PATH,
+                        replace_until_folder="csng",
                     ),
                     config_updates={
-                        "data__mouse_v1__batch_size": 100,
+                        "data__mouse_v1__test_batch_size": config["data"]["mouse_v1"]["test_batch_size"],
                     }
                 )
             ))[0]["train"]["mouse_v1"],
@@ -282,7 +282,7 @@ config["comparison"]["to_compare"] = {
         "decoder": SavedReconstructionsDecoder(
             reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1_test", "subj21067-10-18_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
             data_key="21067-10-18",
-            zscore_reconstructions=False,
+            zscore_reconstructions=True,
             device=config["device"],
         ),
         "run_name": None,

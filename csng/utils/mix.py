@@ -317,16 +317,23 @@ def update_config_paths(config, new_data_path, replace_until_folder="csng"):
             if isinstance(v, dict):
                 update_config_paths(v, new_data_path, replace_until_folder)
             elif isinstance(v, list) or isinstance(v, tuple):
-                for _v in v:
-                    update_config_paths(_v, new_data_path, replace_until_folder)
+                new_v = []
+                for v_idx in range(len(v)):
+                    new_v.append(update_config_paths(v[v_idx], new_data_path, replace_until_folder))
+                config[k] = new_v
             elif k in ["data_dir", "ckpt_path", "save_path", "save_dir", "meis_path", "dir",
-                       "train_path", "val_path", "test_path", "coords_ori_filepath"] and isinstance(v, str):
+                       "train_path", "val_path", "test_path", "coords_ori_filepath", "paths",
+                       "spatial_embeddings_path"] and isinstance(v, str):
                 config[k] = update_path_str(v, new_data_path)
             else:
                 update_config_paths(v, new_data_path, replace_until_folder)
     elif isinstance(config, list) or isinstance(config, tuple):
-        for v in config:
-            update_config_paths(v, new_data_path, replace_until_folder)
+        new_config = []
+        for v_idx in range(len(config)):
+            new_config.append(update_config_paths(config[v_idx], new_data_path, replace_until_folder))
+        config = new_config
+    elif isinstance(config, str):
+        config = update_path_str(config, new_data_path)
 
     return config
 
