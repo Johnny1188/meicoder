@@ -14,19 +14,20 @@ import itertools
 
 import csng
 from csng.models.ensemble import EnsembleInvEnc
+from csng.data import get_dataloaders
 from csng.utils.mix import seed_all, plot_comparison, dict_to_str, slugify, check_if_data_zscored
 from csng.utils.data import standardize, normalize, crop
 from csng.utils.comparison import find_best_ckpt, eval_decoder
 from csng.losses import get_metrics
 from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
 from csng.mouse_v1.encoder import get_encoder as get_encoder_mouse_v1
-# from csng.cat_V1.encoder import get_encoder as get_encoder_cat_v1
+from csng.cat_v1.encoder import get_encoder as get_encoder_cat_v1
+
 get_encoder_fns = {
     "brainreader_mouse": get_encoder_brainreader,
     "mouse_v1": get_encoder_mouse_v1,
-    # "cat_v1": get_encoder_cat_v1,
+    "cat_v1": get_encoder_cat_v1,
 }
-from csng.data import get_dataloaders
 
 lt.monkey_patch()
 DATA_PATH = os.environ["DATA_PATH"]
@@ -41,12 +42,11 @@ config = {
     "seed": 0,
     "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "mouse_v1",
+    "data_name": "cat_v1",
 }
 
 ### data config
 if config["data_name"] == "brainreader_mouse":
-    ### brainreader mouse data
     config["data"]["brainreader_mouse"] = {
         "device": config["device"],
         "mixing_strategy": "sequential",
@@ -71,7 +71,7 @@ elif config["data_name"] == "cat_v1":
             "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
             "image_size": [50, 50],
             "crop": False,
-            "batch_size": 16,
+            "batch_size": 32,
             "stim_keys": ("stim",),
             "resp_keys": ("exc_resp", "inh_resp"),
             "return_coords": True,
@@ -131,9 +131,10 @@ elif config["data_name"] == "mouse_v1":
 config["enc_inv"] = {
     "model": {
         "encoder_paths": [
-            # os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-            # os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
-            os.path.join(DATA_PATH, "models", "encoders", "encoder_mall.pt"),
+            # os.path.join(DATA_PATH, "models", "encoders", "encoder_ball.pt"),
+            # os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
+            # os.path.join(DATA_PATH, "models", "encoders", "encoder_mall.pt"),
+            os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
         ],
         "encoder_config": {
             "img_dims": (1, 36, 64),

@@ -6,8 +6,7 @@ from nnfabrik.builder import get_model
 from csng.utils.mix import update_config_paths
 from csng.mouse_v1.data import get_mouse_v1_dataloaders
 
-DATA_PATH = os.environ["DATA_PATH"]
-DATA_PATH_MOUSE_V1 = os.path.join(DATA_PATH, "mouse_v1_sensorium22")
+DATA_PATH_MOUSE_V1 = os.path.join(os.environ["DATA_PATH"], "mouse_v1_sensorium22")
 
 
 def get_encoder(ckpt_path, eval_mode=True, device="cpu"):

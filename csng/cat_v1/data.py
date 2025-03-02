@@ -31,21 +31,22 @@ def get_cat_v1_dataloaders(
         stim_keys=("stim",),
         resp_keys=("resp",),
         verbose=False,
+        device="cpu",
     ):
     ### prepare stimulus transforms
     if image_size != -1 and crop:
         stim_transform = [
             NumpyImageCrop(image_size),
-            NumpyToTensor()
+            NumpyToTensor(device=device)
         ]
     elif image_size != -1 and not crop:
         stim_transform = [
             NumpyImageResize(image_size),
-            NumpyToTensor()
+            NumpyToTensor(device=device)
         ]
     else:
         stim_transform = [
-            NumpyToTensor(),
+            NumpyToTensor(device=device),
             lambda x: np.expand_dims(x, 0)
         ]
     if stim_normalize_mean is not None and stim_normalize_std is not None:
@@ -53,7 +54,7 @@ def get_cat_v1_dataloaders(
     stim_transform = torchvision.transforms.Compose(stim_transform)
 
     ### prepare response transforms
-    resp_transform = [NumpyToTensor()]
+    resp_transform = [NumpyToTensor(device=device)]
     if resp_normalize_mean is not None and resp_normalize_std is not None:
         if clamp_neg_resp:
             print("[WARNING]: clamp_neg_resp is True, but response normalization is also applied. This may lead to negative responses after normalization which will be clamped to 0.")
