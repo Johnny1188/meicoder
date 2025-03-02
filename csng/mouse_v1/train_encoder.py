@@ -25,7 +25,7 @@ config = {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
-    "save_path": os.path.join(DATA_PATH, "models", "encoders", "encoder_mall.pt"),
+    "save_path": os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
     # "load_ckpt": os.path.join(DATA_PATH, "models", "encoders", "encoder_mall.pt"),
     "train": True,
 }
@@ -36,10 +36,10 @@ config["data"]["mouse_v1"] = {
     "dataset_config": {
         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-            os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-            os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-            os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-            os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
         ],
         "normalize": True,
         "z_score_responses": False,
@@ -108,14 +108,14 @@ del _dls
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"
 config["trainer_config"] = {
-    "max_iter": 200,
+    "max_iter": 100,
     "verbose": True,
     "lr_decay_steps": 4,
     "avg_loss": False,
     "lr_init": 0.009,
     "track_training": True,
     "weight_decay": 0.,
-    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_mall_latest_ckpt.pt"),
+    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_m1_latest_ckpt.pt"),
 }
 
 

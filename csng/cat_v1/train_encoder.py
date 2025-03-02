@@ -40,7 +40,7 @@ config["data"]["cat_v1"] = {
         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
         "image_size": [50, 50],
         "crop": False,
-        "batch_size": 128,
+        "batch_size": 64,
         "stim_keys": ("stim",),
         "resp_keys": ("exc_resp", "inh_resp"),
         "return_coords": True,

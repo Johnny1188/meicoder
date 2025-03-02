@@ -9,6 +9,7 @@ from csng.utils.mix import update_config_paths, seed_all
 from csng.data import get_dataloaders
 
 
+
 class MonkeySeeDecoder(nn.Module):
     def __init__(
         self,
@@ -31,10 +32,24 @@ class MonkeySeeDecoder(nn.Module):
                 self.cfg["rfs"]["spatial_embeddings_path"].split("/")[-2],
                 self.cfg["rfs"]["spatial_embeddings_path"].split("/")[-1],
             )
-        print(
-            f"[WARNING] MonkeySee decoder expects images {'z-scored' if self.cfg['data']['brainreader_mouse']['normalize_stim'] else 'in [0, 1] range'}"
-            f" and responses {'z-scored (per-neuron)' if self.cfg['data']['brainreader_mouse']['normalize_resp'] else 'not z-scored'}."
-        )
+
+        if "brainreader_mouse" in self.cfg["data"]:
+            print(
+                f"[WARNING] MonkeySee decoder expects images {'z-scored' if self.cfg['data']['brainreader_mouse']['normalize_stim'] else 'in [0, 1] range'}"
+                f" and responses {'z-scored (per-neuron)' if self.cfg['data']['brainreader_mouse']['normalize_resp'] else 'not z-scored'}."
+            )
+        elif "mouse_v1" in self.cfg["data"]:
+            print(
+                f"[WARNING] MonkeySee decoder expects images {'z-scored' if self.cfg['data']['mouse_v1']['dataset_config']['normalize'] else 'in [0, 1] range'}"
+                f" and responses {'z-scored (per-neuron)' if self.cfg['data']['mouse_v1']['dataset_config']['z_score_responses'] else 'not z-scored'}."
+            )
+        elif "cat_v1" in self.cfg["data"]:
+            print(
+                f"[WARNING] MonkeySee decoder expects images {'z-scored' if (self.cfg['data']['cat_v1']['dataset_config']['stim_normalize_mean'] and self.cfg['data']['cat_v1']['dataset_config']['stim_normalize_std']) else 'in [0, 1] range'}"
+                f" and responses {'z-scored (per-neuron)' if (self.cfg['data']['cat_v1']['dataset_config']['resp_normalize_mean'] and self.cfg['data']['cat_v1']['dataset_config']['resp_normalize_std']) else 'not z-scored'}."
+            )
+        else:
+            raise ValueError("Unknown dataset.")
 
         ### load RFs
         seed_all(self.cfg["seed"])
@@ -62,14 +77,10 @@ class MonkeySeeDecoder(nn.Module):
         ckpt_key_to_load_split = ckpt_key_to_load.split("__")  # nested keys
         state_dict_to_load = ckpt
         for key in ckpt_key_to_load_split:
-            print(key, state_dict_to_load.keys())
             state_dict_to_load = state_dict_to_load[key]
         return state_dict_to_load
 
     def forward(self, x, data_key, neuron_coords=None, pupil_center=None):
-        assert data_key == "6", "MonkeySeeDecoder only supports data_key='6'."
-
         inputs = get_inputs(brains=x, config=self.cfg, transform_inputs_fn=self.transform_inputs, RFs=self.RFs)
         recons = self.generator(inputs, return_inv_ret_maps=False)
-
         return recons
