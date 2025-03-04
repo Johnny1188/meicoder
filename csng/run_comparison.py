@@ -141,14 +141,14 @@ config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
 config["comparison"] = {
     "load_best": True,
     "eval_all_ckpts": False,
-    "find_best_ckpt_according_to": None, # "Alex(5)"
+    "find_best_ckpt_according_to": None, # "Alex(5) Loss"
     "eval_tier": "test",
     "eval_every_n_samples": None, # to prevent OOM but not accurate for some losses
     "max_n_reconstruction_samples": None,
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "cat_v1",
+        "test",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -181,13 +181,16 @@ config["comparison"]["to_compare"] = {
     # "Inverted Encoder": { # brainreader mouse
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
-    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    #             # os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    #             os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
     #         ],
     #         encoder_config={
     #             "img_dims": (1, 36, 64),
     #             "stim_pred_init": "randn",
-    #             "lr": 2000,
-    #             "n_steps": 1000,
+    #             # "lr": 2000,
+    #             # "n_steps": 1000,
+    #             "lr": 500,
+    #             "n_steps": 2000,
     #             "img_grad_gauss_blur_sigma": 1,
     #             "jitter": None,
     #             "mse_reduction": "per_sample_mean_sum",
@@ -220,27 +223,27 @@ config["comparison"]["to_compare"] = {
     #     ),
     #     "run_name": None,
     # },
-    "Inverted Encoder": { # cat v1
-        "decoder": EnsembleInvEnc(
-            encoder_paths=[
-                os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
-            ],
-            encoder_config={
-                "img_dims": (1, 50, 50),
-                "stim_pred_init": "randn",
-                "lr": 500,
-                "n_steps": 2000,
-                "img_grad_gauss_blur_sigma": 1,
-                "jitter": None,
-                "mse_reduction": "per_sample_mean_sum",
-                "device": config["device"],
-            },
-            use_brainreader_encoder=True,
-            get_encoder_fn=get_encoder_cat_v1,
-            device=config["device"],
-        ),
-        "run_name": None,
-    },
+    # "Inverted Encoder": { # cat v1
+    #     "decoder": EnsembleInvEnc(
+    #         encoder_paths=[
+    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+    #         ],
+    #         encoder_config={
+    #             "img_dims": (1, 50, 50),
+    #             "stim_pred_init": "randn",
+    #             "lr": 500,
+    #             "n_steps": 2000,
+    #             "img_grad_gauss_blur_sigma": 2,
+    #             "jitter": None,
+    #             "mse_reduction": "per_sample_mean_sum",
+    #             "device": config["device"],
+    #         },
+    #         use_brainreader_encoder=True,
+    #         get_encoder_fn=get_encoder_cat_v1,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
 
 
     ### --- MonkeySee ---
@@ -284,26 +287,26 @@ config["comparison"]["to_compare"] = {
     #     "use_data_config": monkeysee_config,
     #     "run_name": None,
     # },
-    "MonkeySee": { # cat v1
-        "decoder": MonkeySeeDecoder(
-            ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "23-02-2025_11-00")),
-            ckpt_key_to_load="best_es",
-            train_dl=get_dataloaders(config=(monkeysee_config := update_config(
-                    config=update_config_paths(
-                        config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
-                        new_data_path=DATA_PATH,
-                        replace_until_folder="csng",
-                    ),
-                    config_updates={
-                        "data__cat_v1__dataset_config__batch_size": config["data"]["cat_v1"]["dataset_config"]["batch_size"],
-                    }
-                )
-            ))[0]["train"]["cat_v1"],
-            new_data_path=DATA_PATH,
-        ),
-        "use_data_config": monkeysee_config,
-        "run_name": None,
-    },
+    # "MonkeySee": { # cat v1
+    #     "decoder": MonkeySeeDecoder(
+    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "23-02-2025_11-00")),
+    #         ckpt_key_to_load="best_es",
+    #         train_dl=get_dataloaders(config=(monkeysee_config := update_config(
+    #                 config=update_config_paths(
+    #                     config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
+    #                     new_data_path=DATA_PATH,
+    #                     replace_until_folder="csng",
+    #                 ),
+    #                 config_updates={
+    #                     "data__cat_v1__dataset_config__batch_size": config["data"]["cat_v1"]["dataset_config"]["batch_size"],
+    #                 }
+    #             )
+    #         ))[0]["train"]["cat_v1"],
+    #         new_data_path=DATA_PATH,
+    #     ),
+    #     "use_data_config": monkeysee_config,
+    #     "run_name": None,
+    # },
 
 
     ### --- MindEye ---
@@ -344,14 +347,22 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-02-24_00-08-53",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_00-08-53", "decoder.pt"),
     # },
+    # "GAN (Big)": { # sensorium mouse v1
+    #     "run_name": "2025-03-02_19-09-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-02_19-09-34", "decoder.pt"),
+    # },
     "GAN": { # cat v1
         "run_name": "2025-02-24_11-54-11",
         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_11-54-11", "decoder.pt"),
     },
-    "GAN w/coords": { # cat v1
-        "run_name": "2025-02-24_12-01-36",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_12-01-36", "decoder.pt"),
-    },
+    # "GAN w/coords": { # cat v1
+    #     "run_name": "2025-02-24_12-01-36",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_12-01-36", "decoder.pt"),
+    # },
+    # "GAN (v2)": {
+    #     "run_name": "2025-03-04_11-59-27",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_11-59-27", "ckpt", "decoder_25.pt"),
+    # }
 
 
     ### --- CNN MSE ---
