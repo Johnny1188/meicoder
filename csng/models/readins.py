@@ -604,6 +604,7 @@ class MEIReadIn(ReadIn):
         mei_target_shape,
         mei_resize_method="resize",
         meis_trainable=False,
+        use_neuron_coords=False,
         pointwise_conv_config={
             "out_channels": 256,
             "bias": False,
@@ -623,6 +624,7 @@ class MEIReadIn(ReadIn):
         shifter_net_layers=[("fc", 10), ("fc", 10), ("fc", 2)],
         shifter_net_act_fn=nn.LeakyReLU,
         shifter_net_out_act_fn=nn.Tanh,
+        neuron_emb_dim=None,  # dim of learned neuron embeddings (None if not used)
         out_channels=None, # set manually
         neuron_idxs=None, # selection of neurons to use
         device="cpu",
@@ -633,7 +635,9 @@ class MEIReadIn(ReadIn):
         self.requires_pupil_center = True
         self.neuron_idxs = neuron_idxs
         self.n_neurons = n_neurons if neuron_idxs is None else len(neuron_idxs)
+        self.use_neuron_coords = use_neuron_coords
         self.device = device
+        assert not self.use_neuron_coords or self.ctx_net_config["in_channels"] > 1
 
         ### setup MEIs
         self.meis_path = meis_path
@@ -688,6 +692,14 @@ class MEIReadIn(ReadIn):
         self.ctx_net_config = ctx_net_config
         self.ctx_net = build_layers(**ctx_net_config)
 
+        ### learned neuron embeddings
+        self.neuron_emb_dim = neuron_emb_dim
+        if neuron_emb_dim:
+            self.neuron_embed = nn.Embedding(
+                num_embeddings=self.n_neurons,
+                embedding_dim=neuron_emb_dim,
+            )
+
     @staticmethod
     def _resp_transform(x):
         return torch.log10(x.clamp_min(1e-3))
@@ -708,25 +720,27 @@ class MEIReadIn(ReadIn):
         B, n_neurons = x.shape
 
         ### prepare neuron coordinates
-        if self.ctx_net_config["in_channels"] != 1 and neuron_coords.ndim == 2:
+        if self.use_neuron_coords and self.ctx_net_config["in_channels"] != 1 and neuron_coords.ndim == 2:
             neuron_coords = neuron_coords.unsqueeze(0).repeat(B, 1, 1)
         if self.shift_coords:
             ### shift neuron_coords by pupil_center
             delta = self.shifter_net(pupil_center)
             neuron_coords[:, torch.arange(n_neurons), :2] += delta.unsqueeze(1)
 
-        ### contextually modulate MEIs        
+        ### prepare MEIs
         out = self.meis.expand(B, -1, -1, -1) # (B, n_neurons, H, W)
         if out.device != x.device: # fix for data parallelism
             out = out.to(x.device)
-        if self.ctx_net_config["in_channels"] > 1:
-            ctx_inp = torch.cat([
-                self.resp_transform(x).unsqueeze(-1),
-                neuron_coords[..., :2],
-            ], dim=-1) # (B, n_neurons, 3)
-        else:
-            ctx_inp = self.resp_transform(x).unsqueeze(-1)
-        ctx_inp = ctx_inp.view(B * n_neurons, -1) # (B * n_neurons, 3)
+
+        ### contextually modulate MEIs based on the responses (and other inputs)      
+        ctx_inp = [self.resp_transform(x).unsqueeze(-1)]
+        if self.use_neuron_coords:
+            ctx_inp.append(neuron_coords[..., :2])
+        if self.neuron_emb_dim:
+            neuron_embeds = self.neuron_embed(torch.arange(n_neurons, device=x.device))
+            neuron_embeds = neuron_embeds.unsqueeze(0).repeat(B, 1, 1)
+            ctx_inp.append(neuron_embeds)
+        ctx_inp = torch.cat(ctx_inp, dim=-1).view(B * n_neurons, -1) # (B * n_neurons, D)
         ctx_out = self.ctx_net(ctx_inp) # (B * n_neurons, H * W)
         out = out * ctx_out.view(B, n_neurons, *out.shape[-2:])
 

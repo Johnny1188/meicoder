@@ -62,7 +62,7 @@ config["data"]["brainreader_mouse"] = {
     "mixing_strategy": config["data"]["mixing_strategy"],
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    # "batch_size": 4,
+    # "batch_size": 2,
     # "batch_size": 5,
     "batch_size": 16,
     # "sessions": list(range(1, 23)),
@@ -93,7 +93,7 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
 #         "image_size": [50, 50],
 #         "crop": False,
-#         "batch_size": 16,
+#         "batch_size": 32,
 #         "stim_keys": ("stim",),
 #         "resp_keys": ("exc_resp", "inh_resp"),
 #         "return_coords": True,
@@ -277,9 +277,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-22_13-17-12", "ckpt", "decoder_215.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-16_16-36-57", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "a065quyh",
+    #     "resume_wandb_id": "5qnj5ehp",
     # },
     ### for fine-tuning
     # "load_ckpt": {
@@ -369,6 +369,8 @@ if "brainreader_mouse" in config["data"]:
                         "mei_resize_method": "resize",
                         "mei_target_shape": (36, 64),
                         "meis_trainable": False,
+                        "use_neuron_coords": (_use_neuron_coords := False),
+                        "neuron_emb_dim": (_neuron_emb_dim := None),
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
@@ -377,7 +379,7 @@ if "brainreader_mouse" in config["data"]:
                             "dropout": 0.15,
                         },
                         "ctx_net_config": {
-                            "in_channels": 1, # resp, x, y
+                            "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
                             "layers_config": [("fc", 8), ("fc", 128), ("fc", 36*64)],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
@@ -386,8 +388,7 @@ if "brainreader_mouse" in config["data"]:
                         },
                         "apply_resp_transform": False,
                         "shift_coords": False,
-                        "neuron_idxs": None,
-                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
+                        "neuron_idxs": None, # np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
                         "device": config["device"],
                     }),
                 ],
@@ -467,6 +468,8 @@ if "cat_v1" in config["data"]:
                     "mei_resize_method": "resize",
                     "mei_target_shape": config["crop_wins"]["cat_v1"],
                     "meis_trainable": False,
+                    "use_neuron_coords": (_use_neuron_coords := False),
+                    "neuron_emb_dim": (_neuron_emb_dim := None),
                     "pointwise_conv_config": {
                         "out_channels": 480,
                         "bias": False,
@@ -475,7 +478,7 @@ if "cat_v1" in config["data"]:
                         "dropout": 0.15,
                     },
                     "ctx_net_config": {
-                        "in_channels": 1, # resp, x, y
+                        "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
                         "layers_config": [("fc", 8), ("fc", 128), ("fc", np.prod(config["crop_wins"]["cat_v1"]))],
                         "act_fn": nn.LeakyReLU,
                         "out_act_fn": nn.Identity,
@@ -564,6 +567,8 @@ if "mouse_v1" in config["data"]:
                         "mei_resize_method": "resize",
                         "mei_target_shape": config["crop_wins"][data_key],
                         "meis_trainable": False,
+                        "use_neuron_coords": (_use_neuron_coords := False),
+                        "neuron_emb_dim": (_neuron_emb_dim := None),
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
@@ -572,7 +577,7 @@ if "mouse_v1" in config["data"]:
                             "dropout": 0.15,
                         },
                         "ctx_net_config": {
-                            "in_channels": 1, # resp, x, y
+                            "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
                             "layers_config": [("fc", 8), ("fc", 128), ("fc", np.prod(config["crop_wins"][data_key]))],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
@@ -668,6 +673,8 @@ if "syn_data" in config["data"]:
                         "mei_resize_method": "resize",
                         "mei_target_shape": (36, 64),
                         "meis_trainable": False,
+                        "use_neuron_coords": (_use_neuron_coords := False),
+                        "neuron_emb_dim": (_neuron_emb_dim := None),
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
@@ -676,14 +683,16 @@ if "syn_data" in config["data"]:
                             "dropout": 0.15,
                         },
                         "ctx_net_config": {
-                            "in_channels": 1, # resp, x, y
+                            "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
                             "layers_config": [("fc", 8), ("fc", 128), ("fc", 36*64)],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
                             "dropout": 0.15,
                             "batch_norm": True,
                         },
+                        "apply_resp_transform": False,
                         "shift_coords": False,
+                        "neuron_idxs": None, # np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
                         "device": config["device"],
                     }),
                 ],
