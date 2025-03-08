@@ -156,6 +156,7 @@ class PerSampleStoredDataset(Dataset):
         average_over_repeats=False,
         clamp_neg_resp=False,
         sample_idxs=None,
+        dataset_shuffle_seed=None,
     ):
         self.dataset_dir = dataset_dir
         self.stim_transform = stim_transform if stim_transform is not None else NumpyToTensor()
@@ -164,6 +165,10 @@ class PerSampleStoredDataset(Dataset):
             f_name for f_name in os.listdir(self.dataset_dir)
             if f_name.endswith(".pkl") or f_name.endswith(".pickle")
         ])
+        if dataset_shuffle_seed is None:
+            self.file_names = np.sort(self.file_names)
+        else:
+            np.random.default_rng(dataset_shuffle_seed).shuffle(self.file_names)
         self.sample_idxs = sample_idxs
         if sample_idxs is not None:
             self.file_names = self.file_names[self.sample_idxs]                
