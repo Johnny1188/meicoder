@@ -122,7 +122,11 @@ def setup_wandb_run(config, decoder=None):
     if config["decoder"]["load_ckpt"] == None \
         or config["decoder"]["load_ckpt"]["resume_wandb_id"] == None:
         if config["wandb"]:
-            wdb_run = wandb.init(**config["wandb"], name=config["run_name"], config=config,
+            wdb_run = wandb.init(
+                **config["wandb"],
+                name=config["run_name"],
+                config=config,
+                id=config["run_name"],
                 tags=[
                     config["decoder"]["model"]["core_cls"].__name__,
                     config["decoder"]["model"]["readins_config"][0]["layers"][0][0].__name__,

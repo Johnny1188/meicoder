@@ -208,7 +208,7 @@ config["comparison"]["to_compare"] = {
     #             os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
     #         ],
     #         encoder_config={
-    #             "img_dims": (1, 22, 36),
+    #             "img_dims": (1, 36, 64),
     #             "stim_pred_init": "randn",
     #             "lr": 500,
     #             "n_steps": 2000,
@@ -223,27 +223,27 @@ config["comparison"]["to_compare"] = {
     #     ),
     #     "run_name": None,
     # },
-    # "Inverted Encoder": { # cat v1
-    #     "decoder": EnsembleInvEnc(
-    #         encoder_paths=[
-    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
-    #         ],
-    #         encoder_config={
-    #             "img_dims": (1, 50, 50),
-    #             "stim_pred_init": "randn",
-    #             "lr": 500,
-    #             "n_steps": 2000,
-    #             "img_grad_gauss_blur_sigma": 2,
-    #             "jitter": None,
-    #             "mse_reduction": "per_sample_mean_sum",
-    #             "device": config["device"],
-    #         },
-    #         use_brainreader_encoder=True,
-    #         get_encoder_fn=get_encoder_cat_v1,
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
-    # },
+    "Inverted Encoder": { # cat v1
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+                os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+            ],
+            encoder_config={
+                "img_dims": (1, 50, 50),
+                "stim_pred_init": "randn",
+                "lr": 500,
+                "n_steps": 2000,
+                "img_grad_gauss_blur_sigma": 2,
+                "jitter": None,
+                "mse_reduction": "per_sample_mean_sum",
+                "device": config["device"],
+            },
+            use_brainreader_encoder=True,
+            get_encoder_fn=get_encoder_cat_v1,
+            device=config["device"],
+        ),
+        "run_name": None,
+    },
 
 
     ### --- MonkeySee ---
@@ -287,26 +287,26 @@ config["comparison"]["to_compare"] = {
     #     "use_data_config": monkeysee_config,
     #     "run_name": None,
     # },
-    # "MonkeySee": { # cat v1
-    #     "decoder": MonkeySeeDecoder(
-    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "23-02-2025_11-00")),
-    #         ckpt_key_to_load="best_es",
-    #         train_dl=get_dataloaders(config=(monkeysee_config := update_config(
-    #                 config=update_config_paths(
-    #                     config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
-    #                     new_data_path=DATA_PATH,
-    #                     replace_until_folder="csng",
-    #                 ),
-    #                 config_updates={
-    #                     "data__cat_v1__dataset_config__batch_size": config["data"]["cat_v1"]["dataset_config"]["batch_size"],
-    #                 }
-    #             )
-    #         ))[0]["train"]["cat_v1"],
-    #         new_data_path=DATA_PATH,
-    #     ),
-    #     "use_data_config": monkeysee_config,
-    #     "run_name": None,
-    # },
+    "MonkeySee": { # cat v1
+        "decoder": MonkeySeeDecoder(
+            ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "23-02-2025_11-00")),
+            ckpt_key_to_load="best_es",
+            train_dl=get_dataloaders(config=(monkeysee_config := update_config(
+                    config=update_config_paths(
+                        config=torch.load(os.path.join(monkeysee_ckpt_path, "generator.pt"), pickle_module=dill)["config"],
+                        new_data_path=DATA_PATH,
+                        replace_until_folder="csng",
+                    ),
+                    config_updates={
+                        "data__cat_v1__dataset_config__batch_size": config["data"]["cat_v1"]["dataset_config"]["batch_size"],
+                    }
+                )
+            ))[0]["train"]["cat_v1"],
+            new_data_path=DATA_PATH,
+        ),
+        "use_data_config": monkeysee_config,
+        "run_name": None,
+    },
 
 
     ### --- MindEye ---
@@ -330,28 +330,37 @@ config["comparison"]["to_compare"] = {
     # },
     "MindEye2": { # cat v1
         "decoder": SavedReconstructionsDecoder(
-            reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1", "subjcat_v1_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+            reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__08-03-25_11-24", "subjcat_v1_reconstructions_zscored.pt"), pickle_module=dill),
             data_key="cat_v1",
-            zscore_reconstructions=True,
+            zscore_reconstructions=False,
             device=config["device"],
         ),
         "run_name": None,
     },
 
     ### --- Final GAN-MEI ---
-    # "GAN": { # brainreader mouse
+    ## brainreader mouse ---
+    # "GAN": {
     #     "run_name": "2025-02-27_18-49-52",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-27_18-49-52", "decoder.pt"),
     # },
-    # "GAN": { # sensorium mouse v1
+
+    ## sensorium mouse v1 ---
+    # "GAN": {
     #     "run_name": "2025-02-24_00-08-53",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_00-08-53", "decoder.pt"),
     # },
-    # "GAN (Big)": { # sensorium mouse v1
+    # "GAN (Big)": {
     #     "run_name": "2025-03-02_19-09-34",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-02_19-09-34", "decoder.pt"),
     # },
-    "GAN": { # cat v1
+    # "GAN sm. lr.": {
+    #     "run_name": "2025-03-11_14-40-25",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-11_14-40-25", "ckpt", "decoder_195.pt"),
+    # },
+    
+    ## cat v1 ---
+    "GAN": {
         "run_name": "2025-02-24_11-54-11",
         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_11-54-11", "decoder.pt"),
     },
@@ -361,8 +370,30 @@ config["comparison"]["to_compare"] = {
     # },
     # "GAN (v2)": {
     #     "run_name": "2025-03-04_11-59-27",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_11-59-27", "ckpt", "decoder_25.pt"),
-    # }
+    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_11-59-27", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_11-59-27", "ckpt", "decoder_215.pt"),
+    # },
+    # "GAN 768": {
+    #     "run_name": "2025-03-04_12-02-23",
+    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_12-02-23", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_12-02-23", "ckpt", "decoder_200.pt"),
+    # },
+    # "GAN-Conv": {
+    #     "run_name": "2025-03-05_13-01-12",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-05_13-01-12", "decoder.pt"),
+    # },
+    "GAN w/ high wd small lr": {
+        "run_name": "2025-03-10_12-55-26",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_12-55-26", "ckpt", "decoder_50.pt"),
+    },
+    # "GAN w/ trainable MEIs": {
+    #     "run_name": "2025-03-06_00-53-17",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-06_00-53-17", "decoder.pt"),
+    # },
+    # "GAN w/ neuron embs": {
+    #     "run_name": "2025-03-07_19-34-01",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-07_19-34-01", "decoder.pt"),
+    # },
 
 
     ### --- CNN MSE ---
