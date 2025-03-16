@@ -192,6 +192,36 @@ def load_decoder_from_ckpt(ckpt_path, device, load_best=False, load_only_core=Fa
     return decoder, ckpt
 
 
+def collect_all_preds_and_targets(model, dataloaders, crop_wins, device=None):
+    preds, targets = defaultdict(list), defaultdict(list)
+
+    for k, dl in dataloaders.items(): # different data sources (cat_v1, mouse_v1, ...)
+        for b_idx, b in enumerate(dl):
+            for dp in b:
+                if device is not None:
+                    dp = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k,v in dp.items()}
+
+                ### get predictions
+                stim_pred = model(
+                    dp["resp"],
+                    data_key=dp["data_key"],
+                    neuron_coords=dp["neuron_coords"],
+                    pupil_center=dp["pupil_center"],
+                )
+
+                ### save preds and targets
+                preds[dp["data_key"]].append(crop(stim_pred, crop_wins[dp["data_key"]]).detach().cpu())
+                targets[dp["data_key"]].append(crop(dp["stim"], crop_wins[dp["data_key"]]).cpu())
+
+    ### concatenate all preds and targets
+    for data_key in preds.keys():
+        preds[data_key] = torch.cat(preds[data_key], dim=0)
+        targets[data_key] = torch.cat(targets[data_key], dim=0)
+    preds, targets = dict(preds), dict(targets)
+
+    return preds, targets
+
+
 class SavedReconstructionsDecoder:
     def __init__(self, reconstructions, data_key, zscore_reconstructions=False, device="cuda"):
         self.recons = reconstructions

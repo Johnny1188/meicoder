@@ -42,7 +42,7 @@ config = {
     "seed": 0,
     "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "cat_v1",
+    "data_name": "mouse_v1",
 }
 
 ### data config
@@ -133,20 +133,24 @@ config["enc_inv"] = {
         "encoder_paths": [
             # os.path.join(DATA_PATH, "models", "encoders", "encoder_ball.pt"),
             # os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
-            # os.path.join(DATA_PATH, "models", "encoders", "encoder_mall.pt"),
-            os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+            os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
+            # os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
         ],
         "encoder_config": {
-            "img_dims": (1, 50, 50),
-            "stim_pred_init": "randn",
-            "lr": 2000,
-            "n_steps": 1000,
-            "img_grad_gauss_blur_sigma": 1,
-            "jitter": None,
-            "mse_reduction": "per_sample_mean_sum",
+            "img_dims": (1, 36, 64),
+            # "stim_pred_init": "randn",
+            "stim_pred_init": "zeros",
+            # "lr": 2000,
+            "opter_config": {"lr": 10},
+            # "n_steps": 1000,
+            "n_steps": 100,
+            # "img_grad_gauss_blur_sigma": 1.5,
+            "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5},
+            # "jitter": None,
+            # "mse_reduction": "per_sample_mean_sum",
             "device": config["device"],
         },
-        "use_brainreader_encoder": True,
+        "use_brainreader_encoder": False,
         "get_encoder_fn": get_encoder_fns[config["data_name"]],
         "device": config["device"],
     },
@@ -155,30 +159,23 @@ config["enc_inv"] = {
     "loss_fns": get_metrics(inp_zscored=check_if_data_zscored(cfg=config), crop_win=config["crop_win"], device=config["device"]),
     "save_dir": os.path.join(DATA_PATH, "models", "inverted_encoder"),
     "find_best_ckpt_according_to": "Alex(5) Loss",
-    "max_batches": 30,
+    "max_batches": None,
 }
 
 ### hyperparam runs config - either manually selected or grid search
 config_updates = [dict()]
-### EnsembleInvEnc
-# config_updates = [
-#     {"encoder_config": {
-#         "img_dims": (1, 36, 64),
-#         "stim_pred_init": "randn",
-#         "lr": 500,
-#         "n_steps": 1000,
-#         "img_grad_gauss_blur_sigma": 1.5,
-#         "jitter": 0,
-#         "mse_reduction": "per_sample_mean_sum",
-#         "device": config["device"],
-#     }},
-# ]
 config_grid_search = None
 config_grid_search = {
-    "n_steps": [300, 1000, 2000],
-    "lr": [500, 2000, 4000],
-    "img_grad_gauss_blur_sigma": [1, 1.5, 2, 2.5],
-    "jitter": [0],
+    ### brainreader-style
+    # "n_steps": [300, 1000, 2000],
+    # "lr": [500, 2000, 4000],
+    # "img_grad_gauss_blur_sigma": [1, 1.5, 2, 2.5],
+    # "jitter": [0],
+
+    ### not brainreader-style
+    "n_steps": [100, 200, 500, 1000],
+    "opter_config": [{"lr": lr} for lr in [5, 10, 20, 50]],
+    "img_grad_gauss_blur_config": [{"kernel_size": 13, "sigma": s} for s in [1, 1.5, 2]],
 }
 
 
@@ -210,7 +207,7 @@ if __name__ == "__main__":
     print(f"[INFO] Config updates to try:\n ", "\n  ".join([dict_to_str(config_update) for config_update in config_updates]))
 
     ### run
-    best = {"config": None, "val_loss": np.inf, "idx": None}
+    best = {"config": None, "val_loss": np.inf, "idx": None, "run_name": None}
     print(f"[INFO] Hyperparameter search starts.")
     for i, config_update in enumerate(config_updates):
         print(f" [{i}/{len(config_updates)}]", end="")
@@ -239,6 +236,7 @@ if __name__ == "__main__":
                 print(f" >>> new best", end="")
                 best["val_loss"] = val_loss
                 best["config"] = run_config
+                best["run_name"] = run_name
                 best["idx"] = i
             print("")
             print(f"   {slugify(config_update)}")
@@ -260,6 +258,12 @@ if __name__ == "__main__":
             show=False,
         )
 
-    print(f"[INFO] Hyperparameter search finished. Best ({best['idx']}, val_loss={best['val_loss']}): {json.dumps(best['config'], indent=2, default=str)}")
+    print(
+        f"[INFO] Hyperparameter search finished.\n"
+        f"  Best ({best['idx']}, val_loss={best['val_loss']}):\n"
+        f"  Full config: {json.dumps(best['config'], indent=2, default=str)}"
+        f"  Run name: {best['run_name']}\n"
+        f"  Run dir: {run_dir}"
+    )
     with open(os.path.join(run_dir, f"best_config.json"), "w") as f:
         json.dump(best["config"], f, indent=4, default=str)

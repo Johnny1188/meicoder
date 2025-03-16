@@ -13,7 +13,7 @@ from csng.models.inverted_encoder import InvertedEncoder, InvertedEncoderBrainre
 from csng.models.ensemble import EnsembleInvEnc
 from csng.utils.mix import seed_all, check_if_data_zscored, update_config_paths, update_config
 from csng.utils.data import standardize, normalize, crop
-from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder, SavedReconstructionsDecoder
+from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder, SavedReconstructionsDecoder, collect_all_preds_and_targets
 from csng.losses import get_metrics
 from csng.data import get_dataloaders, get_sample_data
 from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
@@ -132,7 +132,7 @@ config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
 #     "test_batch_size": 36,
 #     "device": config["device"],
 # }
-# # add crop_wins for mouse v1 data
+# ### add crop_wins for mouse v1 data
 # for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
 #     config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
 
@@ -145,16 +145,17 @@ config["comparison"] = {
     "eval_tier": "test",
     "eval_every_n_samples": None, # to prevent OOM but not accurate for some losses
     "max_n_reconstruction_samples": None,
+    "save_all_preds_and_targets": False,
     "save_dir": None,
     "save_dir": os.path.join(
         "results",
-        "test",
+        "catv1",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
     #     "overwrite": True,
     #     "path": os.path.join(
-    #         "results/cat_v1/2025-03-02_19-19-25.pt",
+    #         "/home/sobotka/decoding-brain-activity/results/b6/2025-03-16_11-32-58.pt",
     #     ),
     #     "load_only": None, # 'None' to load all
     #     # "load_only": [
@@ -163,7 +164,7 @@ config["comparison"] = {
     #     # ],
     #     "remap": None,
     #     # "remap": {
-    #     #     "CNN-Conv w/ encoder matching": "CNN-Conv w/ EM",
+    #     #     "Inverted Encoder": "Inverted Encoder (brainreader-style)",
     #     # },
     # },
     "losses_to_plot": [
@@ -178,11 +179,11 @@ config["comparison"] = {
 ### methods to compare
 config["comparison"]["to_compare"] = {
     ### --- Inverted encoder ---
-    # "Inverted Encoder": { # brainreader mouse
+    # "Inverted Encoder (brainreader-style)": { # brainreader mouse
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
-    #             # os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-    #             os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
+    #             os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    #             # os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
     #         ],
     #         encoder_config={
     #             "img_dims": (1, 36, 64),
@@ -191,7 +192,7 @@ config["comparison"]["to_compare"] = {
     #             # "n_steps": 1000,
     #             "lr": 500,
     #             "n_steps": 2000,
-    #             "img_grad_gauss_blur_sigma": 1,
+    #             "img_grad_gauss_blur_sigma": 1.5,
     #             "jitter": None,
     #             "mse_reduction": "per_sample_mean_sum",
     #             "device": config["device"],
@@ -202,7 +203,27 @@ config["comparison"]["to_compare"] = {
     #     ),
     #     "run_name": None,
     # },
-    # "Inverted Encoder": { # sensorium mouse v1
+    # "Inverted Encoder": { # brainreader mouse
+    #     "decoder": EnsembleInvEnc(
+    #         encoder_paths=[
+    #             # os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
+    #             os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
+    #         ],
+    #         encoder_config={
+    #             "img_dims": (1, 36, 64),
+    #             "stim_pred_init": "zeros",
+    #             "opter_config": {"lr": 50},
+    #             "n_steps": 1000,
+    #             "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.},
+    #             "device": config["device"],
+    #         },
+    #         use_brainreader_encoder=False,
+    #         get_encoder_fn=get_encoder_brainreader,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "Inverted Encoder (brainreader-style)": { # sensorium mouse v1
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
     #             os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
@@ -223,7 +244,26 @@ config["comparison"]["to_compare"] = {
     #     ),
     #     "run_name": None,
     # },
-    "Inverted Encoder": { # cat v1
+    # "Inverted Encoder": { # sensorium mouse v1
+    #     "decoder": EnsembleInvEnc(
+    #         encoder_paths=[
+    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
+    #         ],
+    #         encoder_config={
+    #             "img_dims": (1, 36, 64),
+    #             "stim_pred_init": "zeros",
+    #             "opter_config": {"lr": 50},
+    #             "n_steps": 1000,
+    #             "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.},
+    #             "device": config["device"],
+    #         },
+    #         use_brainreader_encoder=False,
+    #         get_encoder_fn=get_encoder_sensorium_mouse_v1,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    "Inverted Encoder (brainreader-style)": { # cat v1
         "decoder": EnsembleInvEnc(
             encoder_paths=[
                 os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
@@ -231,9 +271,11 @@ config["comparison"]["to_compare"] = {
             encoder_config={
                 "img_dims": (1, 50, 50),
                 "stim_pred_init": "randn",
-                "lr": 500,
+                # "lr": 500,
+                # "n_steps": 2000,
+                "lr": 1000,
                 "n_steps": 2000,
-                "img_grad_gauss_blur_sigma": 2,
+                "img_grad_gauss_blur_sigma": 1.5,
                 "jitter": None,
                 "mse_reduction": "per_sample_mean_sum",
                 "device": config["device"],
@@ -244,10 +286,29 @@ config["comparison"]["to_compare"] = {
         ),
         "run_name": None,
     },
+    "Inverted Encoder": { # cat v1
+        "decoder": EnsembleInvEnc(
+            encoder_paths=[
+                os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+            ],
+            encoder_config={
+                "img_dims": (1, 50, 50),
+                "stim_pred_init": "zeros",
+                "opter_config": {"lr": 10},
+                "n_steps": 1000,
+                "img_grad_gauss_blur_config": {"kernel_size": 13, "sigma": 1.5},
+                "device": config["device"],
+            },
+            use_brainreader_encoder=False,
+            get_encoder_fn=get_encoder_cat_v1,
+            device=config["device"],
+        ),
+        "run_name": None,
+    },
 
 
     ### --- MonkeySee ---
-    # "MonkeySee": { # brainreader mouse
+    # "MonkeySee": { # B-6
     #     "decoder": MonkeySeeDecoder(
     #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "18-02-2025_19-32")),
     #         ckpt_key_to_load="best_es",
@@ -267,7 +328,7 @@ config["comparison"]["to_compare"] = {
     #     "use_data_config": monkeysee_config,
     #     "run_name": None,
     # },
-    # "MonkeySee": { # sensorium mouse v1
+    # "MonkeySee": { # M-1
     #     "decoder": MonkeySeeDecoder(
     #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "21-02-2025_16-59")),
     #         ckpt_key_to_load="best_es",
@@ -310,18 +371,83 @@ config["comparison"]["to_compare"] = {
 
 
     ### --- MindEye ---
-    # "MindEye2": { # brainreader mouse
+    # "MindEye2 (B-6)": { # B-6
     #     "decoder": SavedReconstructionsDecoder(
-    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_18-02-25_19-45", "subj06_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_18-02-25_19-45", "subj06_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_18-02-25_19-45", "subj06_reconstructions_zscored.pt"), pickle_module=dill),
+    #         data_key="6",
+    #         # zscore_reconstructions=True,
+    #         zscore_reconstructions=False,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2 (B-6, post-hoc z-scored)": { # B-6
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_18-02-25_19-45", "subj06_reconstructions.pt"), pickle_module=dill),
+    #         data_key="6",
+    #         zscore_reconstructions=True,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2 (B-1-8)": { # B-1-8
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_19-02-25_16-52", "subj06_reconstructions_zscored.pt"), pickle_module=dill),
     #         data_key="6",
     #         zscore_reconstructions=False,
     #         device=config["device"],
     #     ),
     #     "run_name": None,
     # },
-    # "MindEye2": { # sensorium mouse v1
+    # "MindEye2 (B-1-8, post-hoc z-scored)": { # B-1-8
     #     "decoder": SavedReconstructionsDecoder(
-    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1_test", "subj21067-10-18_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_19-02-25_16-52", "subj06_reconstructions.pt"), pickle_module=dill),
+    #         data_key="6",
+    #         zscore_reconstructions=True,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2 (B-1-8 -> B-6)": { # B-6 fine-tuned from B-1-8
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_26-02-25_10-53", "subj06_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+    #         data_key="6",
+    #         zscore_reconstructions=True,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2": { # M-1
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1_test", "subj21067-10-18_reconstructions_zscored.pt"), pickle_module=dill),
+    #         data_key="21067-10-18",
+    #         zscore_reconstructions=False,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2 (post-hoc z-scored)": { # M-1
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1_test", "subj21067-10-18_reconstructions.pt"), pickle_module=dill),
+    #         data_key="21067-10-18",
+    #         zscore_reconstructions=True,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2 (M-All)": { # M-All
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1_all", "subj21067-10-18_reconstructions_zscored.pt"), pickle_module=dill),
+    #         data_key="21067-10-18",
+    #         zscore_reconstructions=False,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "MindEye2 (M-All, post-hoc z-scored)": { # M-All
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1_all", "subj21067-10-18_reconstructions.pt"), pickle_module=dill),
     #         data_key="21067-10-18",
     #         zscore_reconstructions=True,
     #         device=config["device"],
@@ -337,12 +463,43 @@ config["comparison"]["to_compare"] = {
         ),
         "run_name": None,
     },
+    "MindEye2 (post-hoc z-scored)": { # cat v1
+        "decoder": SavedReconstructionsDecoder(
+            reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__08-03-25_11-24", "subjcat_v1_reconstructions.pt"), pickle_module=dill),
+            data_key="cat_v1",
+            zscore_reconstructions=True,
+            device=config["device"],
+        ),
+        "run_name": None,
+    },
 
     ### --- Final GAN-MEI ---
+    ## multiple ---
+    "GAN (B-1-8 + M-All + C)": {
+        "run_name": "2025-02-26_00-24-36",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-26_00-24-36", "ckpt", "decoder_120.pt"),
+    },
+    "GAN (B-All + M-All + C)": {
+        "run_name": "2025-02-26_00-20-14",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-26_00-20-14", "ckpt", "decoder_60.pt"),
+    },
+
     ## brainreader mouse ---
+    # "GAN w/ neuron embeddings": {
+    #     "run_name": "2025-03-10_01-22-27",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_01-22-27", "decoder.pt"),
+    # },
     # "GAN": {
     #     "run_name": "2025-02-27_18-49-52",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-27_18-49-52", "decoder.pt"),
+    # },
+    # "GAN (B-1-8)": {
+    #     "run_name": "2025-02-22_13-17-12",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-22_13-17-12", "decoder.pt"),
+    # },
+    # "GAN (B-All)": {
+    #     "run_name": "2025-02-19_13-18-05",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-19_13-18-05", "decoder.pt"),
     # },
 
     ## sensorium mouse v1 ---
@@ -350,21 +507,29 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-02-24_00-08-53",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_00-08-53", "decoder.pt"),
     # },
-    # "GAN (Big)": {
-    #     "run_name": "2025-03-02_19-09-34",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-02_19-09-34", "decoder.pt"),
+    # "GAN w/ high wd & small lr": {
+    #     "run_name": "2025-03-10_10-46-19",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_10-46-19", "decoder.pt"),
     # },
-    # "GAN sm. lr.": {
-    #     "run_name": "2025-03-11_14-40-25",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-11_14-40-25", "ckpt", "decoder_195.pt"),
+    # "GAN (M-All)": {
+    #     "run_name": "2025-02-24_11-02-50",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_11-02-50", "decoder.pt"),
     # },
-    
+
     ## cat v1 ---
+    "GAN w/ high wd & small lr": {
+        "run_name": "2025-03-10_12-55-26",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_12-55-26", "ckpt", "decoder_50.pt"),
+    },
     "GAN": {
         "run_name": "2025-02-24_11-54-11",
         "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_11-54-11", "decoder.pt"),
     },
-    # "GAN w/coords": { # cat v1
+    "GAN w/ neuron embs": {
+        "run_name": "2025-03-07_19-34-01",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-07_19-34-01", "decoder.pt"),
+    },
+    # "GAN w/coords": {
     #     "run_name": "2025-02-24_12-01-36",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_12-01-36", "decoder.pt"),
     # },
@@ -382,17 +547,9 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-03-05_13-01-12",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-05_13-01-12", "decoder.pt"),
     # },
-    "GAN w/ high wd small lr": {
-        "run_name": "2025-03-10_12-55-26",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_12-55-26", "ckpt", "decoder_50.pt"),
-    },
     # "GAN w/ trainable MEIs": {
     #     "run_name": "2025-03-06_00-53-17",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-06_00-53-17", "decoder.pt"),
-    # },
-    # "GAN w/ neuron embs": {
-    #     "run_name": "2025-03-07_19-34-01",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-07_19-34-01", "decoder.pt"),
     # },
 
 
@@ -809,6 +966,10 @@ def run_comparison(cfg):
     assert cfg["comparison"]["eval_all_ckpts"] is True or cfg["comparison"]["find_best_ckpt_according_to"] is None
     assert cfg["comparison"]["find_best_ckpt_according_to"] is None or cfg["comparison"]["load_best"] is False
 
+    ### get sample data
+    s = get_sample_data(dls=get_dataloaders(config=cfg)[0], config=cfg, sample_from_tier="test")
+    stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
+
     ### load previous comparison results
     runs_to_compare = dict()
     if cfg["comparison"]["load_ckpt"] is not None:
@@ -910,15 +1071,14 @@ def run_comparison(cfg):
                 stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
 
                 ### eval data
-                eval_dls, _ = get_dataloaders(config=run_dict["use_data_config"])
+                cfg_for_eval_dls = run_dict["use_data_config"]
             else:
                 ### data samples
                 dls, neuron_coords = get_dataloaders(config=cfg)
                 s = get_sample_data(dls=dls, config=cfg, sample_from_tier="test")
                 stim, resp, sample_dataset, sample_data_key = s["stim"].to(cfg["device"]), s["resp"].to(cfg["device"]), s["sample_dataset"], s["sample_data_key"]
 
-                ### eval data
-                eval_dls, _ = get_dataloaders(config=cfg)
+                cfg_for_eval_dls = cfg
 
             ### get sample reconstructions
             stim_pred_best = dict()
@@ -936,6 +1096,7 @@ def run_comparison(cfg):
                 decoder.reset_counter()
 
             ### eval
+            eval_dls, _ = get_dataloaders(config=cfg_for_eval_dls)
             seed_all(cfg["seed"])
             run_dict["test_losses"].append(eval_decoder(
                 model=decoder,
@@ -944,6 +1105,17 @@ def run_comparison(cfg):
                 crop_wins=cfg["crop_wins"],
                 eval_every_n_samples=cfg["comparison"]["eval_every_n_samples"],
             ))
+
+            ### collect all preds and targets
+            if cfg["comparison"]["save_all_preds_and_targets"]:
+                eval_dls, _ = get_dataloaders(config=cfg_for_eval_dls)
+                seed_all(cfg["seed"])
+                run_dict["all_preds"], run_dict["all_targets"] = collect_all_preds_and_targets(
+                    model=decoder,
+                    dataloaders=eval_dls[cfg["comparison"]["eval_tier"]],
+                    crop_wins=cfg["crop_wins"],
+                    device=cfg["device"],
+                )
         print("-----\n")
 
     ### save the results

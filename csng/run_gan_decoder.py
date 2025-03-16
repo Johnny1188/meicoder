@@ -256,9 +256,9 @@ config["decoder"] = {
     },
     "eval_loss_name": "Alex(5) Loss",  # for "higher is better" metrics, use "<name> Loss"
     "G_opter_cls": torch.optim.AdamW,
-    "G_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
+    "G_opter_kwargs": {"lr": 1e-4, "weight_decay": 0.08},
     "D_opter_cls": torch.optim.AdamW,
-    "D_opter_kwargs": {"lr": 3e-4, "weight_decay": 0.03},
+    "D_opter_kwargs": {"lr": 1e-4, "weight_decay": 0.08},
     "G_reg": {"l1": 0, "l2": 0},
     "D_reg": {"l1": 0, "l2": 0},
     "G_adv_loss_mul": 0.1,
