@@ -637,7 +637,7 @@ class MEIReadIn(ReadIn):
         self.n_neurons = n_neurons if neuron_idxs is None else len(neuron_idxs)
         self.use_neuron_coords = use_neuron_coords
         self.device = device
-        assert not self.use_neuron_coords or self.ctx_net_config["in_channels"] > 1
+        assert not self.use_neuron_coords or ctx_net_config["in_channels"] > 1
 
         ### setup MEIs
         self.meis_path = meis_path
