@@ -33,6 +33,7 @@ def static_loader(
     image_ids=None,
     image_n=None,
     image_base_seed=None,
+    train_datapoint_idxs_to_use=None,
     get_key: bool = False,
     cuda: bool = True,
     normalize: bool = True,
@@ -259,6 +260,9 @@ def static_loader(
                 np.where(tier_array == "train")[0], size=image_n, replace=False
             )
             np.random.set_state(random_state)
+        elif tier == "train" and train_datapoint_idxs_to_use is not None:
+            all_training_idxs = np.where(tier_array == "train")[0]
+            subset_idx = all_training_idxs[train_datapoint_idxs_to_use]
         elif image_condition is not None and image_ids is None:
             subset_idx = np.where(
                 np.logical_and(image_condition_filter, tier_array == tier)
@@ -294,6 +298,7 @@ def static_loaders(
     image_ids=None,
     image_n=None,
     image_base_seed=None,
+    train_datapoint_idxs_to_use=None,
     cuda: bool = True,
     normalize: bool = True,
     z_score_responses: bool = False,
@@ -333,6 +338,7 @@ def static_loaders(
         image_ids (list, optional): select images by their ids. image_ids and path should be of same length.
         image_n (int, optional): number of images to select randomly. Can not be set together with image_ids
         image_base_seed (float, optional): base seed for image selection. Get's multiplied by image_n to obtain final seed
+        train_datapoint_idxs_to_use (list, optional): list of indices to use for training. If None, all training datapoints are used.
         cuda (bool, optional): whether to place the data on gpu or not.
         normalize (bool, optional): whether to normalize the data (see also exclude)
         exclude (str, optional): data to exclude from data-normalization. Only relevant if normalize=True. Defaults to 'images'
@@ -381,6 +387,7 @@ def static_loaders(
             image_ids=image_id,
             image_n=image_n,
             image_base_seed=image_base_seed,
+            train_datapoint_idxs_to_use=train_datapoint_idxs_to_use,
             normalize=normalize,
             z_score_responses=z_score_responses,
             include_behavior=include_behavior,

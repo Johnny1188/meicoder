@@ -58,6 +58,7 @@ def get_brainreader_mouse_dataloaders(config):
                 clamp_neg_resp=config["clamp_neg_resp"],
                 additional_keys=config["additional_keys"],
                 avg_resp=config["avg_test_resp"] if data_part == "test" else True,
+                datapoint_idxs_to_use=config.get(f"{data_part}_datapoint_idxs_to_use", None),
                 dataset_shuffle_seed=config.get(f"{data_part}_dataset_shuffle_seed", None),
             )
             dls[data_part][str(sess_id)] = DataLoader(
