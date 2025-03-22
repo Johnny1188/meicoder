@@ -26,6 +26,8 @@ from csng.data import get_dataloaders, get_sample_data
 from csng.models.utils.gan import init_decoder, setup_run_dir, setup_wandb_run, train
 from csng.utils.comparison import eval_decoder
 from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
+from csng.cat_v1.encoder import get_encoder as get_encoder_cat_v1
+from csng.mouse_v1.encoder import get_encoder as get_encoder_mouse_v1
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
@@ -109,7 +111,12 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #         "clamp_neg_resp": False,
 #         # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
 #     },
+#     "neuron_coords_to_use": None, # if None, uses the neuron coordinates from the dataset (if return_coords=True)
 # }
+# ### use the neuron coordinates learned by pretrained encoder
+# config["data"]["cat_v1"]["neuron_coords_to_use"] = get_encoder_cat_v1(
+#     ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt")
+# ).readout["cat_v1"].sample_grid(batch_size=1, sample=False)[0,:,0].detach().clone()
 
 ### mouse v1 data
 # config["data"]["mouse_v1"] = {
@@ -145,8 +152,13 @@ for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
 #     "average_test_multitrial": True,
 #     "save_test_multitrial": True,
 #     "test_batch_size": 7,
+#     "neuron_coords_to_use": None, # if None, uses the neuron coordinates from the dataset
 #     "device": config["device"],
 # }
+# ### use the neuron coordinates learned by pretrained encoder
+# config["data"]["mouse_v1"]["neuron_coords_to_use"] = get_encoder_mouse_v1(
+#     ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt")
+# ).readout["m1"].sample_grid(batch_size=1, sample=False)[0,:,0]
 
 # ### synthetic data
 # config["data"]["syn_data"] = {
@@ -389,6 +401,7 @@ if "brainreader_mouse" in config["data"]:
                         "apply_resp_transform": False,
                         "shift_coords": False,
                         "neuron_idxs": None, # np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.025), replace=False),
                         "device": config["device"],
                     }),
                 ],
@@ -488,6 +501,7 @@ if "cat_v1" in config["data"]:
                     "apply_resp_transform": False,
                     "shift_coords": False,
                     "neuron_idxs": None,
+                    # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(46875, size=int(46875 * 0.025), replace=False),
                     "device": config["device"],
                 }),
             ],
@@ -587,6 +601,7 @@ if "mouse_v1" in config["data"]:
                         "apply_resp_transform": False,
                         "shift_coords": False,
                         "neuron_idxs": None,
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_coords.shape[-2], size=int(n_coords.shape[-2] * 0.025), replace=False),
                         "device": config["device"],
                     }),
                 ],

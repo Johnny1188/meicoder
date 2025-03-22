@@ -633,7 +633,7 @@ class MEIReadIn(ReadIn):
         
         self.requires_neuron_coords = True
         self.requires_pupil_center = True
-        self.neuron_idxs = neuron_idxs
+        self.register_buffer("neuron_idxs", torch.tensor(neuron_idxs) if neuron_idxs is not None else None)
         self.n_neurons = n_neurons if neuron_idxs is None else len(neuron_idxs)
         self.use_neuron_coords = use_neuron_coords
         self.device = device

@@ -68,7 +68,10 @@ def get_dataloaders(config):
         torch.allclose(c_dls["val"].dataset[-1].neuron_coords, c_dls["test"].dataset[0].neuron_coords) and \
         torch.allclose(c_dls["test"].dataset[0].neuron_coords, c_dls["test"].dataset[-1].neuron_coords), \
             "Neuron coordinates must be the same for all samples in the dataset"
-        neuron_coords["cat_v1"] = {"cat_v1": c_dls["train"].dataset[0].neuron_coords.float().to(config["device"])}
+        if config["data"]["cat_v1"].get("neuron_coords_to_use", None) is not None: # uses neuron coordinates from the config
+            neuron_coords["cat_v1"] = {"cat_v1": config["data"]["cat_v1"]["neuron_coords_to_use"].float().to(config["device"])}
+        else: # uses neuron coordinates from the dataset
+            neuron_coords["cat_v1"] = {"cat_v1": c_dls["train"].dataset[0].neuron_coords.float().to(config["device"])}
 
         ### add to data loaders
         for tier in ("train", "val", "test"):
