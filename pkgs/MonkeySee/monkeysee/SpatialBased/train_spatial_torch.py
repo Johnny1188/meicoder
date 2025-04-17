@@ -107,7 +107,7 @@ cfg = {
     "device": os.environ.get("DEVICE", "cpu"),
     "seed": 0,
     "data": {
-        "data_name": "cat_v1",
+        "data_name": "mouse_v1",
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
         "target_transforms": {
@@ -163,7 +163,6 @@ elif cfg["data"]["data_name"] == "mouse_v1":
             "cuda": "cuda" in cfg["device"],
             "batch_size": 32,
             "drop_last": True,
-            "seed": cfg["seed"],
             "use_cache": False,
         },
         "skip_train": False,
@@ -222,16 +221,16 @@ cfg["decoder"] = {
         "alpha": 0.01,
         "beta_vgg": 0.9,
         "beta_pix": 0.09,
-        "lr": 0.0002,
+        "lr": 5e-5,
         "betas": (0.5, 0.999),
-        "weight_decay": 3e-4,
+        "weight_decay": 1e-3,
     },
     "dis": {
         "input_channels": 1,
         "inp_shape": cfg["data"]["target_transforms"][cfg["data"]["data_name"]](next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["stim"]).shape[1:],
-        "lr": 0.0002,
+        "lr": 5e-5,
         "betas": (0.5, 0.999),
-        "weight_decay": 3e-4,
+        "weight_decay": 1e-3,
     },
     "sum_rfs_out": True,
     "standardize_inputs": True,
@@ -247,10 +246,10 @@ cfg["rfs"] = {
     # "spatial_embeddings_path": None,
     # "spatial_embeddings_path": os.path.join(
     #     DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
-    # "spatial_embeddings_path": os.path.join(
-    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "20-02-2025_17-32", "embedding.pt"), # mouse_v1 (M-1)
     "spatial_embeddings_path": os.path.join(
-        DATA_PATH_MONKEYSEE, "spatial_embedding", "22-02-2025_11-53", "embedding.pt"), # cat_v1
+        DATA_PATH_MONKEYSEE, "spatial_embedding", "23-03-2025_19-07", "embedding_500.pt"), # mouse_v1 (M-1)
+    # "spatial_embeddings_path": os.path.join(
+    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "22-02-2025_11-53", "embedding.pt"), # cat_v1
     "device": cfg["device"],
 }
 

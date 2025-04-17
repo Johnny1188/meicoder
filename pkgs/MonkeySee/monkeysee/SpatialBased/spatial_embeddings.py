@@ -94,7 +94,7 @@ cfg = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
-        "data_name": "cat_v1",
+        "data_name": "mouse_v1",
     },
     "crop_wins": {
         "brainreader_mouse": None,
@@ -142,7 +142,6 @@ elif cfg["data"]["data_name"] == "mouse_v1":
             "file_tree": True,
             "cuda": "cuda" in cfg["device"],
             "batch_size": 32,
-            "seed": cfg["seed"],
             "use_cache": False,
         },
         "skip_train": False,
@@ -189,8 +188,8 @@ cfg["model"] = {
     "spatial_embedding": {
         "n_neurons": next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["resp"].shape[-1],
         # "feature_shape": (64, 36, 64),
-        # "feature_shape": (64, 22, 36),
-        "feature_shape": (64, 20, 20),
+        "feature_shape": (64, 22, 36),
+        # "feature_shape": (64, 20, 20),
     },
     "loss": {
         "lambda_1": 5e-1,
@@ -200,7 +199,7 @@ cfg["model"] = {
     "optimizer": {
         "lr": 3e-3,
     },
-    "epochs": 2000,
+    "epochs": 1000,
 }
 
 
