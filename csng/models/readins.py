@@ -627,6 +627,8 @@ class MEIReadIn(ReadIn):
         neuron_emb_dim=None,  # dim of learned neuron embeddings (None if not used)
         out_channels=None, # set manually
         neuron_idxs=None, # selection of neurons to use
+        l2_reg_mul=0.0,
+        l1_reg_mul=0.0,
         device="cpu",
     ):
         super().__init__()
@@ -636,6 +638,8 @@ class MEIReadIn(ReadIn):
         self.register_buffer("neuron_idxs", torch.tensor(neuron_idxs) if neuron_idxs is not None else None)
         self.n_neurons = n_neurons if neuron_idxs is None else len(neuron_idxs)
         self.use_neuron_coords = use_neuron_coords
+        self.l2_reg_mul = l2_reg_mul
+        self.l1_reg_mul = l1_reg_mul
         self.device = device
         assert not self.use_neuron_coords or ctx_net_config["in_channels"] > 1
 
@@ -703,6 +707,13 @@ class MEIReadIn(ReadIn):
     @staticmethod
     def _resp_transform(x):
         return torch.log10(x.clamp_min(1e-3))
+
+    def set_additional_loss(self, inp, out):
+        self._last_loss = 0.
+        if self.l2_reg_mul > 0:
+            self._last_loss += self.l2_reg_mul * sum(p.pow(2).sum() for p in self.parameters())
+        if self.l1_reg_mul > 0:
+            self._last_loss += self.l1_reg_mul * sum(p.abs().sum() for p in self.parameters())
 
     def forward(self, x, neuron_coords, pupil_center):
         """

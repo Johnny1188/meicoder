@@ -16,10 +16,10 @@ from torchvision.models.feature_extraction import create_feature_extractor
 from csng.utils.data import standardize, normalize, crop
 
 
-def get_metrics(inp_zscored, crop_win=None, device="cpu"):
+def get_metrics(inp_zscored, crop_win=None, reduction="mean", device="cpu"):
     metrics = {
         "SSIM": Loss(config=dict(
-            loss_fn=SSIM(),
+            loss_fn=SSIM(reduction=reduction),
             window=crop_win,
             standardize=inp_zscored,
         )),
@@ -28,6 +28,7 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
                 log_loss=True,
                 inp_normalized=inp_zscored,
                 inp_standardized=not inp_zscored,
+                reduction=reduction,
             ),
             window=crop_win,
         )),
@@ -36,15 +37,16 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
                 log_loss=False,
                 inp_normalized=inp_zscored,
                 inp_standardized=not inp_zscored,
+                reduction=reduction,
             ),
             window=crop_win,
         )),
         "PixCorr": Loss(config=dict(
-            loss_fn=PixCorr(),
+            loss_fn=PixCorr(reduction=reduction),
             window=crop_win,
         )),
         "PixCorr Loss": Loss(config=dict(
-            loss_fn=HigherBetterMetricToLossWrapper(metric=PixCorr(), metric_range=(0, 1)),
+            loss_fn=HigherBetterMetricToLossWrapper(metric=PixCorr(reduction=reduction), metric_range=(0, 1)),
             window=crop_win,
         )),
         "Alex(2)": Loss(config=dict(
@@ -52,6 +54,7 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
                 inp_zscored=inp_zscored,
                 feature_layers=["features.4"],
                 avg_across_layers=True,
+                reduction=reduction,
                 device=device,
             ),
             window=crop_win,
@@ -62,6 +65,7 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
                     inp_zscored=inp_zscored,
                     feature_layers=["features.4"],
                     avg_across_layers=True,
+                    reduction=reduction,
                     device=device,
                 ),
                 metric_range=(0, 1),
@@ -73,6 +77,7 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
                 inp_zscored=inp_zscored,
                 feature_layers=["features.11"],
                 avg_across_layers=True,
+                reduction=reduction,
                 device=device,
             ),
             window=crop_win,
@@ -83,6 +88,7 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
                     inp_zscored=inp_zscored,
                     feature_layers=["features.11"],
                     avg_across_layers=True,
+                    reduction=reduction,
                     device=device,
                 ),
                 metric_range=(0, 1),
@@ -93,6 +99,7 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
             loss_fn=VGGPerceptualLoss(
                 resize=False,
                 device=device,
+                reduction=reduction,
             ),
             window=crop_win,
             standardize=inp_zscored,
@@ -114,12 +121,14 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
             loss_fn=MSELoss(
                 window=crop_win,
                 minmax_normalize=inp_zscored,
+                reduction=reduction,
             ),
         )),
         "MSE w/out min-max normalization": Loss(config=dict(
             loss_fn=MSELoss(
                 window=crop_win,
                 minmax_normalize=False,
+                reduction=reduction,
             ),
         )),
         # "MSE-no-standardization": Loss(config=dict(
@@ -142,17 +151,19 @@ def get_metrics(inp_zscored, crop_win=None, device="cpu"):
             loss_fn=MAELoss(
                 window=crop_win,
                 minmax_normalize=inp_zscored,
+                reduction=reduction,
             ),
         )),
         "MAE w/out min-max normalization": Loss(config=dict(
             loss_fn=MAELoss(
                 window=crop_win,
                 minmax_normalize=False,
+                reduction=reduction,
             ),
         )),
     }
     metrics["SSIML-PL"] = Loss(config=dict(
-        loss_fn=lambda y_hat, y, **kwargs: metrics["SSIML"](y_hat, y, **kwargs) + metrics["PL"](y_hat, y, **kwargs),
+        loss_fn=lambda y_hat, y, **kwargs: metrics["SSIML"](y_hat, y, **kwargs) + metrics["PL"](y_hat, y, **kwargs).to(y_hat.device),
         window=crop_win,
     ))
 
@@ -560,6 +571,7 @@ class SSIMLoss(torch.nn.Module):
         nonnegative_ssim=False,
         reduction="mean",
     ):
+        assert reduction in ["mean", "sum", "none"], f"Reduction {reduction} not recognized. Use 'mean', 'sum' or 'none'."
         assert (inp_normalized and not inp_standardized) or (
             not inp_normalized and inp_standardized
         ), "Input should be either normalized or standardized."
@@ -818,6 +830,7 @@ class SSIM(torch.nn.Module):
         nonnegative=False,
         reduction="none",
     ):
+        assert reduction in ["mean", "sum", "none"], f"Invalid reduction: {reduction}"
         super().__init__()
         self.win_size = win_size
         self.win_sigma = win_sigma
@@ -960,12 +973,14 @@ class PerceptualLoss(torch.nn.Module):
         inp_standardized: bool = False,
         window=None, # (x1, x2, y1, y2)
         resize: bool = True,
+        reduction: str = "mean",
         device: str = "cuda",
     ):
+        assert reduction in ["mean", "sum", "none"], f"Reduction {reduction} not recognized. Use 'mean', 'sum' or 'none'."
         super().__init__()
         self.inp_standardized = inp_standardized
         self.window = window
-        self.vgg_loss = VGGPerceptualLoss(resize=resize).to(device)
+        self.vgg_loss = VGGPerceptualLoss(resize=resizem, reduction=reduction).to(device)
 
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
         if self.window is not None:
@@ -982,6 +997,7 @@ class PerceptualLoss(torch.nn.Module):
 class VGGPerceptualLoss(torch.nn.Module):
     """ Modified from: https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49 """
     def __init__(self, resize=False, mean_across_layers=True, mul_factor=1/4, reduction="per_sample_mean_sum", device="cuda"):
+        assert reduction in ["none", "per_sample_mean", "per_sample_mean_sum", "mean"], f"Invalid reduction: {reduction}"
         super().__init__()
         blocks = []
         blocks.append(torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).features[:4].eval())
@@ -1082,8 +1098,10 @@ class FID:
 
 
 class PixCorr(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, reduction="mean"):
+        assert reduction in ["mean", "sum", "none"], f"Invalid reduction: {reduction}"
         super().__init__()
+        self.reduction = reduction
 
     @staticmethod
     def batchwise_pearson_correlation(Z, B):
@@ -1112,7 +1130,14 @@ class PixCorr(torch.nn.Module):
         targets_flat = targets.view(len(targets), -1)
         preds_flat = preds.view(len(preds), -1)
 
-        corr_mean = self.batchwise_pearson_correlation(targets_flat, preds_flat).diag().mean()
+        corr_mean = self.batchwise_pearson_correlation(targets_flat, preds_flat).diag()
+
+        if self.reduction == "mean":
+            corr_mean = corr_mean.mean()
+        elif self.reduction == "sum":
+            corr_mean = corr_mean.sum()
+        elif self.reduction == "none":
+            pass
 
         return corr_mean
 
@@ -1131,14 +1156,17 @@ class TwoWayAlexNet(torch.nn.Module):
         inp_zscored: bool = False,
         feature_layers=["features.4", "features.11"],
         avg_across_layers: bool = False,
+        reduction="mean",
         device: str = "cuda",
     ):
+        assert reduction in ["mean", "sum", "none"], f"Invalid reduction: {reduction}"
         super().__init__()
 
         self.device = device
         self.inp_zscored = inp_zscored
         self.feature_layers = feature_layers
         self.avg_across_layers = avg_across_layers
+        self.reduction = reduction
 
         ### feature extractor
         self.alex_model = create_feature_extractor(
@@ -1184,7 +1212,7 @@ class TwoWayAlexNet(torch.nn.Module):
             perf = np.mean(success_cnt) / (len(all_images) - 1)
             return perf
         else:
-            return success_cnt, (len(all_images) - 1)
+            return (success_cnt / (len(all_images) - 1))
 
     def forward(self, preds, targets):
         results = dict()
@@ -1193,7 +1221,12 @@ class TwoWayAlexNet(torch.nn.Module):
                 all_recons=preds,
                 all_images=targets,
                 feature_layer=feature_layer,
-            ).mean()
+                return_avg=self.reduction == "mean",
+            )
+        if self.reduction == "mean":
+            results = {k: v.mean() for k, v in results.items()}
+        elif self.reduction == "sum":
+            results = {k: v.sum() for k, v in results.items()}
 
         if self.avg_across_layers:
             return sum(results.values()) / len(results)

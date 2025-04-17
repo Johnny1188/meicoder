@@ -3,6 +3,7 @@ import numpy as np
 import dill
 import json
 from datetime import datetime
+from copy import deepcopy
 import wandb
 import torch
 from torch import nn
@@ -40,7 +41,12 @@ def init_decoder(config, merge_configs_fn=None):
         ### load decoder
         print(f"[INFO] Loading the {'latest' if not config['decoder']['load_ckpt']['load_best'] else 'best'} model...")
         print(f"[INFO] Loading the {'core of the' if config['decoder']['load_ckpt']['load_only_core'] else 'full'} model...")
-        config["decoder"]["model"] = ckpt_cfg["decoder"]["model"]
+        if config['decoder']['load_ckpt']['load_only_core']:
+            readins_config = deepcopy(config["decoder"]["model"].get("readins_config", ckpt_cfg["decoder"]["model"].get("readins_config", None)))
+            config["decoder"]["model"] = ckpt_cfg["decoder"]["model"]
+            config["decoder"]["model"]["readins_config"] = readins_config
+        else:
+            config["decoder"]["model"] = ckpt_cfg["decoder"]["model"]
         decoder = MultiReadIn(**config["decoder"]["model"]).to(config["device"])
         decoder.load_from_ckpt(
             ckpt=ckpt,
