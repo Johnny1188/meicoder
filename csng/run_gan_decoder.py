@@ -79,8 +79,9 @@ config = {
 #     "avg_test_resp": True,
 #     "train_datapoint_idxs_to_use": None,
 #     # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=int(4500 * 0.5), replace=False),
+#     # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=2000, replace=False),
 # }
-# ### add neuron coordinates to brainreader mouse data (learned by pretrained encoder)
+# ## add neuron coordinates to brainreader mouse data (learned by pretrained encoder)
 # _enc_ckpt = torch.load(os.path.join(DATA_PATH, "models", "encoder_ball.pt"), pickle_module=dill)["model"]
 # config["data"]["brainreader_mouse"]["neuron_coords"] = dict()
 # for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
@@ -96,6 +97,7 @@ config = {
 #         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
 #         "image_size": [50, 50],
 #         "crop": False,
+#         # "batch_size": 20,
 #         "batch_size": 32,
 #         "stim_keys": ("stim",),
 #         "resp_keys": ("exc_resp", "inh_resp"),
@@ -110,7 +112,7 @@ config = {
 #             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
 #         ),
 #         "clamp_neg_resp": False,
-#         # "training_sample_idxs": np.random.choice(45000, size=22330, replace=False),
+#         # "training_sample_idxs": np.random.choice(45000, size=5000, replace=False),
 #     },
 #     "neuron_coords_to_use": None, # if None, uses the neuron coordinates from the dataset (if return_coords=True)
 # }
@@ -125,10 +127,10 @@ config["data"]["mouse_v1"] = {
     "dataset_config": {
         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+        #     os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+        #     os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+        #     os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+        #     os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
         ],
         "normalize": True,
         "z_score_responses": False,
@@ -139,12 +141,14 @@ config["data"]["mouse_v1"] = {
         "exclude": None,
         "file_tree": True,
         "cuda": "cuda" in config["device"],
+        # "batch_size": 2,
         # "batch_size": 5,
-        "batch_size": 16,
+        "batch_size": 32,
         "drop_last": True,
         "use_cache": False,
         "train_datapoint_idxs_to_use": None,
         # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=int(4473 * 0.5), replace=False),
+        # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=100, replace=False),
     },
     "crop_win": (22, 36),
     "skip_train": False,
@@ -157,10 +161,10 @@ config["data"]["mouse_v1"] = {
     "neuron_coords_to_use": None, # if None, uses the neuron coordinates from the dataset
     "device": config["device"],
 }
-### use the neuron coordinates learned by pretrained encoder
+# use the neuron coordinates learned by pretrained encoder
 # config["data"]["mouse_v1"]["neuron_coords_to_use"] = get_encoder_mouse_v1(
 #     ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt")
-# ).readout["m1"].sample_grid(batch_size=1, sample=False)[0,:,0]
+# ).readout["21067-10-18"].sample_grid(batch_size=1, sample=False)[0,:,0]
 
 # ### synthetic data
 # config["data"]["syn_data"] = {
@@ -270,9 +274,11 @@ config["decoder"] = {
     },
     "eval_loss_name": "Alex(5) Loss",  # for "higher is better" metrics, use "<name> Loss"
     "G_opter_cls": torch.optim.AdamW,
-    "G_opter_kwargs": {"lr": 1e-4, "weight_decay": 0.08},
+    # "G_opter_kwargs": {"lr": 1e-4, "weight_decay": 0.08},
+    "G_opter_kwargs": {"lr": 3e-5, "weight_decay": 0.3},
     "D_opter_cls": torch.optim.AdamW,
-    "D_opter_kwargs": {"lr": 1e-4, "weight_decay": 0.08},
+    # "D_opter_kwargs": {"lr": 1e-4, "weight_decay": 0.08},
+    "D_opter_kwargs": {"lr": 3e-5, "weight_decay": 0.3},
     "G_reg": {"l1": 0, "l2": 0},
     "D_reg": {"l1": 0, "l2": 0},
     "G_adv_loss_mul": 0.1,
@@ -291,9 +297,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-16_16-36-57", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-03_02-35-59", "ckpt", "decoder_245.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "5qnj5ehp",
+    #     "resume_wandb_id": "2025-04-03_02-35-59",
     # },
     ### for fine-tuning
     # "load_ckpt": {
@@ -302,7 +308,7 @@ config["decoder"] = {
     #     "load_opter_state": False,
     #     "load_history": False,
     #     "reset_best": True,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2024-12-11_03-42-04", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_11-30-08", "decoder.pt"),
     #     "resume_checkpointing": False,
     #     "resume_wandb_id": None,
     # },
@@ -384,26 +390,28 @@ if "brainreader_mouse" in config["data"]:
                         "mei_target_shape": (36, 64),
                         "meis_trainable": False,
                         "use_neuron_coords": (_use_neuron_coords := False),
-                        "neuron_emb_dim": (_neuron_emb_dim := None),
+                        "neuron_emb_dim": (_neuron_emb_dim := 32),
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
                             "batch_norm": True,
                             "act_fn": nn.LeakyReLU,
-                            "dropout": 0.15,
+                            "dropout": 0.2,
                         },
                         "ctx_net_config": {
                             "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
-                            "layers_config": [("fc", 8), ("fc", 128), ("fc", 36*64)],
+                            "layers_config": [("fc", 128), ("fc", 36*64)],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
                             "dropout": 0.15,
                             "batch_norm": True,
                         },
+                        "l2_reg_mul": 0,
                         "apply_resp_transform": False,
                         "shift_coords": False,
                         "neuron_idxs": None, # np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
-                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.025), replace=False),
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.05), replace=False),
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=500, replace=False),
                         "device": config["device"],
                     }),
                 ],
@@ -484,7 +492,7 @@ if "cat_v1" in config["data"]:
                     "mei_target_shape": config["crop_wins"]["cat_v1"],
                     "meis_trainable": False,
                     "use_neuron_coords": (_use_neuron_coords := False),
-                    "neuron_emb_dim": (_neuron_emb_dim := None),
+                    "neuron_emb_dim": (_neuron_emb_dim := 16),
                     "pointwise_conv_config": {
                         "out_channels": 480,
                         "bias": False,
@@ -494,16 +502,18 @@ if "cat_v1" in config["data"]:
                     },
                     "ctx_net_config": {
                         "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
-                        "layers_config": [("fc", 8), ("fc", 128), ("fc", np.prod(config["crop_wins"]["cat_v1"]))],
+                        "layers_config": [("fc", 32), ("fc", 128), ("fc", np.prod(config["crop_wins"]["cat_v1"]))],
                         "act_fn": nn.LeakyReLU,
                         "out_act_fn": nn.Identity,
                         "dropout": 0.15,
                         "batch_norm": True,
                     },
+                    "l2_reg_mul": 0,
                     "apply_resp_transform": False,
                     "shift_coords": False,
                     "neuron_idxs": None,
-                    # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(46875, size=int(46875 * 0.025), replace=False),
+                    # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(46875, size=int(46875 * 0.005), replace=False),
+                    # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(46875, size=500, replace=False),
                     "device": config["device"],
                 }),
             ],
@@ -584,26 +594,29 @@ if "mouse_v1" in config["data"]:
                         "mei_target_shape": config["crop_wins"][data_key],
                         "meis_trainable": False,
                         "use_neuron_coords": (_use_neuron_coords := False),
-                        "neuron_emb_dim": (_neuron_emb_dim := None),
+                        "neuron_emb_dim": (_neuron_emb_dim := 32),
                         "pointwise_conv_config": {
                             "out_channels": 480,
                             "bias": False,
                             "batch_norm": True,
                             "act_fn": nn.LeakyReLU,
-                            "dropout": 0.15,
+                            "dropout": 0.2,
                         },
                         "ctx_net_config": {
                             "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
-                            "layers_config": [("fc", 8), ("fc", 128), ("fc", np.prod(config["crop_wins"][data_key]))],
+                            "layers_config": [("fc", 128), ("fc", np.prod(config["crop_wins"][data_key]))],
                             "act_fn": nn.LeakyReLU,
                             "out_act_fn": nn.Identity,
                             "dropout": 0.15,
                             "batch_norm": True,
                         },
+                        "l2_reg_mul": 0,
+                        "l1_reg_mul": 0,
                         "apply_resp_transform": False,
                         "shift_coords": False,
                         "neuron_idxs": None,
-                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_coords.shape[-2], size=int(n_coords.shape[-2] * 0.025), replace=False),
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_coords.shape[-2], size=int(n_coords.shape[-2] * 0.015), replace=False),
+                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_coords.shape[-2], size=500, replace=False),
                         "device": config["device"],
                     }),
                 ],
