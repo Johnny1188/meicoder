@@ -269,11 +269,13 @@ class Loss:
                     loss_fn.reduction = before_red
                 else:
                     loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).mean()
+                    # loss = loss_fn(stim_pred, stim, **loss_fn_kwargs)
             else:
                 if sum_over_samples:
                     loss = sum(loss_fn(stim_pred[i][None,:,:,:], stim[i][None,:,:,:], **loss_fn_kwargs) for i in range(stim_pred.shape[0]))
                 else:
                     loss = loss_fn(stim_pred, stim, **loss_fn_kwargs).mean()
+                    # loss = loss_fn(stim_pred, stim, **loss_fn_kwargs)
         else:
             loss = loss_fn(stim_pred, stim, **loss_fn_kwargs)
 
@@ -980,7 +982,7 @@ class PerceptualLoss(torch.nn.Module):
         super().__init__()
         self.inp_standardized = inp_standardized
         self.window = window
-        self.vgg_loss = VGGPerceptualLoss(resize=resizem, reduction=reduction).to(device)
+        self.vgg_loss = VGGPerceptualLoss(resize=resize, reduction=reduction).to(device)
 
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
         if self.window is not None:
