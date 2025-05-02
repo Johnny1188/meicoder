@@ -1,0 +1,41 @@
+version: '3.4'
+x-build: &build
+  context: .
+  dockerfile: Dockerfile
+
+x-shared: &common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  volumes:
+    - .:/src
+    - ./lib:/src/lib
+
+services:
+  base:
+    image: egg
+    <<: *common
+    volumes:
+      - .:/src
+      - ./lib:/src/lib
+
+  python:
+    &python
+    image: egg
+    volumes:
+      - .:/src
+#      - /root/.cache/:/root/.cache/
+    entrypoint: [ "python" ]
+    env_file:
+      - .env
+
+  notebook:
+    image: egg
+    <<: *common
+    volumes:
+      - .:/src
+      - /var/sinz-shared:/data
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
