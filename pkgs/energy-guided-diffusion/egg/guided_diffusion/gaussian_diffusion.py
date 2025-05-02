@@ -507,6 +507,7 @@ class GaussianDiffusion:
         normalize_grad=True,
         inpaint=None,
         inpaint_mask=None,
+        approximate_xstart_for_energy=True,
     ):
         """
         Generate samples from the model and yield intermediate samples from
@@ -548,28 +549,33 @@ class GaussianDiffusion:
                 model_kwargs=model_kwargs,
             )
 
+            samples_for_energy_calc = out["pred_xstart"] if approximate_xstart_for_energy else out["sample"]
+
             if inpaint is not None and inpaint_mask is not None:
                 if t == 0:
                     _t = t
                 else:
                     _t = t - 1
 
-                energy = th.norm(inpaint - out["pred_xstart"] * inpaint_mask)
+                energy = th.norm(inpaint - samples_for_energy_calc * inpaint_mask)
                 grad = th.autograd.grad(outputs=energy, inputs=img)[0]
                 out["sample"] = out["sample"] - grad * energy_scale
             else:
-                energy = energy_fn(out["pred_xstart"])
+                energy = energy_fn(samples_for_energy_calc, t=i)
 
-                norm_grad = th.autograd.grad(outputs=energy["train"], inputs=img)[0]
+                if energy is None:
+                    update = 0
+                else:
+                    norm_grad = th.autograd.grad(outputs=energy["train"], inputs=img)[0]
 
-                if normalize_grad:
-                    norm_grad = norm_grad / (th.norm(norm_grad) + 1e-6)
+                    if normalize_grad:
+                        norm_grad = norm_grad / (th.norm(norm_grad) + 1e-6)
 
-                update = norm_grad * energy_scale
+                    update = norm_grad * energy_scale
 
-                if use_alpha_bar:
-                    alpha_bar = _extract_into_tensor(self.alphas_cumprod, t, img.shape)
-                    update = update * (1 - alpha_bar).sqrt()
+                    if use_alpha_bar:
+                        alpha_bar = _extract_into_tensor(self.alphas_cumprod, t, img.shape)
+                        update = update * (1 - alpha_bar).sqrt()
 
                 out["sample"] = out["sample"] - update
 

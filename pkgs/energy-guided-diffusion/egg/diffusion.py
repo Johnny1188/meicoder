@@ -83,6 +83,8 @@ class EGG(nn.Module):
         *,
         use_alpha_bar=False,
         normalize_grad=True,
+        init_imgs=None,
+        approximate_xstart_for_energy=True,
     ):
         """
         This function samples from a diffusion model using a given energy function and other optional parameters.
@@ -105,14 +107,20 @@ class EGG(nn.Module):
         `num_samples` parameter. The samples are returned as a tensor of shape `(num_samples, 3, image_size, image_size)`.
         The function also has optional parameters for using alpha
         """
+        shape = (
+            num_samples,
+            3,
+            self.model_config["image_size"],
+            self.model_config["image_size"],
+        )
+
+        if init_imgs is not None:
+            assert init_imgs.shape == shape, f"For sampling from EGG with prespecified `init_imgs`, they must be of shape {shape}"
+            if not init_imgs.requires_grad: init_imgs.requires_grad_()
+        
         return self.diffusion.p_sample_loop_progressive(
             self.model,
-            (
-                num_samples,
-                3,
-                self.model_config["image_size"],
-                self.model_config["image_size"],
-            ),
+            shape,
             clip_denoised=False,
             model_kwargs={},
             progress=True,
@@ -120,4 +128,6 @@ class EGG(nn.Module):
             energy_scale=energy_scale,
             use_alpha_bar=use_alpha_bar,
             normalize_grad=normalize_grad,
+            noise=init_imgs,
+            approximate_xstart_for_energy=approximate_xstart_for_energy,
         )
