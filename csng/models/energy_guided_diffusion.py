@@ -61,7 +61,7 @@ if config["data_name"] == "brainreader_mouse":
         "mixing_strategy": "sequential",
         "max_batches": None,
         "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-        "batch_size": 32,
+        "batch_size": 12,
         "sessions": [6],
         "resize_stim_to": (36, 64),
         "normalize_stim": True,
@@ -80,7 +80,7 @@ elif config["data_name"] == "cat_v1":
             "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
             "image_size": [50, 50],
             "crop": False,
-            "batch_size": 32,
+            "batch_size": 12,
             "stim_keys": ("stim",),
             "resp_keys": ("exc_resp", "inh_resp"),
             "return_coords": True,
@@ -158,21 +158,26 @@ config["egg"] = {
     "init_reconstruction_mul_factor": None,
     "loss_fns": get_metrics(inp_zscored=check_if_data_zscored(cfg=config), crop_win=config["crop_win"], device=config["device"]),
     "find_best_according_to": "Alex(5) Loss",
-    "max_batches": None,
+    "max_batches": 8,
     "save_dir": os.path.join(DATA_PATH, "models", "egg"),
 }
 
 ### hyperparam runs config - either manually selected or grid search
-config_updates = [dict()]
+config_updates = [
+    # dict(), # Cat V1: Alex(5) Loss=0.3892 (2025-05-03_02-27-46)
+    # {"model": {"num_steps": 500, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]}},
+    # {"model": {"num_steps": 750, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]}},
+]
 config_grid_search = None
-# config_grid_search = {
-#     "energy_scale": [2, 5, 8],
-#     "em_weight": [1],
-#     "dm_weight": [1],
-#     "dm_loss_name": ["MSE"],
-#     "init_reconstruction_mul_factor": [0.1, 0.3, 0.6],
-#     "energy_freq": [3, 10, 30],
-# }
+config_grid_search = {
+    "energy_scale": [1, 2, 5],
+    "model": [
+        {"num_steps": 1000, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
+        {"num_steps": 500, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
+        {"num_steps": 750, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
+        {"num_steps": 250, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
+    ]
+}
 
 
 if __name__ == "__main__":
@@ -241,7 +246,7 @@ if __name__ == "__main__":
     #     print(f"[INFO] loss of the x_zero to match: {loss_fn(pred_x_zero, crop(stim, config['crop_win'])):.3f}   ({decoder_ckpt_path})")
 
     ### run
-    best = {"config": None, "loss": np.inf, "idx": None}
+    best = {"config": None, "loss": np.inf, "idx": None, "run_name": None}
     print(f"[INFO] Hyperparameter search starts.")
     for i, config_update in enumerate(config_updates):
         print(f" [{i}/{len(config_updates)}]", end="")
@@ -327,6 +332,7 @@ if __name__ == "__main__":
             best["loss"] = val_loss
             best["config"] = run_config
             best["idx"] = i
+            best["run_name"] = run_name
         print("")
         print(f"   {dict_to_str(config_update)}")
 
@@ -355,6 +361,12 @@ if __name__ == "__main__":
             show=False,
         )
 
-    print(f"[INFO] Hyperparameter search finished. Best ({best['idx']}, loss={best['loss']}): {json.dumps(best['config']['egg'], indent=2, default=str)}")
+    print(
+        f"[INFO] Hyperparameter search finished.\n"
+        f"  Best ({best['idx']}, val_loss={best['loss']}):\n"
+        f"  Full config: {json.dumps(best['config'], indent=2, default=str)}"
+        f"  Run name: {best['run_name']}\n"
+        f"  Run dir: {run_dir}"
+    )
     with open(os.path.join(run_dir, f"best_config.json"), "w") as f:
         json.dump(best["config"], f, indent=4, default=str)
