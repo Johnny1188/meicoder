@@ -16,7 +16,13 @@ from torchvision.models.feature_extraction import create_feature_extractor
 from csng.utils.data import standardize, normalize, crop
 
 
-def get_metrics(inp_zscored, crop_win=None, reduction="mean", device="cpu"):
+def get_metrics(
+    inp_zscored,
+    crop_win=None,
+    load_brain_distance_with_cfg=None,
+    reduction="mean",
+    device="cpu",
+):
     metrics = {
         "SSIM": Loss(config=dict(
             loss_fn=SSIM(reduction=reduction),
@@ -166,6 +172,15 @@ def get_metrics(inp_zscored, crop_win=None, reduction="mean", device="cpu"):
         loss_fn=lambda y_hat, y, **kwargs: metrics["SSIML"](y_hat, y, **kwargs) + metrics["PL"](y_hat, y, **kwargs).to(y_hat.device),
         window=crop_win,
     ))
+
+    if load_brain_distance_with_cfg is not None:
+        metrics["BrainDistance"] = Loss(
+            config=dict(
+                loss_fn=BrainDistance(**load_brain_distance_with_cfg),
+                window=crop_win,
+            ),
+            update_loss_fn_kwargs_with_items=["resp", "data_key", "neuron_coords", "pupil_center"],
+        )
 
     return metrics
 
@@ -1244,12 +1259,16 @@ class BrainDistance(torch.nn.Module):
         resp_loss_fn = F.mse_loss,
         zscore_inp: bool = False,
         minmax_normalize_inp: bool = False,
+        pad_stim_pred_to=None,
         device="cuda",
     ):
+        assert pad_stim_pred_to is None or len(pad_stim_pred_to) == 4, \
+            f"pad_stim_pred_to should be None or a tuple of length 4, but got {len(pad_stim_pred_to)}"
         super().__init__()
         self.use_gt_resp = use_gt_resp
         self.zscore_inp = zscore_inp
         self.minmax_normalize_inp = minmax_normalize_inp
+        self.pad_stim_pred_to = pad_stim_pred_to
         self.resp_loss_fn = resp_loss_fn
         self.device = device
         self.encoder = encoder
@@ -1269,5 +1288,13 @@ class BrainDistance(torch.nn.Module):
         if self.minmax_normalize_inp:
             pred = standardize(pred)
             target = standardize(target)
+
+        if self.pad_stim_pred_to is not None:
+            ### pad stim_pred to size specified by self.pad_stim_pred_to with zeros
+            pred = F.pad(pred, (
+                (self.pad_stim_pred_to[3] - pred.shape[3]) // 2, (self.pad_stim_pred_to[3] - pred.shape[3]) // 2,
+                (self.pad_stim_pred_to[2] - pred.shape[2]) // 2, (self.pad_stim_pred_to[2] - pred.shape[2]) // 2,
+            ), mode="constant", value=0)
+            pred = F.interpolate(pred, size=self.pad_stim_pred_to[2:], mode="bilinear", align_corners=False)
 
         return self._compute_brain_similarity(stim_pred=pred, stim=target, resp=resp, **kwargs)

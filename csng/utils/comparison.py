@@ -88,20 +88,22 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval
     losses = {data_key: {loss_fn_name: 0 for loss_fn_name in data_key_loss_fns.keys()} for data_key, data_key_loss_fns in loss_fns.items()}
     n_samples_counter = {data_key: 0 for data_key in loss_fns.keys()}
     n_samples_counter_total = {data_key: 0 for data_key in loss_fns.keys()}
-    preds, targets = defaultdict(list), defaultdict(list)
+    preds, targets, resps = defaultdict(list), defaultdict(list), defaultdict(list)
 
-    def update_evals(batch_preds, batch_targets, batch_data_key):
+    def update_evals(batch_preds, batch_targets, batch_resps, batch_data_key):
         ### calculate metrics (mini-batched)
         assert batch_data_key != "total", "Data key cannot be 'total'"
         batch_preds = torch.cat(batch_preds, dim=0)
         batch_targets = torch.cat(batch_targets, dim=0)
-        assert (B := n_samples_counter[batch_data_key]) == batch_preds.shape[0] == batch_targets.shape[0], \
+        batch_resps = torch.cat(batch_resps, dim=0)
+        assert (B := n_samples_counter[batch_data_key]) == batch_preds.shape[0] == batch_targets.shape[0] == batch_resps.shape[0], \
             "Number of samples in preds and targets must be the same"
 
         for loss_name, loss_fn in loss_fns[batch_data_key].items():
             losses[batch_data_key][loss_name] += loss_fn(
                 batch_preds,
                 batch_targets,
+                resp=batch_resps,
                 data_key=batch_data_key,
                 sum_over_samples=False,
                 phase="val",
@@ -127,12 +129,13 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval
                 ### append for batched metric eval
                 preds[dp["data_key"]].append(crop(stim_pred, crop_wins[dp["data_key"]]).detach().cpu())
                 targets[dp["data_key"]].append(crop(dp["stim"], crop_wins[dp["data_key"]]).cpu())
+                resps[dp["data_key"]].append(dp["resp"].cpu())
                 n_samples_counter[dp["data_key"]] += dp["stim"].shape[0]
 
                 ### eval metrics
                 if eval_every_n_samples and n_samples_counter[dp["data_key"]] >= eval_every_n_samples:
-                    update_evals(batch_preds=preds[dp["data_key"]], batch_targets=targets[dp["data_key"]], batch_data_key=dp["data_key"])
-                    preds[dp["data_key"]], targets[dp["data_key"]] = [], []
+                    update_evals(batch_preds=preds[dp["data_key"]], batch_targets=targets[dp["data_key"]], batch_resps=resps[dp["data_key"]], batch_data_key=dp["data_key"])
+                    preds[dp["data_key"]], targets[dp["data_key"]], resps[dp["data_key"]] = [], [], []
                     n_samples_counter[dp["data_key"]] = 0
 
             if max_batches is not None and b_idx + 1 >= max_batches:
@@ -142,7 +145,7 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval
     losses["total"] = defaultdict(float)
     for data_key in preds.keys():
         if len(preds[data_key]) > 0:
-            update_evals(batch_preds=preds[data_key], batch_targets=targets[data_key], batch_data_key=data_key)
+            update_evals(batch_preds=preds[data_key], batch_targets=targets[data_key], batch_resps=resps[data_key], batch_data_key=data_key)
 
         for loss_name, loss_fn in loss_fns[data_key].items():
             losses[data_key][loss_name] /= n_samples_counter_total[data_key]

@@ -15,18 +15,19 @@ def get_corr(x, y):
 
 
 def plot_comparison(target, pred, target_title="Target", pred_title="Reconstructed", n_cols=8, show=True, save_to=None):
-    n_imgs = (target.shape[0], pred.shape[0])
+    n_imgs = (target.shape[0] if target is not None else 0, pred.shape[0])
     n_rows_per_group = (1 + (n_imgs[0]-1)//n_cols, 1 + (n_imgs[1]-1)//n_cols)
 
     ### plot comparison
-    h_mul_factor = 2 * (target.shape[-2] / target.shape[-1])
+    img_dims_ratio = (target.shape[-2] / target.shape[-1]) if target is not None else (pred.shape[-2] / pred.shape[-1])
+    h_mul_factor = 2 * img_dims_ratio
     # w_mul_factor = 0.4 + (target.shape[-1] / target.shape[-2])
     fig = plt.figure(figsize=(22, 1.5 + h_mul_factor * sum(n_rows_per_group)))
     # fig = plt.figure(figsize=(n_cols * w_mul_factor, 3 + sum(n_rows_per_group) * h_mul_factor))
     
     for i in range(max(n_imgs)):
         ### target
-        if i < n_imgs[0]:
+        if target is not None and i < n_imgs[0]:
             ax = fig.add_subplot(sum(n_rows_per_group), n_cols, i + 1)
             ax.imshow(target[i].cpu().squeeze(), cmap="gray")
             ax.axis("off")
