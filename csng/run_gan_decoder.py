@@ -15,7 +15,7 @@ lt.monkey_patch()
 from csng.models.gan import GAN
 from csng.utils.mix import seed_all, plot_losses, plot_comparison, count_parameters, check_if_data_zscored
 from csng.utils.data import standardize, normalize, crop
-from csng.losses import SSIMLoss, MSELoss, Loss, get_metrics
+from csng.losses import SSIMLoss, MSELoss, Loss, get_metrics, VGGPerceptualLoss
 from csng.models.readins import (
     MultiReadIn,
     ConvReadIn,
@@ -127,10 +127,10 @@ config["data"]["mouse_v1"] = {
     "dataset_config": {
         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-        #     os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-        #     os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-        #     os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-        #     os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
         ],
         "normalize": True,
         "z_score_responses": False,
@@ -142,7 +142,7 @@ config["data"]["mouse_v1"] = {
         "file_tree": True,
         "cuda": "cuda" in config["device"],
         # "batch_size": 2,
-        # "batch_size": 5,
+        # "batch_size": 8,
         "batch_size": 32,
         "drop_last": True,
         "use_cache": False,
@@ -297,9 +297,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-03_02-35-59", "ckpt", "decoder_245.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-29_01-37-25", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "2025-04-03_02-35-59",
+    #     "resume_wandb_id": "2025-04-29_01-37-25",
     # },
     ### for fine-tuning
     # "load_ckpt": {
@@ -308,7 +308,7 @@ config["decoder"] = {
     #     "load_opter_state": False,
     #     "load_history": False,
     #     "reset_best": True,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_11-30-08", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-27_19-01-36", "decoder.pt"),
     #     "resume_checkpointing": False,
     #     "resume_wandb_id": None,
     # },
@@ -321,6 +321,15 @@ if "brainreader_mouse" in config["data"]:
         ### set crop wins and losses
         config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
         config["decoder"]["loss"]["loss_fn"][data_key] = SSIMLoss(window=config["crop_wins"][data_key], log_loss=True, inp_normalized=True, inp_standardized=False)
+        # config["decoder"]["loss"]["loss_fn"][data_key] = Loss(config=dict(
+        #     loss_fn=VGGPerceptualLoss(
+        #         resize=False,
+        #         device=config["device"],
+        #         reduction="mean",
+        #     ),
+        #     window=config["crop_wins"][data_key],
+        #     standardize=True,
+        # ))
 
         ### append discriminator's head
         config["decoder"]["model"]["core_config"]["D_kwargs"]["layers"][-1][data_key] = {
@@ -423,6 +432,15 @@ if "cat_v1" in config["data"]:
     ### set crop wins and losses
     config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
     config["decoder"]["loss"]["loss_fn"]["cat_v1"] = SSIMLoss(window=config["crop_wins"]["cat_v1"], log_loss=True, inp_normalized=True, inp_standardized=False)
+    # config["decoder"]["loss"]["loss_fn"]["cat_v1"] = Loss(config=dict(
+    #     loss_fn=VGGPerceptualLoss(
+    #         resize=False,
+    #         device=config["device"],
+    #         reduction="mean",
+    #     ),
+    #     window=config["crop_wins"]["cat_v1"],
+    #     standardize=True,
+    # ))
 
     ### append discriminator's head
     config["decoder"]["model"]["core_config"]["D_kwargs"]["layers"][-1]["cat_v1"] = {
@@ -527,6 +545,15 @@ if "mouse_v1" in config["data"]:
         ### set crop wins and losses
         config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
         config["decoder"]["loss"]["loss_fn"][data_key] = SSIMLoss(window=config["crop_wins"][data_key], log_loss=True, inp_normalized=True, inp_standardized=False)
+        # config["decoder"]["loss"]["loss_fn"][data_key] = Loss(config=dict(
+        #     loss_fn=VGGPerceptualLoss(
+        #         resize=False,
+        #         device=config["device"],
+        #         reduction="mean",
+        #     ),
+        #     window=config["crop_wins"][data_key],
+        #     standardize=True,
+        # ))
 
         ### append discriminator's head
         config["decoder"]["model"]["core_config"]["D_kwargs"]["layers"][-1][data_key] = {

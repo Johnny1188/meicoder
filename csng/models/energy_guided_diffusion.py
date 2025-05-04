@@ -14,10 +14,10 @@ import dill
 import itertools
 from functools import partial
 
-from egg.diffusion import EGG
+# from egg.diffusion import EGG
 
 import csng
-from csng.utils.mix import seed_all, plot_comparison, dict_to_str, slugify, check_if_data_zscored, plot_comparison, dict_to_str, count_parameters
+from csng.utils.mix import seed_all, plot_comparison, dict_to_str, slugify, check_if_data_zscored, plot_comparison, count_parameters
 from csng.utils.data import standardize, normalize, crop
 from csng.utils.comparison import load_decoder_from_ckpt, plot_reconstructions, eval_decoder, collect_all_preds_and_targets
 from csng.losses import get_metrics
@@ -43,6 +43,11 @@ encoder_paths = {
     "mouse_v1": os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
     "cat_v1": os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
 }
+encoder_input_shapes = {
+    "brainreader_mouse": (36, 64),
+    "mouse_v1": (36, 64),
+    "cat_v1": (50, 50),
+}
 
 
 ##### global run config
@@ -51,7 +56,7 @@ config = {
     "seed": 0,
     "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "mouse_v1",
+    "data_name": "brainreader_mouse",
 }
 
 ### data config
@@ -138,6 +143,7 @@ elif config["data_name"] == "mouse_v1":
 ### Encoder inversion config
 config["egg"] = {
     "encoder_path": encoder_paths[config["data_name"]],
+    "encoder_input_shape": encoder_input_shapes[config["data_name"]],
     "decoder_paths": [
         # os.path.join(DATA_PATH, "models", "gan", "2024-05-19_22-13-01", "ckpt/decoder_141.pt"),
     ],
@@ -157,9 +163,9 @@ config["egg"] = {
     "encoder_response_as_target": False, # True -> uses GT images
     "init_reconstruction_mul_factor": None,
     "loss_fns": get_metrics(inp_zscored=check_if_data_zscored(cfg=config), crop_win=config["crop_win"], device=config["device"]),
+    "save_dir": os.path.join(DATA_PATH, "models", "egg"),
     "find_best_according_to": "Alex(5) Loss",
     "max_batches": 8,
-    "save_dir": os.path.join(DATA_PATH, "models", "egg"),
 }
 
 ### hyperparam runs config - either manually selected or grid search
@@ -283,6 +289,7 @@ if __name__ == "__main__":
                 eval_mode=True,
                 device=config["device"],
             ),
+            encoder_input_shape=config["egg"]["encoder_input_shape"],
             egg_model_cfg=run_config["egg"]["model"],
             crop_win=config["crop_win"],
             energy_scale=run_config["egg"]["energy_scale"],
@@ -334,10 +341,10 @@ if __name__ == "__main__":
             best["idx"] = i
             best["run_name"] = run_name
         print("")
-        print(f"   {dict_to_str(config_update)}")
+        print(f"   {slugify(config_update)}")
 
         ### save
-        with open(os.path.join(run_dir, f"config_{i}_{dict_to_str(config_update, as_filename=True)}.json"), "w") as f:
+        with open(os.path.join(run_dir, f"config_{run_name}.json"), "w") as f:
             json.dump(run_config, f, indent=4, default=str)
         stim_pred = decoder(resp, data_key=data_key).detach().cpu()
         torch.save({
@@ -345,11 +352,11 @@ if __name__ == "__main__":
             "stim_pred": stim_pred,
             "stim_pred_history": decoder.stim_pred_history,
             "energy_history": decoder.energy_history,
-        }, os.path.join(run_dir, f"ckpt_{i}_{dict_to_str(config_update, as_filename=True)}.pt"), pickle_module=dill)
+        }, os.path.join(run_dir, f"ckpt_{run_name}.pt"), pickle_module=dill)
         plot_comparison(
             target=crop(stim[:8], config["crop_win"]).cpu(),
             pred=crop(stim_pred[:8], config["crop_win"]).cpu(),
-            save_to=os.path.join(run_dir, f"stim_pred_{i}_{dict_to_str(config_update, as_filename=True)}.png"),
+            save_to=os.path.join(run_dir, f"stim_pred_{run_name}.png"),
             show=False,
         )
         plot_diffusion(
@@ -357,7 +364,7 @@ if __name__ == "__main__":
             imgs=[_stim_pred[0] for _stim_pred in decoder.stim_pred_history],
             timesteps=(0, 10, 100, 200, 300, 400, 600, 800, 999) if decoder.num_steps == 1000 else np.linspace(0, decoder.num_steps-1, 9).astype(int),
             crop_win=config["crop_win"],
-            save_to=os.path.join(run_dir, f"decoding_history_{i}_{dict_to_str(config_update, as_filename=True)}.png"),
+            save_to=os.path.join(run_dir, f"decoding_history_{run_name}.png"),
             show=False,
         )
 

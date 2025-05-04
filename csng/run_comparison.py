@@ -12,6 +12,7 @@ import csng
 from csng.models.inverted_encoder import InvertedEncoder, InvertedEncoderBrainreader
 from csng.models.ensemble import EnsembleInvEnc
 from csng.models.inverted_encoder_decoder import InvertedEncoderDecoder
+from csng.models.utils.energy_guided_diffusion import EGGDecoder, do_run, energy_fn, plot_diffusion
 from csng.utils.mix import seed_all, check_if_data_zscored, update_config_paths, update_config
 from csng.utils.data import standardize, normalize, crop
 from csng.utils.comparison import find_best_ckpt, load_decoder_from_ckpt, plot_reconstructions, plot_metrics, eval_decoder, SavedReconstructionsDecoder, collect_all_preds_and_targets
@@ -49,6 +50,7 @@ config = {
 #     "max_batches": None,
 #     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
 #     # "batch_size": 4,
+#     # "batch_size": 12,
 #     "batch_size": 36,
 #     # "sessions": list(range(1, 23)),
 #     "sessions": [6],
@@ -73,69 +75,71 @@ config = {
 
 
 ### cat v1 data
-# config["data"]["cat_v1"] = {
-#     "crop_win": (20, 20),
-#     "dataset_config": {
-#         "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
-#         "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
-#         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
-#         "image_size": [50, 50],
-#         "crop": False,
-#         "batch_size": 36,
-#         "stim_keys": ("stim",),
-#         "resp_keys": ("exc_resp", "inh_resp"),
-#         "return_coords": True,
-#         "return_ori": False,
-#         "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
-#         "cached": False,
-#         "stim_normalize_mean": 46.143,
-#         "stim_normalize_std": 24.960,
-#         "resp_normalize_mean": None,
-#         "resp_normalize_std": torch.load(
-#             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
-#         ),
-#     },
-# }
-# # add crop_wins for cat v1 data
-# config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
+config["data"]["cat_v1"] = {
+    "crop_win": (20, 20),
+    "dataset_config": {
+        "train_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "train"),
+        "val_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "val"),
+        "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
+        "image_size": [50, 50],
+        "crop": False,
+        # "batch_size": 12,
+        "batch_size": 36,
+        "stim_keys": ("stim",),
+        "resp_keys": ("exc_resp", "inh_resp"),
+        "return_coords": True,
+        "return_ori": False,
+        "coords_ori_filepath": os.path.join(DATA_PATH_CAT_V1, "pos_and_ori.pkl"),
+        "cached": False,
+        "stim_normalize_mean": 46.143,
+        "stim_normalize_std": 24.960,
+        "resp_normalize_mean": None,
+        "resp_normalize_std": torch.load(
+            os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
+        ),
+    },
+}
+# add crop_wins for cat v1 data
+config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
 
 ### mouse v1 data
-config["data"]["mouse_v1"] = {
-    "dataset_fn": "sensorium.datasets.static_loaders",
-    "dataset_config": {
-        "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
-            os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
-        ],
-        "normalize": True,
-        "z_score_responses": False,
-        "scale": 0.25, # 256x144 -> 64x36
-        "include_behavior": False,
-        "add_behavior_as_channels": False,
-        "include_eye_position": True,
-        "exclude": None,
-        "file_tree": True,
-        "cuda": "cuda" in config["device"],
-        "batch_size": 16,
-        "seed": config["seed"],
-        "use_cache": False,
-    },
-    "crop_win": (22, 36),
-    "skip_train": False,
-    "skip_val": False,
-    "skip_test": False,
-    "normalize_neuron_coords": True,
-    "average_test_multitrial": True,
-    "save_test_multitrial": True,
-    "test_batch_size": 36,
-    "device": config["device"],
-}
-### add crop_wins for mouse v1 data
-for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
-    config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
+# config["data"]["mouse_v1"] = {
+#     "dataset_fn": "sensorium.datasets.static_loaders",
+#     "dataset_config": {
+#         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+#             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+#         ],
+#         "normalize": True,
+#         "z_score_responses": False,
+#         "scale": 0.25, # 256x144 -> 64x36
+#         "include_behavior": False,
+#         "add_behavior_as_channels": False,
+#         "include_eye_position": True,
+#         "exclude": None,
+#         "file_tree": True,
+#         "cuda": "cuda" in config["device"],
+#         "batch_size": 16,
+#         "seed": config["seed"],
+#         "use_cache": False,
+#     },
+#     "crop_win": (22, 36),
+#     "skip_train": False,
+#     "skip_val": False,
+#     "skip_test": False,
+#     "normalize_neuron_coords": True,
+#     "average_test_multitrial": True,
+#     "save_test_multitrial": True,
+#     # "test_batch_size": 12,
+#     "test_batch_size": 36,
+#     "device": config["device"],
+# }
+# ### add crop_wins for mouse v1 data
+# for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
+#     config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
 
 
 ### comparison config
@@ -149,8 +153,9 @@ config["comparison"] = {
     "save_all_preds_and_targets": False,
     "save_dir": None,
     "save_dir": os.path.join(
+        DATA_PATH,
         "results",
-        "test_ft"
+        "test_egg_c"
         # "12-04-25",
         # "brainreader_ablations_mix",
     ),
@@ -175,7 +180,7 @@ config["comparison"] = {
         "PixCorr",
         "Alex(2)",
         "Alex(5)",
-        "MAE",
+        # "MAE",
     ],
 }
 
@@ -309,6 +314,70 @@ config["comparison"]["to_compare"] = {
     #     "run_name": None,
     # },
 
+    ### --- Energy guided diffusion ---
+    # "EGG": { # brainreader mouse
+    #     "decoder": EGGDecoder(
+    #         encoder=get_encoder_brainreader(
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
+    #             eval_mode=True,
+    #             device=config["device"],
+    #         ),
+    #         encoder_input_shape=(36, 64),
+    #         egg_model_cfg={
+    #             "num_steps": (egg_num_steps := 750),
+    #             "diffusion_artefact": os.path.join(DATA_PATH, "models", "egg", "256x256_diffusion_uncond.pt"),
+    #         },
+    #         crop_win=config["crop_wins"]["6"],
+    #         energy_scale=1,
+    #         energy_constraint=60,
+    #         num_steps=egg_num_steps,
+    #         energy_freq=1,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "EGG": { # mouse v1
+    #     "decoder": EGGDecoder(
+    #         encoder=get_encoder_sensorium_mouse_v1(
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
+    #             eval_mode=True,
+    #             device=config["device"],
+    #         ),
+    #         encoder_input_shape=(36, 64),
+    #         egg_model_cfg={
+    #             "num_steps": (egg_num_steps := 250),
+    #             "diffusion_artefact": os.path.join(DATA_PATH, "models", "egg", "256x256_diffusion_uncond.pt"),
+    #         },
+    #         crop_win=config["crop_wins"]["21067-10-18"],
+    #         energy_scale=5,
+    #         energy_constraint=60,
+    #         num_steps=egg_num_steps,
+    #         energy_freq=1,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
+    # "EGG": { # cat v1
+    #     "decoder": EGGDecoder(
+    #         encoder=get_encoder_cat_v1(
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+    #             eval_mode=True,
+    #             device=config["device"],
+    #         ),
+    #         encoder_input_shape=(50, 50),
+    #         egg_model_cfg={
+    #             "num_steps": (egg_num_steps := 250),
+    #             "diffusion_artefact": os.path.join(DATA_PATH, "models", "egg", "256x256_diffusion_uncond.pt"),
+    #         },
+    #         crop_win=config["crop_wins"]["cat_v1"],
+    #         energy_scale=2,
+    #         energy_constraint=60,
+    #         num_steps=egg_num_steps,
+    #         energy_freq=1,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
 
     ### --- MonkeySee ---
     # "MonkeySee": { # B-6
@@ -535,42 +604,6 @@ config["comparison"]["to_compare"] = {
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-26_10-50-31", "decoder.pt"),
     # },
     # # ---
-    # "GAN w/ NEs (test)": {
-    #     "run_name": "2025-04-11_01-27-04",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-11_01-27-04", "decoder.pt"),
-    # },
-    # "GAN w/o NEs, high reg.": {
-    #     "run_name": "2025-04-03_02-39-00",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-03_02-39-00", "decoder.pt"),
-    # },
-    # "GAN w/ NEs orig": {
-    #     "run_name": "2025-03-10_01-22-27",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_01-22-27", "decoder.pt"),
-    # },
-    # "GAN w/ NEs + high wd & small lr": {
-    #     "run_name": "2025-03-16_13-04-53",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-16_13-04-53", "decoder.pt"),
-    # },
-    # "GAN (B-1-8)": {
-    #     "run_name": "2025-04-07_01-29-21",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-07_01-29-21", "ckpt", "decoder_210.pt"),
-    # },
-    # "GAN (B-1-8) deeper ctx net": {
-    #     "run_name": "2025-03-25_00-15-24",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-25_00-15-24", "ckpt", "decoder_280.pt"),
-    # },
-    # "GAN (B-1-8 -> B-6) deeper ctx net)": {
-    #     "run_name": "2025-04-12_01-30-28",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-12_01-30-28", "decoder.pt"),
-    # },
-    # "GAN (B-All)": {
-    #     "run_name": "2025-02-19_13-18-05",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-19_13-18-05", "decoder.pt"),
-    # },
-    # "GAN": {
-    #     "run_name": "2025-02-27_18-49-52",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-27_18-49-52", "decoder.pt"),
-    # },
 
     ## sensorium mouse v1 ---
     # "GAN": {
@@ -609,51 +642,10 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-04-26_10-47-48",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-26_10-47-48", "decoder.pt"),
     # }, # ---
-    # "2025-04-29_01-37-25": {
-    #     "run_name": "2025-04-29_01-37-25",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-29_01-37-25", "ckpt", "decoder_495.pt"),
-    # },
-    # "2025-04-30_01-46-40": {
-    #     "run_name": "2025-04-30_01-46-40",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-30_01-46-40", "decoder.pt"),
-    # },
-    # "2025-04-30_01-51-44": {
-    #     "run_name": "2025-04-30_01-51-44",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-30_01-51-44", "decoder.pt"),
-    # },
-    # "GAN w/o NEs, w/ high wd & small lr": {
-    #     "run_name": "2025-03-22_15-57-43",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-22_15-57-43", "decoder.pt"),
-    # },
-    # "GAN w/NEs (M-All)": {
-    #     "run_name": "2025-03-24_11-30-08",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_11-30-08", "decoder.pt"),
-    # },
-    # "GAN (M-All)": {
-    #     "run_name": "2025-03-24_02-05-11",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_02-05-11", "decoder.pt"),
-    # },
-
-    # "GAN w/ NEs (fixed batch)": {
-    #     "run_name": "2025-03-23_19-36-27",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-23_19-36-27", "decoder.pt"),
-    # },
-    # "GAN w/ stronger regularization": {
-    #     "run_name": "2025-03-15_00-34-19",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-15_00-34-19", "decoder.pt"),
-    # },
-    # "GAN": {
-    #     "run_name": "2025-02-24_00-08-53",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_00-08-53", "decoder.pt"),
-    # },
-    # "GAN w/ high wd & small lr": {
-    #     "run_name": "2025-03-10_10-46-19",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_10-46-19", "decoder.pt"),
-    # },
 
     ## cat v1 ---
     # "GAN": {
-    #     "run_name": "2025-03-22_18-54-55",
+    #     "run_name": "2025-03-22_18-54-55", # TODO: test 2025-04-25_20-19-46
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-22_18-54-55", "ckpt", "decoder_120.pt"),
     # },
     # "GAN, MEIs ablation": {
@@ -684,60 +676,6 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-04-22_11-43-16",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-22_11-43-16", "ckpt", "decoder_200.pt"),
     # }, # ---
-    # "GAN small": {
-    #     "run_name": "2025-04-14_17-01-58",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-14_17-01-58", "ckpt", "decoder_200.pt"),
-    # },
-    # "Naive": {
-    #     "run_name": "2025-04-09_00-34-07",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-09_00-34-07", "ckpt", "decoder_90.pt"),
-    # },
-    # "GAN w/ NEs 2": {
-    #     "run_name": "2025-04-07_01-32-38",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-07_01-32-38", "ckpt", "decoder_190.pt"),
-    # },
-    # "GAN w/ NEs 3": {
-    #     "run_name": "2025-03-16_11-19-45",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-16_11-19-45", "ckpt", "decoder_190.pt"),
-    # },
-    # "GAN w/ high wd & small lr": {
-    #     "run_name": "2025-03-10_12-55-26",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-10_12-55-26", "ckpt", "decoder_50.pt"),
-    # },
-    # "GAN w/ high wd & small lr (2)": {
-    #     "run_name": "2025-04-04_02-32-25",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-04_02-32-25", "ckpt", "decoder_50.pt"),
-    # },
-    # "GAN": {
-    #     "run_name": "2025-02-24_11-54-11",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_11-54-11", "decoder.pt"),
-    # },
-    # "GAN w/ neuron embs": {
-    #     "run_name": "2025-03-07_19-34-01",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-07_19-34-01", "decoder.pt"),
-    # },
-    # "GAN w/coords": {
-    #     "run_name": "2025-02-24_12-01-36",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-24_12-01-36", "decoder.pt"),
-    # },
-    # "GAN (v2)": {
-    #     "run_name": "2025-03-04_11-59-27",
-    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_11-59-27", "decoder.pt"),
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_11-59-27", "ckpt", "decoder_215.pt"),
-    # },
-    # "GAN 768": {
-    #     "run_name": "2025-03-04_12-02-23",
-    #     # "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_12-02-23", "decoder.pt"),
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-04_12-02-23", "ckpt", "decoder_200.pt"),
-    # },
-    # "GAN-Conv": {
-    #     "run_name": "2025-03-05_13-01-12",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-05_13-01-12", "decoder.pt"),
-    # },
-    # "GAN w/ trainable MEIs": {
-    #     "run_name": "2025-03-06_00-53-17",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-06_00-53-17", "decoder.pt"),
-    # },
 
 
     ### --- Number of neurons vs performance ---

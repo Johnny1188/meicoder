@@ -17,6 +17,7 @@ class EGGDecoder(nn.Module):
         encoder,
         egg_model_cfg,
         crop_win,
+        encoder_input_shape,
         energy_scale=1,
         energy_constraint=60,
         num_steps=1000,
@@ -29,6 +30,7 @@ class EGGDecoder(nn.Module):
         self.encoder.eval()
         
         self.crop_win = crop_win
+        self.encoder_input_shape = encoder_input_shape
         self.energy_scale = energy_scale
         self.energy_constraint = energy_constraint
         self.num_steps = num_steps
@@ -41,6 +43,7 @@ class EGGDecoder(nn.Module):
             energy_fn=partial(
                 energy_fn,
                 encoder_model=partial(self.encoder, data_key=data_key, pupil_center=pupil_center),
+                encoder_input_shape=self.encoder_input_shape,
                 target_response=resp,
                 norm=self.energy_constraint,
                 em_weight=1,
@@ -50,6 +53,7 @@ class EGGDecoder(nn.Module):
             energy_scale=self.energy_scale,
             num_timesteps=self.num_steps,
             num_samples=resp.shape[0],
+            stim_shape=self.encoder_input_shape,
             grayscale=True,
             init_imgs=None,
             approximate_xstart_for_energy=True,
@@ -64,6 +68,7 @@ def do_run(
     energy_scale,
     num_timesteps,
     num_samples=1,
+    stim_shape=(36, 64),
     progressive=True,
     desc="progress",
     grayscale=True,
@@ -104,7 +109,7 @@ def do_run(
 
     stim_pred = F.interpolate(
         samples_t["pred_xstart"].detach(),
-        size=(36, 64),
+        size=stim_shape,
         mode="bilinear",
         align_corners=False,
     ).mean(dim=1, keepdim=True)
@@ -121,6 +126,7 @@ def energy_fn(
         dm_weight=1,
         dm_loss_fn=F.mse_loss,
         xs_zero_to_match=None,
+        encoder_input_shape=(36, 64),
         crop_win=(22,36),
         energy_freq=1,
         t=None,
@@ -135,7 +141,7 @@ def energy_fn(
 
     ### encoder matching
     tar = F.interpolate(
-        x.clone(), size=(36, 64), mode="bilinear", align_corners=False
+        x.clone(), size=encoder_input_shape, mode="bilinear", align_corners=False
     ).mean(1, keepdim=True)
     tar = tar / torch.norm(tar, dim=(2,3), keepdim=True) * norm
     resp_pred = encoder_model(tar)
