@@ -80,7 +80,16 @@ from csng.losses import FID
 #     return losses
 
 
-def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval_every_n_samples=None, device=None):
+def eval_decoder(
+    model,
+    dataloaders,
+    loss_fns,
+    crop_wins,
+    max_batches=None,
+    eval_every_n_samples=None,
+    z_score_wrt_target=False,
+    device=None,
+):
     assert "total" not in loss_fns, "Please provide loss functions for each data key separately"
     model.eval()
 
@@ -100,6 +109,9 @@ def eval_decoder(model, dataloaders, loss_fns, crop_wins, max_batches=None, eval
             "Number of samples in preds and targets must be the same"
 
         for loss_name, loss_fn in loss_fns[batch_data_key].items():
+            if z_score_wrt_target:
+                batch_preds = (batch_preds - batch_preds.mean((1,2,3), keepdim=True)) / batch_preds.std((1,2,3), keepdim=True) * batch_targets.std((1,2,3), keepdim=True) + batch_targets.mean((1,2,3), keepdim=True)
+                batch_targets = (batch_targets - batch_targets.mean((1,2,3), keepdim=True)) / batch_targets.std((1,2,3), keepdim=True) * batch_targets.std((1,2,3), keepdim=True) + batch_targets.mean((1,2,3), keepdim=True)
             losses[batch_data_key][loss_name] += loss_fn(
                 batch_preds,
                 batch_targets,

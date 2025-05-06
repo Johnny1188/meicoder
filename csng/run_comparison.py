@@ -44,29 +44,29 @@ config = {
 }
 
 ### brainreader mouse data
-# config["data"]["brainreader_mouse"] = {
-#     "device": config["device"],
-#     "mixing_strategy": config["data"]["mixing_strategy"],
-#     "max_batches": None,
-#     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-#     # "batch_size": 4,
-#     # "batch_size": 12,
-#     "batch_size": 36,
-#     # "sessions": list(range(1, 23)),
-#     "sessions": [6],
-#     "drop_last": True,
-#     "resize_stim_to": (36, 64),
-#     "normalize_stim": True,
-#     "normalize_resp": False,
-#     "div_resp_by_std": True,
-#     "clamp_neg_resp": False,
-#     "additional_keys": None,
-#     "avg_test_resp": True,
-# }
-# # add crop_wins for brainreader mouse data
-# _dls, _ = get_dataloaders(config=config)
-# for data_key, dset in zip(_dls["train"]["brainreader_mouse"].data_keys, _dls["train"]["brainreader_mouse"].datasets):
-#     config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
+config["data"]["brainreader_mouse"] = {
+    "device": config["device"],
+    "mixing_strategy": config["data"]["mixing_strategy"],
+    "max_batches": None,
+    "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
+    # "batch_size": 4,
+    # "batch_size": 12,
+    "batch_size": 36,
+    # "sessions": list(range(1, 23)),
+    "sessions": [6],
+    "drop_last": True,
+    "resize_stim_to": (36, 64),
+    "normalize_stim": True,
+    "normalize_resp": False,
+    "div_resp_by_std": True,
+    "clamp_neg_resp": False,
+    "additional_keys": None,
+    "avg_test_resp": True,
+}
+# add crop_wins for brainreader mouse data
+_dls, _ = get_dataloaders(config=config)
+for data_key, dset in zip(_dls["train"]["brainreader_mouse"].data_keys, _dls["train"]["brainreader_mouse"].datasets):
+    config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:])
 # ## add neuron coordinates to brainreader mouse data (learned by pretrained encoder)
 # _enc_ckpt = torch.load(os.path.join(DATA_PATH, "models", "encoder_ball.pt"), pickle_module=dill)["model"]
 # config["data"]["brainreader_mouse"]["neuron_coords"] = dict()
@@ -103,43 +103,43 @@ config = {
 # config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
 
 ### mouse v1 data
-config["data"]["mouse_v1"] = {
-    "dataset_fn": "sensorium.datasets.static_loaders",
-    "dataset_config": {
-        "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
-            os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
-        ],
-        "normalize": True,
-        "z_score_responses": False,
-        "scale": 0.25, # 256x144 -> 64x36
-        "include_behavior": False,
-        "add_behavior_as_channels": False,
-        "include_eye_position": True,
-        "exclude": None,
-        "file_tree": True,
-        "cuda": "cuda" in config["device"],
-        "batch_size": 16,
-        "seed": config["seed"],
-        "use_cache": False,
-    },
-    "crop_win": (22, 36),
-    "skip_train": False,
-    "skip_val": False,
-    "skip_test": False,
-    "normalize_neuron_coords": True,
-    "average_test_multitrial": True,
-    "save_test_multitrial": True,
-    # "test_batch_size": 12,
-    "test_batch_size": 36,
-    "device": config["device"],
-}
-### add crop_wins for mouse v1 data
-for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
-    config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
+# config["data"]["mouse_v1"] = {
+#     "dataset_fn": "sensorium.datasets.static_loaders",
+#     "dataset_config": {
+#         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+#             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+#         ],
+#         "normalize": True,
+#         "z_score_responses": False,
+#         "scale": 0.25, # 256x144 -> 64x36
+#         "include_behavior": False,
+#         "add_behavior_as_channels": False,
+#         "include_eye_position": True,
+#         "exclude": None,
+#         "file_tree": True,
+#         "cuda": "cuda" in config["device"],
+#         "batch_size": 16,
+#         "seed": config["seed"],
+#         "use_cache": False,
+#     },
+#     "crop_win": (22, 36),
+#     "skip_train": False,
+#     "skip_val": False,
+#     "skip_test": False,
+#     "normalize_neuron_coords": True,
+#     "average_test_multitrial": True,
+#     "save_test_multitrial": True,
+#     # "test_batch_size": 12,
+#     "test_batch_size": 36,
+#     "device": config["device"],
+# }
+# ### add crop_wins for mouse v1 data
+# for data_key, n_coords in get_dataloaders(config=config)[0]["train"]["mouse_v1"].neuron_coords.items():
+#     config["crop_wins"][data_key] = config["data"]["mouse_v1"]["crop_win"]
 
 
 ### comparison config
@@ -150,12 +150,13 @@ config["comparison"] = {
     "eval_tier": "test",
     "eval_every_n_samples": None, # to prevent OOM but not accurate for some losses
     "max_n_reconstruction_samples": None,
+    "z_score_wrt_target": False,
     "save_all_preds_and_targets": False,
     "save_dir": None,
     "save_dir": os.path.join(
-        # DATA_PATH,
+        DATA_PATH,
         "results",
-        "test",
+        "inv_enc_randn",
         # "12-04-25",
         # "brainreader_ablations_mix",
     ),
@@ -366,11 +367,11 @@ config["comparison"]["to_compare"] = {
     #         ),
     #         encoder_input_shape=(50, 50),
     #         egg_model_cfg={
-    #             "num_steps": (egg_num_steps := 250),
+    #             "num_steps": (egg_num_steps := 100),
     #             "diffusion_artefact": os.path.join(DATA_PATH, "models", "egg", "256x256_diffusion_uncond.pt"),
     #         },
     #         crop_win=config["crop_wins"]["cat_v1"],
-    #         energy_scale=2,
+    #         energy_scale=5,
     #         energy_constraint=60,
     #         num_steps=egg_num_steps,
     #         energy_freq=1,
@@ -546,6 +547,15 @@ config["comparison"]["to_compare"] = {
     #     ),
     #     "run_name": None,
     # },
+    # "MindEye2 (M-All -> M-1)": { # M-1 fine-tuned from M-All (csng_mouse_v1__24-03-25_12-08)
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1__03-04-25_16-06", "subj21067-10-18_test_reconstructions_zscored.pt"), pickle_module=dill),
+    #         data_key="21067-10-18",
+    #         zscore_reconstructions=False,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
     # "MindEye2": { # cat v1
     #     "decoder": SavedReconstructionsDecoder(
     #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__08-03-25_11-24", "subjcat_v1_reconstructions_zscored.pt"), pickle_module=dill),
@@ -606,10 +616,10 @@ config["comparison"]["to_compare"] = {
     # # ---
 
     ## sensorium mouse v1 ---
-    "GAN": {
-        "run_name": "2025-03-24_10-06-33",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_10-06-33", "decoder.pt"),
-    },
+    # "GAN": {
+    #     "run_name": "2025-03-24_10-06-33",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_10-06-33", "decoder.pt"),
+    # },
     # "GAN w/NEs (M-All -> M-1)": {
     #     "run_name": "2025-04-29_01-37-25",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-29_01-37-25", "decoder.pt"),
@@ -645,8 +655,8 @@ config["comparison"]["to_compare"] = {
 
     ## cat v1 ---
     # "GAN": {
-    #     "run_name": "2025-03-22_18-54-55", # TODO: test 2025-04-25_20-19-46
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-22_18-54-55", "ckpt", "decoder_120.pt"),
+    #     "run_name": "2025-04-25_20-19-46",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-25_20-19-46", "ckpt", "decoder_195.pt"),
     # },
     # "GAN, MEIs ablation": {
     #     "run_name": "2025-04-10_00-07-04",
@@ -1292,6 +1302,7 @@ def run_comparison(cfg):
                 loss_fns=metrics,
                 crop_wins=cfg["crop_wins"],
                 eval_every_n_samples=cfg["comparison"]["eval_every_n_samples"],
+                z_score_wrt_target=cfg["comparison"]["z_score_wrt_target"],
             ))
 
             ### collect all preds and targets
