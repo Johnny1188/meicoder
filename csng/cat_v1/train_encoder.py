@@ -54,6 +54,8 @@ config["data"]["cat_v1"] = {
             os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
         ),
         "clamp_neg_resp": False,
+        "neuron_idxs": None,
+        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(46875, size=5000, replace=False),
     },
 }
 
@@ -97,6 +99,9 @@ config["model_config"] = {
     },
 }
 del _dls
+if config["data"]["cat_v1"]["dataset_config"]["neuron_idxs"] is not None:
+    config["model_config"]["mean_activity_dict"]["cat_v1"] = config["model_config"]["mean_activity_dict"]["cat_v1"][config["data"]["cat_v1"]["dataset_config"]["neuron_idxs"]]
+    print(f"[INFO] Using {len(config['data']['cat_v1']['dataset_config']['neuron_idxs'])} neurons for training.")
 
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"

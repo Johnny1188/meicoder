@@ -56,7 +56,7 @@ config = {
     "seed": 0,
     "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "brainreader_mouse",
+    "data_name": "mouse_v1",
 }
 
 ### data config
@@ -182,6 +182,7 @@ config_grid_search = {
         {"num_steps": 500, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
         {"num_steps": 750, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
         {"num_steps": 250, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
+        {"num_steps": 100, "diffusion_artefact": config["egg"]["model"]["diffusion_artefact"]},
     ]
 }
 
