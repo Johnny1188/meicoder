@@ -247,7 +247,7 @@ cfg["rfs"] = {
     # "spatial_embeddings_path": os.path.join(
     #     DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
     "spatial_embeddings_path": os.path.join(
-        DATA_PATH_MONKEYSEE, "spatial_embedding", "23-03-2025_19-07", "embedding_500.pt"), # mouse_v1 (M-1)
+        DATA_PATH_MONKEYSEE, "spatial_embedding", "25-04-2025_20-24", "embedding_500.pt"), # mouse_v1 (M-1)
     # "spatial_embeddings_path": os.path.join(
     #     DATA_PATH_MONKEYSEE, "spatial_embedding", "22-02-2025_11-53", "embedding.pt"), # cat_v1
     "device": cfg["device"],
