@@ -81,6 +81,7 @@ def get_dataloaders(config):
                 mixing_strategy=config["data"]["mixing_strategy"],
                 max_batches=config["data"].get("max_training_batches"),
                 data_keys=["cat_v1"],
+                neuron_idxs_to_use=config["data"]["cat_v1"].get("neuron_idxs_to_use", None),
                 return_data_key=True,
                 return_pupil_center=False, # no pupil center in cat_v1
                 return_neuron_coords=True,

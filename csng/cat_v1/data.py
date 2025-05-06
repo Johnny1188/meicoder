@@ -28,6 +28,7 @@ def get_cat_v1_dataloaders(
         resp_normalize_std=None,
         clamp_neg_resp=False,
         training_sample_idxs=None,
+        neuron_idxs=None,
         stim_keys=("stim",),
         resp_keys=("resp",),
         verbose=False,
@@ -79,6 +80,7 @@ def get_cat_v1_dataloaders(
         coords_ori_filepath=coords_ori_filepath,
         clamp_neg_resp=clamp_neg_resp,
         sample_idxs=training_sample_idxs,
+        neuron_idxs=neuron_idxs,
     )
     val_dataset = PerSampleStoredDataset(
         dataset_dir=val_path,
@@ -90,6 +92,7 @@ def get_cat_v1_dataloaders(
         return_ori=return_ori,
         coords_ori_filepath=coords_ori_filepath,
         clamp_neg_resp=clamp_neg_resp,
+        neuron_idxs=neuron_idxs,
     )
     test_dataset = PerSampleStoredDataset(
         dataset_dir=test_path,
@@ -102,6 +105,7 @@ def get_cat_v1_dataloaders(
         coords_ori_filepath=coords_ori_filepath,
         average_over_repeats=True,
         clamp_neg_resp=clamp_neg_resp,
+        neuron_idxs=neuron_idxs,
     )
     if cached:
         train_dataset = CachedDataset(train_dataset)
@@ -156,6 +160,7 @@ class PerSampleStoredDataset(Dataset):
         average_over_repeats=False,
         clamp_neg_resp=False,
         sample_idxs=None,
+        neuron_idxs=None,
         dataset_shuffle_seed=None,
     ):
         self.dataset_dir = dataset_dir
@@ -176,6 +181,7 @@ class PerSampleStoredDataset(Dataset):
         self.resp_keys = resp_keys
         self.average_over_repeats = average_over_repeats
         self.clamp_neg_resp = clamp_neg_resp
+        self.neuron_idxs = neuron_idxs
 
         self.return_coords = return_coords
         self.return_ori = return_ori
@@ -198,6 +204,16 @@ class PerSampleStoredDataset(Dataset):
                 self.ori["all"] = np.concatenate((self.ori["V1_Exc_L23"], self.ori["V1_Inh_L23"]), axis=0)
                 for k in self.ori:
                     self.ori[k] = torch.from_numpy(self.ori[k]).float()
+                
+        if neuron_idxs is not None:
+            assert self.coords is not None, "coords must be provided if neuron_idxs is not None"
+            assert self.ori is not None, "ori must be provided if neuron_idxs is not None"
+            self.coords["V1_Inh_L23"] = self.coords["V1_Inh_L23"][self.neuron_idxs[self.neuron_idxs >= len(self.coords["V1_Exc_L23"])] - len(self.coords["V1_Exc_L23"])]
+            self.coords["V1_Exc_L23"] = self.coords["V1_Exc_L23"][self.neuron_idxs[self.neuron_idxs < len(self.coords["V1_Exc_L23"])]]
+            self.coords["all"] = torch.cat((self.coords["V1_Exc_L23"], self.coords["V1_Inh_L23"]), axis=0)
+            self.ori["V1_Inh_L23"] = self.ori["V1_Inh_L23"][self.neuron_idxs[self.neuron_idxs >= len(self.ori["V1_Exc_L23"])] - len(self.ori["V1_Exc_L23"])]
+            self.ori["V1_Exc_L23"] = self.ori["V1_Exc_L23"][self.neuron_idxs[self.neuron_idxs < len(self.ori["V1_Exc_L23"])]]
+            self.ori["all"] = torch.cat((self.ori["V1_Exc_L23"], self.ori["V1_Inh_L23"]), axis=0)
 
     def __len__(self):
         return len(self.file_names)
@@ -218,6 +234,8 @@ class PerSampleStoredDataset(Dataset):
                 to_return_vals[1] = self.resp_transform(to_return_vals[1])
             if self.clamp_neg_resp:
                 to_return_vals[1].clamp_min_(0)
+            if self.neuron_idxs is not None:
+                to_return_vals[1] = to_return_vals[1][self.neuron_idxs]
             if self.return_coords:
                 to_return_keys.append("neuron_coords")
                 to_return_vals.append(self.coords["all"])

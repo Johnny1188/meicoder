@@ -123,6 +123,7 @@ class MixedBatchLoader:
         mixing_strategy="sequential",
         max_batches=None,
         data_keys=None,
+        neuron_idxs_to_use=None,
         return_data_key=True,
         return_pupil_center=True,
         return_neuron_coords=True,
@@ -134,6 +135,7 @@ class MixedBatchLoader:
         self.dataloaders = dataloaders
         self.neuron_coords = neuron_coords
         self.data_keys = data_keys
+        self.neuron_idxs_to_use = neuron_idxs_to_use
         self.dataloader_iters = {dl_idx: {"dl": iter(dataloader)} for dl_idx, dataloader in enumerate(dataloaders)}
         if data_keys is not None:
             assert len(data_keys) == len(dataloaders), \
@@ -262,6 +264,15 @@ class MixedBatchLoader:
 
         return to_return
 
+    def _filter_neurons(self, batch):
+        if self.neuron_idxs_to_use is not None:
+            for i in range(len(batch)):
+                if self.neuron_idxs_to_use is not None:
+                    batch[i]["resp"] = batch[i]["resp"][:, self.neuron_idxs_to_use]
+                if self.return_neuron_coords:
+                    batch[i]["neuron_coords"] = batch[i]["neuron_coords"][self.neuron_idxs_to_use]
+        return batch
+
     def __len__(self):
         return self.n_batches
 
@@ -279,6 +290,8 @@ class MixedBatchLoader:
 
         if len(out) == 0 or (self.max_batches is not None and self.batch_idx > self.max_batches):
             raise StopIteration
+
+        out = self._filter_neurons(out)
 
         return out
 
