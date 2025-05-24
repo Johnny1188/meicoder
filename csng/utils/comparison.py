@@ -402,7 +402,7 @@ def plot_metrics(runs_to_compare, losses_to_plot, bar_width=0.8, save_to=None):
     num_metrics = len(losses_to_plot)
 
     fig_width = max(5, num_methods * (num_metrics // 2 + 1))
-    fig_height = max(5, num_metrics * 1.5)
+    fig_height = max(5, num_metrics * 1.65)
 
     k = list(runs_to_compare.keys())[0]
     for run_idx in range(len(runs_to_compare[k]["test_losses"])):

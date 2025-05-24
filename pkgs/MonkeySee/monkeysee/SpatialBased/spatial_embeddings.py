@@ -94,7 +94,7 @@ cfg = {
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
-        "data_name": "mouse_v1",
+        "data_name": "cat_v1",
     },
     "crop_wins": {
         "brainreader_mouse": None,
@@ -177,6 +177,8 @@ elif cfg["data"]["data_name"] == "cat_v1":
                 os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
             ),
             "clamp_neg_resp": False,
+            "neuron_idxs": None,
+            # "neuron_idxs": np.random.default_rng(seed=cfg["seed"]).choice(46875, size=5000, replace=False),
         },
     }
 
@@ -188,8 +190,8 @@ cfg["model"] = {
     "spatial_embedding": {
         "n_neurons": next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["resp"].shape[-1],
         # "feature_shape": (64, 36, 64),
-        "feature_shape": (64, 22, 36),
-        # "feature_shape": (64, 20, 20),
+        # "feature_shape": (64, 22, 36),
+        "feature_shape": (64, 20, 20),
     },
     "loss": {
         "lambda_1": 5e-1,

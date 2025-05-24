@@ -26,7 +26,7 @@ config = {
         "mixing_strategy": "sequential", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
-    "save_path": os.path.join(DATA_PATH, "models", "encoder_ball_50.pt"),
+    "save_path": os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
     # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
     "train": True,
 }
@@ -38,8 +38,8 @@ config["data"]["brainreader_mouse"] = {
     "max_batches": None,
     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
     "batch_size": 128,
-    "sessions": list(range(1, 23)),
-    # "sessions": [6],
+    # "sessions": list(range(1, 23)),
+    "sessions": [6],
     "resize_stim_to": (36, 64),
     "normalize_stim": True,
     "normalize_resp": False,
@@ -94,7 +94,7 @@ del _dls
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"
 config["trainer_config"] = {
-    "max_iter": 50,
+    "max_iter": 100,
     "verbose": True,
     "lr_decay_steps": 4,
     "avg_loss": False,

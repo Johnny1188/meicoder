@@ -52,7 +52,6 @@ config["data"]["mouse_v1"] = {
         "cuda": "cuda" in config["device"],
         "batch_size": 64,
         "drop_last": True,
-        "seed": config["seed"],
         "use_cache": False,
     },
     "skip_train": False,

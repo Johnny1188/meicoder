@@ -58,30 +58,30 @@ config = {
 }
 
 ### brainreader mouse data
-# config["data"]["brainreader_mouse"] = {
-#     "device": config["device"],
-#     "mixing_strategy": config["data"]["mixing_strategy"],
-#     "max_batches": None,
-#     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-#     # "batch_size": 2,
-#     # "batch_size": 5,
-#     "batch_size": 16,
-#     # "sessions": list(range(1, 23)),
-#     # "sessions": list(range(1, 9)),
-#     # "sessions": list(range(1, 7)),
-#     "sessions": [6],
-#     "resize_stim_to": (36, 64),
-#     "normalize_stim": True,
-#     "normalize_resp": False,
-#     "div_resp_by_std": True,
-#     "clamp_neg_resp": False,
-#     "additional_keys": None,
-#     "avg_test_resp": True,
-#     "train_datapoint_idxs_to_use": None,
-#     # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=int(4500 * 0.5), replace=False),
-#     # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=2000, replace=False),
-# }
-# ## add neuron coordinates to brainreader mouse data (learned by pretrained encoder)
+config["data"]["brainreader_mouse"] = {
+    "device": config["device"],
+    "mixing_strategy": config["data"]["mixing_strategy"],
+    "max_batches": None,
+    "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
+    # "batch_size": 2,
+    # "batch_size": 5,
+    "batch_size": 16,
+    # "sessions": list(range(1, 23)),
+    # "sessions": list(range(1, 9)),
+    # "sessions": list(range(1, 7)),
+    "sessions": [6],
+    "resize_stim_to": (36, 64),
+    "normalize_stim": True,
+    "normalize_resp": False,
+    "div_resp_by_std": True,
+    "clamp_neg_resp": False,
+    "additional_keys": None,
+    "avg_test_resp": True,
+    "train_datapoint_idxs_to_use": None,
+    # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=int(4500 * 0.5), replace=False),
+    # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=2000, replace=False),
+}
+## add neuron coordinates to brainreader mouse data (learned by pretrained encoder)
 # _enc_ckpt = torch.load(os.path.join(DATA_PATH, "models", "encoder_ball.pt"), pickle_module=dill)["model"]
 # config["data"]["brainreader_mouse"]["neuron_coords"] = dict()
 # for sess_id in config["data"]["brainreader_mouse"]["sessions"]:
@@ -122,45 +122,45 @@ config = {
 # ).readout["cat_v1"].sample_grid(batch_size=1, sample=False)[0,:,0].detach().clone()
 
 ### mouse v1 data
-config["data"]["mouse_v1"] = {
-    "dataset_fn": "sensorium.datasets.static_loaders",
-    "dataset_config": {
-        "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
-            os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
-        ],
-        "normalize": True,
-        "z_score_responses": False,
-        "scale": 0.25, # 256x144 -> 64x36
-        "include_behavior": False,
-        "add_behavior_as_channels": False,
-        "include_eye_position": True,
-        "exclude": None,
-        "file_tree": True,
-        "cuda": "cuda" in config["device"],
-        # "batch_size": 2,
-        # "batch_size": 8,
-        "batch_size": 32,
-        "drop_last": True,
-        "use_cache": False,
-        "train_datapoint_idxs_to_use": None,
-        # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=int(4473 * 0.5), replace=False),
-        # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=100, replace=False),
-    },
-    "crop_win": (22, 36),
-    "skip_train": False,
-    "skip_val": False,
-    "skip_test": False,
-    "normalize_neuron_coords": True,
-    "average_test_multitrial": True,
-    "save_test_multitrial": True,
-    "test_batch_size": 7,
-    "neuron_coords_to_use": None, # if None, uses the neuron coordinates from the dataset
-    "device": config["device"],
-}
+# config["data"]["mouse_v1"] = {
+#     "dataset_fn": "sensorium.datasets.static_loaders",
+#     "dataset_config": {
+#         "paths": [ # from https://gin.g-node.org/cajal/Sensorium2022/src/master
+#             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+#             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+#         ],
+#         "normalize": True,
+#         "z_score_responses": False,
+#         "scale": 0.25, # 256x144 -> 64x36
+#         "include_behavior": False,
+#         "add_behavior_as_channels": False,
+#         "include_eye_position": True,
+#         "exclude": None,
+#         "file_tree": True,
+#         "cuda": "cuda" in config["device"],
+#         # "batch_size": 2,
+#         # "batch_size": 8,
+#         "batch_size": 32,
+#         "drop_last": True,
+#         "use_cache": False,
+#         "train_datapoint_idxs_to_use": None,
+#         # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=int(4473 * 0.5), replace=False),
+#         # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=100, replace=False),
+#     },
+#     "crop_win": (22, 36),
+#     "skip_train": False,
+#     "skip_val": False,
+#     "skip_test": False,
+#     "normalize_neuron_coords": True,
+#     "average_test_multitrial": True,
+#     "save_test_multitrial": True,
+#     "test_batch_size": 7,
+#     "neuron_coords_to_use": None, # if None, uses the neuron coordinates from the dataset
+#     "device": config["device"],
+# }
 # use the neuron coordinates learned by pretrained encoder
 # config["data"]["mouse_v1"]["neuron_coords_to_use"] = get_encoder_mouse_v1(
 #     ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt")
@@ -308,7 +308,7 @@ config["decoder"] = {
     #     "load_opter_state": False,
     #     "load_history": False,
     #     "reset_best": True,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-27_19-01-36", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-07_01-29-21", "ckpt", "decoder_200.pt"),
     #     "resume_checkpointing": False,
     #     "resume_wandb_id": None,
     # },

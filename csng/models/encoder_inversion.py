@@ -42,7 +42,7 @@ config = {
     "seed": 0,
     "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "mouse_v1",
+    "data_name": "brainreader_mouse",
 }
 
 ### data config
@@ -85,6 +85,8 @@ elif config["data_name"] == "cat_v1":
                 os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
             ),
             "clamp_neg_resp": False,
+            "neuron_idxs": None,
+            # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(46875, size=5000, replace=False),
         },
     }
     config["crop_win"] = (20, 20)
@@ -132,12 +134,14 @@ config["enc_inv"] = {
     "model": {
         "encoder_paths": [
             # os.path.join(DATA_PATH, "models", "encoders", "encoder_ball.pt"),
-            # os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
-            os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
+            os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
+            # os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
             # os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+            # os.path.join(DATA_PATH, "models", "encoders", "encoder_c_5000neurons.pt"),
         ],
         "encoder_config": {
             "img_dims": (1, 36, 64),
+            # "img_dims": (1, 50, 50),
             # "stim_pred_init": "randn",
             "stim_pred_init": "zeros",
             # "lr": 2000,
@@ -167,7 +171,7 @@ config_updates = [dict()]
 config_grid_search = None
 config_grid_search = {
     ### brainreader-style
-    # "n_steps": [300, 1000, 2000],
+    # "n_steps": [100, 500, 2000],
     # "lr": [500, 2000, 4000],
     # "img_grad_gauss_blur_sigma": [1, 1.5, 2, 2.5],
     # "jitter": [0],
@@ -175,7 +179,7 @@ config_grid_search = {
     ### not brainreader-style
     "n_steps": [100, 200, 500, 1000],
     "opter_config": [{"lr": lr} for lr in [5, 10, 20, 50]],
-    "img_grad_gauss_blur_config": [{"kernel_size": 13, "sigma": s} for s in [1, 1.5, 2]],
+    "img_grad_gauss_blur_config": [{"kernel_size": 13, "sigma": s} for s in [1, 1.5, 2, 2.5]],
 }
 
 
@@ -186,6 +190,12 @@ if __name__ == "__main__":
     print(f"{DATA_PATH_CAT_V1=}")
     print(f"{DATA_PATH_MOUSE_V1=}")
     seed_all(config["seed"])
+
+    ### modify config
+    if "cat_v1" in config["data_name"]:
+        enc_ckpt_cat_v1_neuron_idxs = torch.load(config["enc_inv"]["model"]["encoder_paths"][0])["config"]["data"]["cat_v1"]["dataset_config"]["neuron_idxs"]
+        config["data"]["cat_v1"]["dataset_config"]["neuron_idxs"] = enc_ckpt_cat_v1_neuron_idxs
+        print(f"[INFO] Using {len(enc_ckpt_cat_v1_neuron_idxs) if enc_ckpt_cat_v1_neuron_idxs is not None else 'all'} neurons from encoder checkpoint.")
 
     ### prepares dirs
     run_dir = os.path.join(config["enc_inv"]["save_dir"], datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))

@@ -107,7 +107,7 @@ cfg = {
     "device": os.environ.get("DEVICE", "cpu"),
     "seed": 0,
     "data": {
-        "data_name": "mouse_v1",
+        "data_name": "brainreader_mouse",
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_training_batches": None,
         "target_transforms": {
@@ -198,6 +198,8 @@ elif cfg["data"]["data_name"] == "cat_v1":
                 os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
             ),
             "clamp_neg_resp": False,
+            "neuron_idxs": None,
+            # "neuron_idxs": np.random.default_rng(seed=cfg["seed"]).choice(46875, size=5000, replace=False),
         },
     }
 
@@ -221,16 +223,30 @@ cfg["decoder"] = {
         "alpha": 0.01,
         "beta_vgg": 0.9,
         "beta_pix": 0.09,
-        "lr": 5e-5,
+
+        ### mouse_v1
+        # "lr": 5e-5,
+        # "betas": (0.5, 0.999),
+        # "weight_decay": 1e-3,
+
+        ### brainreader + cat_v1
+        "lr": 2e-4,
         "betas": (0.5, 0.999),
-        "weight_decay": 1e-3,
+        "weight_decay": 3e-4,
     },
     "dis": {
         "input_channels": 1,
         "inp_shape": cfg["data"]["target_transforms"][cfg["data"]["data_name"]](next(iter(get_dataloaders(config=cfg)[0]["train"][cfg["data"]["data_name"]]))[0]["stim"]).shape[1:],
-        "lr": 5e-5,
+        
+        ### mouse_v1
+        # "lr": 5e-5,
+        # "betas": (0.5, 0.999),
+        # "weight_decay": 1e-3,
+
+        ### brainreader + cat_v1
+        "lr": 2e-4,
         "betas": (0.5, 0.999),
-        "weight_decay": 1e-3,
+        "weight_decay": 3e-4,
     },
     "sum_rfs_out": True,
     "standardize_inputs": True,
@@ -244,14 +260,21 @@ cfg["rfs"] = {
     "meis_path": None,
     # "meis_path": os.path.join(DATA_PATH_BRAINREADER, "meis", "6", "meis.pt"),
     # "spatial_embeddings_path": None,
-    # "spatial_embeddings_path": os.path.join(
-    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
     "spatial_embeddings_path": os.path.join(
-        DATA_PATH_MONKEYSEE, "spatial_embedding", "25-04-2025_20-24", "embedding_500.pt"), # mouse_v1 (M-1)
+        DATA_PATH_MONKEYSEE, "spatial_embedding", "08-02-2025_13-33", "embedding.pt"), # brainreader_mouse (B-6)
+    # "spatial_embeddings_path": os.path.join(
+    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "25-04-2025_20-24", "embedding_500.pt"), # mouse_v1 (M-1)
     # "spatial_embeddings_path": os.path.join(
     #     DATA_PATH_MONKEYSEE, "spatial_embedding", "22-02-2025_11-53", "embedding.pt"), # cat_v1
+    # "spatial_embeddings_path": os.path.join(
+    #     DATA_PATH_MONKEYSEE, "spatial_embedding", "05-05-2025_23-36", "embedding_500.pt"), # cat_v1 5000 neurons
     "device": cfg["device"],
 }
+if cfg["data"]["data_name"] == "cat_v1":
+    sp_embed_neuron_idxs = torch.load(cfg["rfs"]["spatial_embeddings_path"])["config"]["data"]["cat_v1"]["dataset_config"].get("neuron_idxs", cfg["data"]["cat_v1"]["dataset_config"].get("neuron_idxs", None))
+    cfg["data"]["cat_v1"]["dataset_config"]["neuron_idxs"] = sp_embed_neuron_idxs
+    if sp_embed_neuron_idxs is not None:
+        print(f"[INFO] Using neuron indices from spatial embeddings. Length: {len(sp_embed_neuron_idxs)}")
 
 
 if __name__ == '__main__':

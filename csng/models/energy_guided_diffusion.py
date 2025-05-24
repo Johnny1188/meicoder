@@ -42,6 +42,7 @@ encoder_paths = {
     "brainreader_mouse": os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
     "mouse_v1": os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
     "cat_v1": os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+    # "cat_v1": os.path.join(DATA_PATH, "models", "encoders", "encoder_c_5000neurons.pt"),
 }
 encoder_input_shapes = {
     "brainreader_mouse": (36, 64),
@@ -56,7 +57,7 @@ config = {
     "seed": 0,
     "data": {"mixing_strategy": "sequential"},
     "crop_win": None,
-    "data_name": "mouse_v1",
+    "data_name": "cat_v1",
 }
 
 ### data config
@@ -99,9 +100,15 @@ elif config["data_name"] == "cat_v1":
                 os.path.join(DATA_PATH_CAT_V1, "responses_std.pt")
             ),
             "clamp_neg_resp": False,
+            "neuron_idxs": None,
         },
     }
     config["crop_win"] = (20, 20)
+
+    ### make sure we use the same neurons as in the encoder checkpoint
+    enc_ckpt_cat_v1_neuron_idxs = torch.load(encoder_paths["cat_v1"])["config"]["data"]["cat_v1"]["dataset_config"].get("neuron_idxs", config["data"]["cat_v1"]["dataset_config"].get("neuron_idxs", None))
+    config["data"]["cat_v1"]["dataset_config"]["neuron_idxs"] = enc_ckpt_cat_v1_neuron_idxs
+    print(f"[INFO] Using {len(enc_ckpt_cat_v1_neuron_idxs) if enc_ckpt_cat_v1_neuron_idxs is not None else 'all'} neurons from encoder checkpoint.")
 elif config["data_name"] == "mouse_v1":
     config["data"]["mouse_v1"] = {
         "dataset_fn": "sensorium.datasets.static_loaders",
