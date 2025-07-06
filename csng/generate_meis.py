@@ -7,10 +7,47 @@ import dill
 import featurevis
 import featurevis.ops as ops
 
-from csng.brainreader_mouse.encoder import get_encoder
+from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
+from csng.mouse_v1.encoder import get_encoder as get_encoder_mouse_v1
+from csng.cat_v1.encoder import get_encoder as get_encoder_cat_v1
 
+get_encoder_fns = {
+    "brainreader_mouse": get_encoder_brainreader,
+    "mouse_v1": get_encoder_mouse_v1,
+    "cat_v1": get_encoder_cat_v1,
+}
+
+### set paths
 DATA_PATH = os.environ["DATA_PATH"]
+DATA_PATH_CAT_V1 = os.path.join(DATA_PATH, "cat_V1_spiking_model", "50K_single_trial_dataset")
+DATA_PATH_MOUSE_V1 = os.path.join(DATA_PATH, "mouse_v1_sensorium22")
 DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
+
+
+### config
+config = {
+    "data_name": (data_name := "brainreader_mouse"),
+    "encoder_path": os.path.join(DATA_PATH, "models", "encoder_ball.pt"), # pre-trained encoder path
+    "data_key": "1",
+    "save_path": os.path.join({
+        "cat_v1": DATA_PATH_CAT_V1,
+        "mouse_v1": DATA_PATH_MOUSE_V1,
+        "brainreader_mouse": DATA_PATH_BRAINREADER,
+    }[data_name], "meis"),
+    "chunk_size": 500, # number of cells to process at once
+    "mei": {
+        "mean": 0,
+        "std": 0.15, # everything from 0.10 to 0.25 works here
+        "pixel_min": -1,
+        "pixel_max": 1,
+        "img_res": (36, 64), # should be the size of the input image to the encoder
+        "step_size": 1,
+        "num_iterations": 1000,
+        "gradient_f": ops.GaussianBlur(1.), # blur the gradient to avoid artifacts
+        "print_iters": 1e10,
+    },
+    "device": os.environ["DEVICE"],
+}
 
 
 class BatchedEncoder(nn.Module):
@@ -32,26 +69,6 @@ class BatchedEncoder(nn.Module):
 def generate_meis():
     """ generates MEIs for all cells in the model and saves them to disk """
 
-    ### config
-    config = {
-        "device": os.environ["DEVICE"],
-        "data_key": "1",
-        "save_path": os.path.join(DATA_PATH_BRAINREADER, "meis"),
-        "encoder_path": os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-        "chunk_size": 500, # number of cells to process at once
-        "mei": {
-            "mean": 0, # (here people often uses 0. I think that the midgreyscale value is a better choice though (pixel_min + pixel_max)/2 )
-            "std": 0.15, # (everything from 0.10 to 0.25 works here)
-            "pixel_min": -1,
-            "pixel_max": 1,
-            "img_res": (36, 64),
-            "step_size": 1,
-            "num_iterations": 1000,
-            "gradient_f": ops.GaussianBlur(1.), # this blurs the gradient to avoid artifacts.
-            "print_iters": 1e10,
-        }
-    }
-
     ### prepare save dir
     save_dir = os.path.join(config["save_path"], config["data_key"])
     print(f"[INFO] Saving MEIs to {save_dir}")
@@ -59,7 +76,7 @@ def generate_meis():
     os.makedirs(os.path.join(save_dir, "chunked"), exist_ok=True)
 
     ### load encoder
-    encoder = get_encoder(
+    encoder = get_encoder_fns[config["data_name"]](
         ckpt_path=config["encoder_path"],
         device=config["device"],
         eval_mode=True,
