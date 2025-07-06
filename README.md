@@ -25,12 +25,6 @@ pip install -e pkgs/neuralpredictors pkgs/nnfabrik pkgs/featurevis pkgs/sensoriu
 
 Create `.env` file in the root directory according to `.env.example` file and make sure to set the path to an existing directory where the data will reside (`DATA_PATH`). You might need to load the environment variable(s) from the `.env` file manually in the terminal: `export $(cat .env | xargs)`
 
-### Potential issues
-If you encounter the error `UserWarning: Failed to initialize NumPy: _ARRAY_API not found`, run the following within the activated `csng` environment:
-```bash
-pip install --force-reinstall -v "numpy==1.25.2"
-```
-
 
 ## Directory structure
 - `README.md` - This file
@@ -38,9 +32,10 @@ pip install --force-reinstall -v "numpy==1.25.2"
 - `environment.yaml` - Environment file with all the dependencies
 - `.env.example` - Example of the `.env` file. Important to setup your own .env file in the same directory to be able to run the scripts
 - `.gitignore` - Git ignore file
-- `pkgs` - Directory containing modified packages `neuralpredictors`, `nnfabrik`, `featurevis`, and `sensorium`
-- `csng` - Directory containing the main code for the project
+- `pkgs` - Directory containing modified packages `neuralpredictors`, `nnfabrik`, `featurevis`, and `sensorium`. Directories `pkgs/MindEye2` and `pkgs/MonkeySee` contain code for the [MindEye2](https://arxiv.org/abs/2403.11207) and [MonkeySee](https://openreview.net/forum?id=OWwdlxwnFN) decoders.
+- `csng` - Directory containing the main code for the project (see `csng/README.md` for details):
   - `cat_v1/` - Directory with code specific to the cat V1 data (**C**)
   - `mouse_v1/` - Directory with code specific to the SENSORIUM 2022 mouse V1 data (datasets **M-\<mouse id\>** and **M-All**)
   - `brainreader_mouse/` - Directory with code specific to the mouse V1 data from [Cobos E. et al. 2022](https://doi.org/10.1101/2022.12.09.519708) (datasets **B-\<mouse id\>** and **B-All**)
   - `<your-data>/` - Directory with code specific to your data (e.g., `cat_v1/`). This folder should include a dataloading utility that could be then combined with other datasets using the code in `csng/data.py`.
+- `notebooks/` - Directory with Jupyter notebooks for plotting, inspecting data and model performance, and for demonstration purposes. Notebook `notebooks/train.ipynb` is a minimal example of how to train a model using the `csng` package on one of the provided datasets, serving as a good starting point for your own experiments.

@@ -1,67 +1,55 @@
-## File Descriptions
+## In this folder
 
-### 1. `data.py`
+`data.py`:
 Provides utilities for data loading and preprocessing.
 
-### 2. `inspect_data.ipynb`
-Interactive notebook to:
-- Visualize neural data (stimuli and responses).
-- Debug data loading pipelines.
+`losses.py`:
+Implements custom loss functions and evaluation metrics.
 
-### 3. `losses.py`
-Implements custom loss functions and evaluation metrics
+`generate_meis.py`:
+Script for generating most exciting inputs (MEIs) using a pre-trained encoder model.
 
-### 4. `run_cnn_decoder.py`
+`run_cnn_decoder.py`:
 Pipeline for training convolutional neural network (CNN)-based decoders.
 
-### 5. `run_gan_decoder.py`
-Pipeline for training GAN-based decoders
+`run_naive_decoder.py`:
+Pipeline for training CNN-based decoders with fully-connected readins and MSE training loss.
 
-### 6. `run_comparison.py`
-Script for comparing various decoding models.
+`run_gan_decoder.py`:
+Pipeline for training GAN-based decoders.
 
-### 7. `plot.ipynb`
-Interactive notebook to make plots in the report.
+`run_comparison.py`:
+Script for comparing decoding models.
 
-### 8. `brainreader_mouse/train_encoder.py`
+`utils/`:
+Contains utility functions for various tasks, such as data loading, model evaluation, plotting, etc.
+
+`models/`:
+Contains model definitions and training scripts.
+
+`<dataset-name>/train_encoder.py`:
 Script for training the encoder model (images -> responses).
 
-### 9. `brainreader_mouse/generate_meis.py`
-Script for generating MEIs using the encoder model.
+`<dataset-name>/encoder_inversion.py`:
+Script for performing hyperparameter search with the encoder inversion decoding method.
 
-### 10. `brainreader_mouse/encoder_inversion.py`
-Script for performing hyperparameter search for encoder inversion.
-
-### 11. `brainreader_mouse/data.py`
+`<dataset-name>/data.py`:
 Utility functions for loading and preprocessing the dataset.
 
-### 12. `brainreader_mouse/encoder.py`
+`<dataset-name>/encoder.py`:
 Utility function for loading the encoder model.
 
 ---
 
 ## Usage
 
-### 1. Train a CNN Decoder
-Run the CNN decoder training pipeline:
+For each of the training scripts (`run_<model>_decoder.py`), first specify the configuration at the beginning of the script, and then run the script as follows:
 ```bash
-python run_cnn_decoder.py
+python run_<model>_decoder.py
 ```
 
-### 2. Train a GAN Decoder
-Run the GAN decoder training pipeline:
-```bash
-python run_gan_decoder.py
-```
-
-### 3. Compare Models
-Evaluate and compare multiple trained models:
+The training script will (by default) save the trained model and its checkpoints. To evaluate and compare multiple trained models, you can use the `run_comparison.py` script:
 ```bash
 python run_comparison.py
 ```
-
-### 4. Inspect Data
-Open the Jupyter notebook to visualize datasets:
-```bash
-jupyter notebook inspect_data.ipynb
-```
+In this file, you need to specify the paths to the trained models you want to compare, as well as the dataset and other parameters (see configuration at the top of the script).
