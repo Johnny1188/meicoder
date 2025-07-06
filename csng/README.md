@@ -7,7 +7,7 @@ Provides utilities for data loading and preprocessing.
 Implements custom loss functions and evaluation metrics.
 
 `generate_meis.py`:
-Script for generating most exciting inputs (MEIs) using a pre-trained encoder model.
+Script for generating most exciting inputs (MEIs) using a pre-trained encoder model. Pre-generated MEIs for the `cat_v1` dataset are available [here](https://drive.google.com/file/d/1NXwTU-056WSwq7Qy6uCnf3J3XFPuWstB/view?usp=sharing).
 
 `run_cnn_decoder.py`:
 Pipeline for training convolutional neural network (CNN)-based decoders.
