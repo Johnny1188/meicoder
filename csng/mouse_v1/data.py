@@ -30,6 +30,7 @@ def get_mouse_v1_dataloaders(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 return_neuron_coords=True,
+                neuron_idxs_to_use=config["data"]["mouse_v1"].get("neuron_idxs_to_use", None),
                 device=config["data"]["mouse_v1"]["device"],
             ) if config["data"]["mouse_v1"]["skip_train"] is False else MixedBatchLoader(
                 dataloaders=[],
@@ -49,6 +50,7 @@ def get_mouse_v1_dataloaders(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 return_neuron_coords=True,
+                neuron_idxs_to_use=config["data"]["mouse_v1"].get("neuron_idxs_to_use", None),
                 device=config["data"]["mouse_v1"]["device"],
             ) if config["data"]["mouse_v1"]["skip_val"] is False else MixedBatchLoader(
                 dataloaders=[],
@@ -68,6 +70,7 @@ def get_mouse_v1_dataloaders(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 return_neuron_coords=True,
+                neuron_idxs_to_use=config["data"]["mouse_v1"].get("neuron_idxs_to_use", None),
                 device=config["data"]["mouse_v1"]["device"],
             ) if config["data"]["mouse_v1"]["skip_test"] is False else MixedBatchLoader(
                 dataloaders=[],
@@ -87,6 +90,7 @@ def get_mouse_v1_dataloaders(config):
                 return_data_key=True,
                 return_pupil_center=True,
                 return_neuron_coords=True,
+                neuron_idxs_to_use=config["data"]["mouse_v1"].get("neuron_idxs_to_use", None),
                 device=config["data"]["mouse_v1"]["device"],
             )
         }

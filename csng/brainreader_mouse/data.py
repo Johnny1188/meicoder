@@ -79,6 +79,7 @@ def get_brainreader_mouse_dataloaders(config):
                 return_data_key=True,
                 return_pupil_center=False,
                 return_neuron_coords="neuron_coords" in config,
+                neuron_idxs_to_use=config.get("neuron_idxs_to_use", None),
                 device=config["device"],
             ) for data_part in ["train", "test", "val"]
         }
