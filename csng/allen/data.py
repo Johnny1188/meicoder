@@ -51,8 +51,9 @@ def get_allen_dataloaders(config):
 
     # Z-score images if specified
     if config.get("zscore_images", False):
-        img_train = (img_train - img_train.mean(dim=(0, 2, 3), keepdim=True)) / img_train.std(dim=(0, 2, 3), keepdim=True)
-        img_test = (img_test - img_train.mean(dim=(0, 2, 3), keepdim=True)) / img_train.std(dim=(0, 2, 3), keepdim=True)
+        img_mean, img_std = img_train.mean(dim=(0, 2, 3), keepdim=True), img_train.std(dim=(0, 2, 3), keepdim=True)
+        img_train = (img_train - img_mean) / img_std
+        img_test = (img_test - img_mean) / img_std
 
     # Divide responses by standard deviation if specified
     if config.get("div_resp_by_std", False):
