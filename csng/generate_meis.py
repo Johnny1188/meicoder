@@ -10,15 +10,18 @@ import featurevis.ops as ops
 from csng.brainreader_mouse.encoder import get_encoder as get_encoder_brainreader
 from csng.mouse_v1.encoder import get_encoder as get_encoder_mouse_v1
 from csng.cat_v1.encoder import get_encoder as get_encoder_cat_v1
+from csng.allen.encoder import get_encoder as get_encoder_allen
 
 get_encoder_fns = {
     "brainreader_mouse": get_encoder_brainreader,
     "mouse_v1": get_encoder_mouse_v1,
     "cat_v1": get_encoder_cat_v1,
+    "allen": get_encoder_allen,
 }
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
+DATA_PATH_CAE = os.path.join(DATA_PATH, "cae")
 DATA_PATH_CAT_V1 = os.path.join(DATA_PATH, "cat_V1_spiking_model", "50K_single_trial_dataset")
 DATA_PATH_MOUSE_V1 = os.path.join(DATA_PATH, "mouse_v1_sensorium22")
 DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
@@ -26,13 +29,14 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 
 ### config
 config = {
-    "data_name": (data_name := "brainreader_mouse"),
-    "encoder_path": os.path.join(DATA_PATH, "models", "encoder_ball.pt"), # pre-trained encoder path
-    "data_key": "1",
+    "data_name": (data_name := "allen"),
+    "encoder_path": os.path.join(DATA_PATH, "models", "encoder_allen.pt"), # pre-trained encoder path
+    "data_key": "allen",
     "save_path": os.path.join({
         "cat_v1": DATA_PATH_CAT_V1,
         "mouse_v1": DATA_PATH_MOUSE_V1,
         "brainreader_mouse": DATA_PATH_BRAINREADER,
+        "allen": DATA_PATH_CAE,
     }[data_name], "meis"),
     "chunk_size": 500, # number of cells to process at once
     "mei": {
@@ -40,7 +44,8 @@ config = {
         "std": 0.15, # everything from 0.10 to 0.25 works here
         "pixel_min": -1,
         "pixel_max": 1,
-        "img_res": (36, 64), # should be the size of the input image to the encoder
+        # "img_res": (36, 64), # should be the size of the input image to the encoder
+        "img_res": (256, 256), # should be the size of the input image to the encoder
         "step_size": 1,
         "num_iterations": 1000,
         "gradient_f": ops.GaussianBlur(1.), # blur the gradient to avoid artifacts

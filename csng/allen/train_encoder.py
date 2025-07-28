@@ -25,7 +25,7 @@ config = {
         "mixing_strategy": "sequential", # needed only with multiple base dataloaders
         "max_training_batches": None,
     },
-    "save_path": os.path.join(DATA_PATH, "models", "encoder_allen_l696ch.pt"),
+    "save_path": os.path.join(DATA_PATH, "models", "encoder_allen.pt"),
     # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
     "train": True,
 }
@@ -35,8 +35,11 @@ config["data"]["allen"] = {
     "device": config["device"],
     "val_split_seed": config["seed"],
     "mixing_strategy": "sequential",
-    "batch_size": 10,
+    "batch_size": 32,
     "val_split_frac": 0.2,
+    "zscore_images": True,
+    "div_resp_by_std": True,
+    "clamp_neg_resp": False,
 }
 
 ### model
@@ -50,27 +53,27 @@ config["model_config"] = {
     # "depth_separable": False,
     # "laplace_pyramid": True,
 
-    # "pad_input": False,
-    # "layers": 4,
-    # "input_kern": 9,
-    # "gamma_input": 6.3831,
-    # "gamma_readout": 0.0076,
-    # "hidden_kern": 7,
-    # "hidden_channels": 64,
-    # "hidden_padding": 3,
-    # "depth_separable": True,
-    # "grid_mean_predictor": None, # neuron coords are not available
-
     "pad_input": False,
-    "layers": 6,
+    "layers": 4,
     "input_kern": 9,
     "gamma_input": 6.3831,
     "gamma_readout": 0.0076,
     "hidden_kern": 7,
-    "hidden_channels": 96,
+    "hidden_channels": 64,
     "hidden_padding": 3,
     "depth_separable": True,
     "grid_mean_predictor": None, # neuron coords are not available
+
+    # "pad_input": False,
+    # "layers": 6,
+    # "input_kern": 9,
+    # "gamma_input": 6.3831,
+    # "gamma_readout": 0.0076,
+    # "hidden_kern": 7,
+    # "hidden_channels": 96,
+    # "hidden_padding": 3,
+    # "depth_separable": True,
+    # "grid_mean_predictor": None, # neuron coords are not available
 
     # "grid_mean_predictor": {
     #     "type": "cortex",

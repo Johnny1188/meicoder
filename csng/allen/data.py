@@ -6,9 +6,6 @@ import numpy as np
 from collections import namedtuple, defaultdict
 
 
-from csng.utils.data import MixedBatchLoader, NumpyToTensor, Normalize, PerSampleStoredDataset
-
-
 class DictWrapperDataset(torch.utils.data.Dataset):
     def __init__(self, dataset):
         self.dataset = dataset
@@ -18,8 +15,8 @@ class DictWrapperDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         stim, resp = self.dataset[idx]
-        Datapoint = namedtuple('Datapoint', ['responses', 'images'])
-        return Datapoint(responses=resp, images=stim)
+        Datapoint = namedtuple('Datapoint', ['images', 'responses'])
+        return Datapoint(images=stim, responses=resp)
 
 
 def get_allen_dataloaders(config):
@@ -27,57 +24,14 @@ def get_allen_dataloaders(config):
     SESS_ID = "allen"
     dls = defaultdict(dict)
 
-    # ### prepare stim transforms
-    # stim_transform = torchvision.transforms.Compose([
-    #     torchvision.transforms.ToPILImage(),
-    # ])
-    # # by default resize to 36x64
-    # if config.get("resize_stim_to", (36, 64)) is not None:
-    #     stim_transform.transforms.append(
-    #         torchvision.transforms.Resize(config.get("resize_stim_to", (36, 64)))
-    #     )
-    # stim_transform.transforms.extend([
-    #     torchvision.transforms.ToTensor(),
-    #     torchvision.transforms.Lambda(lambda x: x.to(config["device"])),
-    # ])
-    # # normalize stimuli
-    # if config["normalize_stim"]:
-    #     stim_mean = np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "stimuli_mean.npy")).item()
-    #     stim_std = np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "stimuli_std.npy")).item()
-    #     stim_transform.transforms.append(
-    #         torchvision.transforms.Normalize(mean=stim_mean, std=stim_std)
-    #     )
-
-    # ### prepare resp transforms
-    # resp_transform = torchvision.transforms.Compose([
-    #     NumpyToTensor(device=config["device"]),
-    # ])
-    # if config["normalize_resp"]:
-    #     resp_mean = torch.from_numpy(np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "responses_mean.npy"))).to(config["device"])
-    #     resp_std = torch.from_numpy(np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "responses_std.npy"))).to(config["device"])
-    #     resp_transform.transforms.append(
-    #         Normalize(mean=resp_mean, std=resp_std)
-    #     )
-    # elif config["div_resp_by_std"]:
-    #     resp_std = torch.from_numpy(np.load(os.path.join(DATA_PATH, str(sess_id), "stats", "responses_std.npy"))).to(config["device"])
-    #     resp_transform.transforms.append(
-    #         Normalize(mean=0, std=resp_std)
-    #     )
-
-
     ### original data preparation
     # --- Load and Prepare Data ---
     print("Loading data...")
-    # These files need to be present in the './data' directory
     try:
         img_train_np = np.load(os.path.join(DATA_PATH, 'movie_03_train_pic_1999_VISp_800.npy'))
         img_test_np = np.load(os.path.join(DATA_PATH, 'movie_03_test_pic_1999_VISp_800.npy'))
         spike_train_np = np.load(os.path.join(DATA_PATH, 'movie_03_train_spike_1999_VISp_800.npy'))
         spike_test_np = np.load(os.path.join(DATA_PATH, 'movie_03_test_spike_1999_VISp_800.npy'))
-        # img_train_np = np.random.rand(100, 1, 256, 256)  # Dummy data for testing
-        # img_test_np = np.random.rand(20, 1, 256, 256)  # Dummy data for testing
-        # spike_train_np = np.random.rand(100, 800)  # Dummy data for testing
-        # spike_test_np = np.random.rand(20, 800)  # Dummy data for testing
     except FileNotFoundError as e:
         print(f"Error: Data file not found. Make sure the .npy files are in the '{DATA_PATH}' directory.")
         print(e)
