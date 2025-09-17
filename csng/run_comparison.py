@@ -23,7 +23,7 @@ from csng.mouse_v1.encoder import get_encoder as get_encoder_sensorium_mouse_v1
 from csng.cat_v1.encoder import get_encoder as get_encoder_cat_v1
 
 from monkeysee.SpatialBased.decoding_wrapper import MonkeySeeDecoder
-# from cae.model import CAEDecoder
+from cae.model import CAEDecoder
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
@@ -37,6 +37,7 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 ### global config
 config = {
     "device": os.environ["DEVICE"],
+    # "device": "cpu",
     "seed": 0,
     "data": {
         "mixing_strategy": "sequential", # needed only with multiple base dataloaders

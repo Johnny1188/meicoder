@@ -35,6 +35,7 @@ config["data"]["allen"] = {
     "val_split_seed": config["seed"],
     "mixing_strategy": "sequential",
     "batch_size": 32,
+    # "batch_size": 4,
     "val_split_frac": 0.2,
     "zscore_images": True,
     "div_resp_by_std": True,
@@ -98,14 +99,14 @@ del _dls
 ### trainer config
 config["trainer_fn"] = "sensorium.training.standard_trainer"
 config["trainer_config"] = {
-    "max_iter": 150,
+    "max_iter": 1,
     "verbose": True,
     "lr_decay_steps": 4,
     "avg_loss": False,
     "lr_init": 0.009,
     "track_training": True,
     "weight_decay": 0.,
-    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_latest_ckpt_4l64ch.pt"),
+    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_latest_ckpt.pt"),
 }
 
 
