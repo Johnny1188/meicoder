@@ -23,9 +23,11 @@ from csng.mouse_v1.encoder import get_encoder as get_encoder_sensorium_mouse_v1
 from csng.cat_v1.encoder import get_encoder as get_encoder_cat_v1
 
 from monkeysee.SpatialBased.decoding_wrapper import MonkeySeeDecoder
+# from cae.model import CAEDecoder
 
 ### set paths
 DATA_PATH = os.environ["DATA_PATH"]
+DATA_PATH_CAE = os.path.join(os.environ["DATA_PATH"], "cae")
 DATA_PATH_CAT_V1 = os.path.join(DATA_PATH, "cat_V1_spiking_model", "50K_single_trial_dataset")
 DATA_PATH_MOUSE_V1 = os.path.join(DATA_PATH, "mouse_v1_sensorium22")
 DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
@@ -50,8 +52,8 @@ config = {
 #     "max_batches": None,
 #     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
 #     # "batch_size": 4,
-#     # "batch_size": 12,
-#     "batch_size": 36,
+#     "batch_size": 12,
+#     # "batch_size": 36,
 #     # "sessions": list(range(1, 23)),
 #     "sessions": [6],
 #     "drop_last": True,
@@ -83,8 +85,8 @@ config["data"]["cat_v1"] = {
         "test_path": os.path.join(DATA_PATH_CAT_V1, "datasets", "test"),
         "image_size": [50, 50],
         "crop": False,
-        # "batch_size": 12,
-        "batch_size": 36,
+        "batch_size": 12,
+        # "batch_size": 36,
         "stim_keys": ("stim",),
         "resp_keys": ("exc_resp", "inh_resp"),
         "return_coords": True,
@@ -133,8 +135,8 @@ config["crop_wins"]["cat_v1"] = config["data"]["cat_v1"]["crop_win"]
 #     "normalize_neuron_coords": True,
 #     "average_test_multitrial": True,
 #     "save_test_multitrial": True,
-#     # "test_batch_size": 12,
-#     "test_batch_size": 36,
+#     "test_batch_size": 12,
+#     # "test_batch_size": 36,
 #     "device": config["device"],
 # }
 # ### add crop_wins for mouse v1 data
@@ -154,16 +156,15 @@ config["comparison"] = {
     "save_all_preds_and_targets": False,
     "save_dir": None,
     "save_dir": os.path.join(
-        # DATA_PATH,
+        DATA_PATH,
         "results",
-        # "15-05-25__seed2__c_prelim",
-        "15-05-25__seed2__c_mindeye2",
+        "semantic_catv1_meicoder",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
     #     "overwrite": True,
     #     "path": os.path.join(
-    #         "/home/sobotka/decoding-brain-activity/results/12-04-25/sens22_data/2025-04-22_19-23-12.pt",
+    #         "/home/jan/Desktop/Dev/csng/decoding-brain-activity/publication/figures/12-04-25/brainreader/2025-04-12_10-34-28.pt",
     #     ),
     #     "load_only": None, # 'None' to load all
     #     # "load_only": [
@@ -181,11 +182,35 @@ config["comparison"] = {
         "Alex(2)",
         "Alex(5)",
         # "BrainDistance",
+        "Incep",
+        "CLIP",
+        "Eff",
+        "SwAV",
     ],
 }
 
 ### methods to compare
 config["comparison"]["to_compare"] = {
+    ### --- CAEDecoder ---
+    # "CAE": { # B-6
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "27-07-2025_15-13", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    # "CAE": { # M-1
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "27-07-2025_16-43", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    # "CAE": { # Cat V1
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "27-07-2025_17-53", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+
     ### --- Inverted encoder ---
     # "Inverted Encoder (brainreader-style)": { # brainreader mouse
     #     "decoder": EnsembleInvEnc(
@@ -215,8 +240,8 @@ config["comparison"]["to_compare"] = {
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
     #             # os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
-    #             # os.path.join(DATA_PATH, "models", "encoder_b6.pt"),
-    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_b6_seed1.pt"), # seed=1
+    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_b6.pt"),
+    #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_b6_seed1.pt"), # seed=1
     #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_b6_seed2.pt"), # seed=2
     #         ],
     #         encoder_config={
@@ -257,9 +282,9 @@ config["comparison"]["to_compare"] = {
     # "Inverted Encoder": { # sensorium mouse v1
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
-    #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
+    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
     #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_m1_seed1.pt"), # seed=1
-    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_m1_seed2.pt"), # seed=2
+    #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_m1_seed2.pt"), # seed=2
     #         ],
     #         encoder_config={
     #             "img_dims": (1, 36, 64),
@@ -301,9 +326,9 @@ config["comparison"]["to_compare"] = {
     # "Inverted Encoder": { # cat v1
     #     "decoder": EnsembleInvEnc(
     #         encoder_paths=[
-    #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
+    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_c.pt"),
     #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_c_seed1.pt"), # seed=1
-    #             os.path.join(DATA_PATH, "models", "encoders", "encoder_c_seed2.pt"), # seed=2
+    #             # os.path.join(DATA_PATH, "models", "encoders", "encoder_c_seed2.pt"), # seed=2
     #         ],
     #         encoder_config={
     #             "img_dims": (1, 50, 50),
@@ -345,8 +370,8 @@ config["comparison"]["to_compare"] = {
     # "EGG": { # mouse v1
     #     "decoder": EGGDecoder(
     #         encoder=get_encoder_sensorium_mouse_v1(
-    #             # ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1_seed1.pt"), # seed=1
+    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
+    #             # ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1_seed1.pt"), # seed=1
     #             # ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1_seed2.pt"), # seed=2
     #             eval_mode=True,
     #             device=config["device"],
@@ -390,8 +415,8 @@ config["comparison"]["to_compare"] = {
     ### --- MonkeySee ---
     # "MonkeySee": { # B-6
     #     "decoder": MonkeySeeDecoder(
-    #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "18-02-2025_19-32")),
-    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "12-05-2025_04-13")), # seed=1
+    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "18-02-2025_19-32")),
+    #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "12-05-2025_04-13")), # seed=1
     #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "12-05-2025_15-33")), # seed=2
     #         ckpt_key_to_load="best_es",
     #         train_dl=get_dataloaders(config=(monkeysee_config := update_config(
@@ -432,9 +457,9 @@ config["comparison"]["to_compare"] = {
     # },
     # "MonkeySee": { # M-1
     #     "decoder": MonkeySeeDecoder(
-    #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "26-04-2025_01-46")),
+    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "26-04-2025_01-46")),
     #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "11-05-2025_02-26")), # seed=1
-    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "11-05-2025_15-19")), # seed=2
+    #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "11-05-2025_15-19")), # seed=2
     #         ckpt_key_to_load="best_es",
     #         train_dl=get_dataloaders(config=(monkeysee_config := update_config(
     #                 config=update_config_paths(
@@ -454,9 +479,9 @@ config["comparison"]["to_compare"] = {
     # },
     # "MonkeySee": { # cat v1
     #     "decoder": MonkeySeeDecoder(
-    #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "23-02-2025_11-00")),
+    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "23-02-2025_11-00")),
     #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "11-05-2025_00-17")),
-    #         ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "11-05-2025_01-55")),
+    #         # ckpt_dir=(monkeysee_ckpt_path := os.path.join(DATA_PATH, "monkeysee", "runs", "11-05-2025_01-55")),
     #         ckpt_key_to_load="best_es",
     #         train_dl=get_dataloaders(config=(monkeysee_config := update_config(
     #                 config=update_config_paths(
@@ -479,12 +504,12 @@ config["comparison"]["to_compare"] = {
     ### --- MindEye ---
     # "MindEye2 (B-6)": { # B-6
     #     "decoder": SavedReconstructionsDecoder(
-    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_18-02-25_19-45", "subj06_reconstructions_zscored.pt"), pickle_module=dill),
-    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_b6__10-05-25_15-46", "subj06_test_reconstructions.pt"), pickle_module=dill), # seed=1
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_18-02-25_19-45", "subj06_reconstructions_zscored.pt"), pickle_module=dill),
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_b6__10-05-25_15-46", "subj06_test_reconstructions.pt"), pickle_module=dill), # seed=1
     #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_b6__11-05-25_16-21", "subj06_test_reconstructions.pt"), pickle_module=dill), # seed=2
     #         data_key="6",
-    #         zscore_reconstructions=True,
-    #         # zscore_reconstructions=False, # use for seed=0 and seed=1
+    #         # zscore_reconstructions=True,
+    #         zscore_reconstructions=False, # use for seed=0 and seed=1
     #         device=config["device"],
     #     ),
     #     "run_name": None,
@@ -518,8 +543,8 @@ config["comparison"]["to_compare"] = {
     # },
     # "MindEye2 (B-1-8 -> B-6)": { # B-6 fine-tuned from B-1-8
     #     "decoder": SavedReconstructionsDecoder(
-    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_26-02-25_10-53", "subj06_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
-    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_b6__15-05-25_11-44", "subj06_test_reconstructions.pt"), pickle_module=dill), # seed=1
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_26-02-25_10-53", "subj06_reconstructions.pt"), pickle_module=dill)["MindEye2"]["stim_pred_best"][0],
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_b6__15-05-25_11-44", "subj06_test_reconstructions.pt"), pickle_module=dill), # seed=1
     #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_b6__13-05-25_12-45", "subj06_test_reconstructions_img2imgtimepoint5.pt"), pickle_module=dill), # seed=2
     #         data_key="6",
     #         zscore_reconstructions=True,
@@ -529,8 +554,8 @@ config["comparison"]["to_compare"] = {
     # },
     # "MindEye2": { # M-1
     #     "decoder": SavedReconstructionsDecoder(
-    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1__24-03-25_22-50", "subj21067-10-18_reconstructions_zscored.pt"), pickle_module=dill),
-    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_m1__10-05-25_15-54", "subj21067-10-18_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=1
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1__24-03-25_22-50", "subj21067-10-18_reconstructions_zscored.pt"), pickle_module=dill),
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_m1__10-05-25_15-54", "subj21067-10-18_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=1
     #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_m1__11-05-25_03-54", "subj21067-10-18_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=2
     #         data_key="21067-10-18",
     #         zscore_reconstructions=False,
@@ -569,26 +594,26 @@ config["comparison"]["to_compare"] = {
     # },
     # "MindEye2 (M-All -> M-1)": { # M-1 fine-tuned from M-All (csng_mouse_v1__24-03-25_12-08)
     #     "decoder": SavedReconstructionsDecoder(
-    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1__03-04-25_16-06", "subj21067-10-18_test_reconstructions.pt"), pickle_module=dill),
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_mouse_v1__03-04-25_16-06", "subj21067-10-18_test_reconstructions.pt"), pickle_module=dill),
     #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_m1__13-05-25_12-13", "subj21067-10-18_test_reconstructions.pt"), pickle_module=dill), # seed=1
-    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_m1__13-05-25_12-30", "subj21067-10-18_test_reconstructions.pt"), pickle_module=dill), # seed=2
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_m1__13-05-25_12-30", "subj21067-10-18_test_reconstructions.pt"), pickle_module=dill), # seed=2
     #         data_key="21067-10-18",
     #         zscore_reconstructions=True,
     #         device=config["device"],
     #     ),
     #     "run_name": None,
     # },
-    "MindEye2": { # cat v1
-        "decoder": SavedReconstructionsDecoder(
-            # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__08-03-25_11-24", "subjcat_v1_reconstructions_zscored.pt"), pickle_module=dill),
-            # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__10-05-25_15-36", "subjcat_v1_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=1
-            reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__13-05-25_02-18", "subjcat_v1_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=2
-            data_key="cat_v1",
-            zscore_reconstructions=False,
-            device=config["device"],
-        ),
-        "run_name": None,
-    },
+    # "MindEye2": { # cat v1
+    #     "decoder": SavedReconstructionsDecoder(
+    #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__08-03-25_11-24", "subjcat_v1_reconstructions_zscored.pt"), pickle_module=dill),
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__10-05-25_15-36", "subjcat_v1_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=1
+    #         # reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__13-05-25_02-18", "subjcat_v1_test_reconstructions_zscored.pt"), pickle_module=dill), # seed=2
+    #         data_key="cat_v1",
+    #         zscore_reconstructions=False,
+    #         device=config["device"],
+    #     ),
+    #     "run_name": None,
+    # },
     # "MindEye2 (post-hoc z-scored)": { # cat v1
     #     "decoder": SavedReconstructionsDecoder(
     #         reconstructions=torch.load(os.path.join(DATA_PATH, "mindeye", "evals", "csng_cat_v1__08-03-25_11-24", "subjcat_v1_reconstructions.pt"), pickle_module=dill),
@@ -653,6 +678,131 @@ config["comparison"]["to_compare"] = {
     #     "run_name": "2025-04-26_10-50-31",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-26_10-50-31", "decoder.pt"),
     # },
+
+    # "GAN": { # highres
+    #     "run_name": "2025-07-25_08-13-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-13-34", "ckpt", "decoder_255.pt"),
+    # },
+    # "GAN": { # highres
+    #     "run_name": "2025-07-25_08-40-48",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-40-48", "decoder.pt"),
+    # },
+    # "GAN": { # highres
+    #     "run_name": "2025-07-25_08-17-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-17-34", "ckpt", "decoder_480.pt"),
+    # },
+
+    ## High-res 144x256
+    # "2025-07-25_08-06-35": { # highres
+    #     "run_name": "2025-07-25_08-06-35",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-06-35", "ckpt", "decoder_655.pt"),
+    # },
+    # "2025-07-25_08-13-34": { # highres
+    #     "run_name": "2025-07-25_08-13-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-13-34", "ckpt", "decoder_805.pt"),
+    # },
+    # "2025-07-25_08-34-34": { # highres
+    #     "run_name": "2025-07-25_08-34-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-34-34", "ckpt", "decoder_695.pt"),
+    # },
+
+    ## High-res 72x128
+    # "GAN best": { # highres
+    #     "run_name": "2025-07-26_06-46-23",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-26_06-46-23", "decoder.pt"),
+    # },
+    # "GAN second best": { # highres
+    #     "run_name": "2025-07-26_18-48-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-26_18-48-34", "decoder.pt"),
+    # },
+    # "2025-07-26_18-48-34": { # highres
+    #     "run_name": "2025-07-26_18-48-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-26_18-48-34", "ckpt", "decoder_595.pt"),
+    # },
+    # "2025-07-26_06-46-23": { # highres
+    #     "run_name": "2025-07-26_06-46-23",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-26_06-46-23", "ckpt", "decoder_595.pt"),
+    # },
+    # "2025-07-25_08-17-34": { # highres
+    #     "run_name": "2025-07-25_08-17-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-17-34", "ckpt", "decoder_595.pt"),
+    # },
+    # "2025-07-25_08-20-34": { # highres
+    #     "run_name": "2025-07-25_08-20-34",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-20-34", "ckpt", "decoder_595.pt"),
+    # },
+    # "2025-07-25_08-40-48": { # highres
+    #     "run_name": "2025-07-25_08-40-48",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-40-48", "ckpt", "decoder_595.pt"),
+    # },
+
+    ## LRFs
+    # "2025-07-29_06-29-57": {
+    #     "run_name": "2025-07-29_06-29-57",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_06-29-57", "decoder.pt"),
+    # },
+    # "2025-07-29_07-16-39": {
+    #     "run_name": "2025-07-29_07-16-39",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_07-16-39", "decoder.pt"),
+    # },
+
+    ## MEIs
+    # "2025-07-29_03-25-21": {
+    #     "run_name": "2025-07-29_03-25-21",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_03-25-21", "decoder.pt"),
+    # },
+    # "2025-07-29_03-27-41": {
+    #     "run_name": "2025-07-29_03-27-41",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_03-27-41", "decoder.pt"),
+    # },
+    # "2025-07-29_05-41-08": {
+    #     "run_name": "2025-07-29_05-41-08",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_05-41-08", "decoder.pt"),
+    # },
+
+    ## NLI
+    # "2025-07-28_21-15-25": {
+    #     "run_name": "2025-07-28_21-15-25",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-28_21-15-25", "decoder.pt"),
+    # },
+    # "2025-07-28_22-40-21": {
+    #     "run_name": "2025-07-28_22-40-21",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-28_22-40-21", "decoder.pt"),
+    # },
+    # "2025-07-29_23-03-21": {
+    #     "run_name": "2025-07-29_07-25-12",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_23-03-21", "ckpt", "decoder_270.pt"),
+    # },
+
+    ## MEI noise
+    # "2025-07-29_22-47-37": { # std=0.1
+    #     "run_name": "2025-07-29_22-47-37",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-47-37", "ckpt", "decoder_290.pt"),
+    # },
+    # "2025-07-29_22-48-19": { # std=0.2
+    #     "run_name": "2025-07-29_22-48-19",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-48-19", "ckpt", "decoder_290.pt"),
+    # },
+    # "2025-07-29_22-50-46": { # std=0.3
+    #     "run_name": "2025-07-29_22-50-46",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-50-46", "ckpt", "decoder_290.pt"),
+    # },
+    # "2025-07-29_22-51-18": { # std=0.5
+    #     "run_name": "2025-07-29_22-51-18",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-51-18", "ckpt", "decoder_285.pt"),
+    # },
+    # "2025-07-29_22-51-54": { # std=1
+    #     "run_name": "2025-07-29_22-51-54",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-51-54", "ckpt", "decoder_285.pt"),
+    # },
+    # "2025-07-29_22-52-45": { # std=3
+    #     "run_name": "2025-07-29_22-52-45",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-52-45", "ckpt", "decoder_285.pt"),
+    # },
+    # "2025-07-29_22-53-21": { # std=10
+    #     "run_name": "2025-07-29_22-53-21",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-29_22-53-21", "ckpt", "decoder_285.pt"),
+    # },
     # # ---
 
     ## sensorium mouse v1 ---
@@ -710,10 +860,10 @@ config["comparison"]["to_compare"] = {
     # }, # ---
 
     ## cat v1 ---
-    # "GAN": {
-    #     "run_name": "2025-04-25_20-19-46",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-25_20-19-46", "ckpt", "decoder_195.pt"),
-    # },
+    "GAN": {
+        "run_name": "2025-04-25_20-19-46",
+        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-25_20-19-46", "ckpt", "decoder_195.pt"),
+    },
     # "GAN seed=1": {
     #     "run_name": "2025-05-10_15-32-21",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-05-10_15-32-21", "ckpt", "decoder_185.pt"),
@@ -1269,7 +1419,9 @@ def run_comparison(cfg):
     ### load and compare models
     for k in runs_to_compare.keys():
         print(f"\n-----\n[INFO] Loading {k} model from ckpt (run name: {runs_to_compare[k]['run_name']})...")
-        if "test_losses" in runs_to_compare[k]: # already loaded
+        ### check if already loaded
+        if "test_losses" in runs_to_compare[k] \
+            and np.all([loss_name in runs_to_compare[k]["test_losses"][0]["total"] for loss_name in cfg["comparison"]["losses_to_plot"]]):
             print(f"[INFO] Skipping (evaluation results already present)...")
             continue
 

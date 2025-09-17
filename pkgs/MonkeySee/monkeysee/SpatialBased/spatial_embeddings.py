@@ -120,6 +120,7 @@ if cfg["data"]["data_name"] == "brainreader_mouse":
         "clamp_neg_resp": False,
         "additional_keys": None,
         "avg_test_resp": True,
+        # "train_datapoint_idxs_to_use": np.random.default_rng(seed=cfg["seed"]).choice(4500, size=2000, replace=False),
     }
 elif cfg["data"]["data_name"] == "mouse_v1":
     cfg["data"]["mouse_v1"] = {
@@ -178,7 +179,8 @@ elif cfg["data"]["data_name"] == "cat_v1":
             ),
             "clamp_neg_resp": False,
             "neuron_idxs": None,
-            # "neuron_idxs": np.random.default_rng(seed=cfg["seed"]).choice(46875, size=5000, replace=False),
+            # "training_sample_idxs": np.random.choice(45000, size=5000, replace=False),
+            # "neuron_idxs": np.random.default_rng(seed=cfg["seed"]).choice(46875, size=2500, replace=False),
         },
     }
 

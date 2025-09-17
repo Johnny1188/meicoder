@@ -29,6 +29,11 @@ def get_sample_data(dls, config, sample_from_tier="val"):
         m_dp = next(iter(dls[sample_from_tier][s["m_sample_dataset"]]))
         s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_pupil_center"] = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
         s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_sample_dataset"]
+    if "allen" in config["data"]:
+        s["a_sample_dataset"] = "allen"
+        a_dp = next(iter(dls[sample_from_tier][s["a_sample_dataset"]]))
+        s["a_stim"], s["a_resp"], s["a_sample_data_key"] = a_dp[0]["stim"], a_dp[0]["resp"], a_dp[0]["data_key"]
+        s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["a_stim"], s["a_resp"], s["a_sample_data_key"], s["a_sample_dataset"]
 
     return s
 

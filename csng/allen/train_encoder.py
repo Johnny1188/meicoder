@@ -26,7 +26,6 @@ config = {
         "max_training_batches": None,
     },
     "save_path": os.path.join(DATA_PATH, "models", "encoder_allen.pt"),
-    # "load_ckpt": os.path.join(DATA_PATH, "models", "encoder_ball.pt"),
     "train": True,
 }
 
@@ -65,12 +64,12 @@ config["model_config"] = {
     "grid_mean_predictor": None, # neuron coords are not available
 
     # "pad_input": False,
-    # "layers": 6,
+    # "layers": 8,
     # "input_kern": 9,
     # "gamma_input": 6.3831,
     # "gamma_readout": 0.0076,
     # "hidden_kern": 7,
-    # "hidden_channels": 96,
+    # "hidden_channels": 128,
     # "hidden_padding": 3,
     # "depth_separable": True,
     # "grid_mean_predictor": None, # neuron coords are not available
@@ -106,7 +105,7 @@ config["trainer_config"] = {
     "lr_init": 0.009,
     "track_training": True,
     "weight_decay": 0.,
-    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_latest_ckpt.pt"),
+    "ckpt_path": os.path.join(DATA_PATH, "models", "encoder_latest_ckpt_4l64ch.pt"),
 }
 
 

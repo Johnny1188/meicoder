@@ -1,14 +1,16 @@
 from typing import List, Optional, Tuple, Union
 import numpy as np
+import scipy as sp
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 import torchvision
 from torchvision.models.feature_extraction import create_feature_extractor
-from torchvision.models import alexnet, AlexNet_Weights
+from torchvision.models import alexnet, AlexNet_Weights, inception_v3, Inception_V3_Weights
 from torchvision import transforms
 import torchmetrics
+import clip
 from focal_frequency_loss import FocalFrequencyLoss as FFL
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.models.feature_extraction import create_feature_extractor
@@ -98,6 +100,46 @@ def get_metrics(
                     device=device,
                 ),
                 metric_range=(0, 1),
+            ),
+            window=crop_win,
+        )),
+        "Incep": Loss(config=dict(
+            loss_fn=TwoWayInceptionV3(
+                inp_zscored=inp_zscored,
+                feature_layers=["avgpool"],
+                avg_across_layers=True,
+                reduction=reduction,
+                device=device,
+            ),
+            window=crop_win,
+        )),
+        "CLIP": Loss(config=dict(
+            loss_fn=TwoWayCLIP(
+                inp_zscored=inp_zscored,
+                reduction=reduction,
+                device=device,
+            ),
+            window=crop_win,
+        )),
+        "Eff": Loss(config=dict(
+            loss_fn=HighLevelPerceptualLoss(
+                inp_zscored=inp_zscored,
+                model="eff",
+                feature_layers=["avgpool"],
+                avg_across_layers=True,
+                reduction=reduction,
+                device=device,
+            ),
+            window=crop_win,
+        )),
+        "SwAV": Loss(config=dict(
+            loss_fn=HighLevelPerceptualLoss(
+                inp_zscored=inp_zscored,
+                model="swav",
+                feature_layers=["avgpool"],
+                avg_across_layers=True,
+                reduction=reduction,
+                device=device,
             ),
             window=crop_win,
         )),
@@ -1085,6 +1127,107 @@ class VGGPerceptualLoss(torch.nn.Module):
         return loss
 
 
+class HighLevelPerceptualLoss(torch.nn.Module):
+    """
+    Modified from https://github.com/MedARC-AI/MindEyeV2
+
+    Citation:
+      Scotti, Tripathy, Torrico, Kneeland, Chen, Narang, Santhirasegaran, Xu, Naselaris, Norman, & Abraham.
+      MindEye2: Shared-Subject Models Enable fMRI-To-Image With 1 Hour of Data. International Conference on
+      Machine Learning. (2024). arXiv:2403.11207
+    """
+    def __init__(
+        self,
+        inp_zscored: bool = False,
+        model: str = "eff", # "eff" for EfficientNet, "SwAW" for SwAV
+        feature_layers=["avgpool"],
+        avg_across_layers: bool = False,
+        reduction="mean",
+        device: str = "cuda",
+    ):
+        assert reduction in ["mean", "sum", "none"], f"Invalid reduction: {reduction}"
+        super().__init__()
+
+        self.model = model
+        self.device = device
+        self.inp_zscored = inp_zscored
+        self.feature_layers = feature_layers
+        self.avg_across_layers = avg_across_layers
+        self.reduction = reduction
+
+        ### feature extractor
+        self.resize_to = None
+        if self.model == "eff":
+            from torchvision.models import efficientnet_b1, EfficientNet_B1_Weights
+            self.feature_model = create_feature_extractor(
+                efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT),
+                return_nodes=self.feature_layers,
+            ).to(self.device)
+            self.resize_to = (256, 256)
+        elif self.model == "swav":
+            swav_model = torch.hub.load("facebookresearch/swav:main", "resnet50")
+            self.feature_model = create_feature_extractor(
+                swav_model,
+                return_nodes=self.feature_layers,
+            ).to(self.device)
+            self.resize_to = (224, 224)
+        else:
+            raise ValueError(f"Invalid model: {self.model}. Use 'eff' for EfficientNet or 'swav' for SwAV.")
+        self.feature_model.eval().requires_grad_(False)
+
+        ### preprocessing transforms
+        self.preprocess = transforms.Compose([
+            transforms.Lambda(lambda x: x.repeat(1, 3, 1, 1) if x.shape[1] == 1 else x),
+            transforms.Resize(self.resize_to, interpolation=transforms.InterpolationMode.BILINEAR),
+        ])
+        if not self.inp_zscored:
+            self.preprocess.transforms.append(
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            )
+
+    @torch.no_grad()
+    def two_way_identification(self, all_recons, all_images, feature_layer=None, return_avg=True):
+        ### prepare data
+        preds = self.feature_model(self.preprocess(all_recons).to(self.device))
+        reals = self.feature_model(self.preprocess(all_images).to(self.device))
+        if feature_layer is None:
+            preds = preds.float().flatten(1).cpu().numpy()
+            reals = reals.float().flatten(1).cpu().numpy()
+        else:
+            preds = preds[feature_layer].float().flatten(1).cpu().numpy()
+            reals = reals[feature_layer].float().flatten(1).cpu().numpy()
+
+        ### calculate correlation
+        corr = np.array([
+            sp.spatial.distance.correlation(reals[i], preds[i]) for i in range(len(reals))
+        ])
+        if return_avg:
+            corr = np.mean(corr)
+        return corr
+
+    def forward(self, preds, targets):
+        results = dict()
+        for feature_layer in self.feature_layers:
+            results[feature_layer] = self.two_way_identification(
+                all_recons=preds,
+                all_images=targets,
+                feature_layer=feature_layer,
+                return_avg=self.reduction == "mean",
+            )
+        if self.reduction == "mean":
+            results = {k: v.mean() for k, v in results.items()}
+        elif self.reduction == "sum":
+            results = {k: v.sum() for k, v in results.items()}
+
+        if self.avg_across_layers:
+            return sum(results.values()) / len(results)
+
+        return results
+
+
 class FID:
     def __init__(self, inp_standardized=False, device="cpu"):
         ### note  inp_standardized == True <=> inputs in [0, 1] (different naming)
@@ -1247,6 +1390,172 @@ class TwoWayAlexNet(torch.nn.Module):
 
         if self.avg_across_layers:
             return sum(results.values()) / len(results)
+
+        return results
+
+
+class TwoWayInceptionV3(torch.nn.Module):
+    """
+    Modified from https://github.com/MedARC-AI/MindEyeV2
+
+    Citation:
+      Scotti, Tripathy, Torrico, Kneeland, Chen, Narang, Santhirasegaran, Xu, Naselaris, Norman, & Abraham.
+      MindEye2: Shared-Subject Models Enable fMRI-To-Image With 1 Hour of Data. International Conference on
+      Machine Learning. (2024). arXiv:2403.11207
+    """
+    def __init__(
+        self,
+        inp_zscored: bool = False,
+        feature_layers=["avgpool.4"],
+        avg_across_layers: bool = False,
+        reduction="mean",
+        device: str = "cuda",
+    ):
+        assert reduction in ["mean", "sum", "none"], f"Invalid reduction: {reduction}"
+        super().__init__()
+
+        self.device = device
+        self.inp_zscored = inp_zscored
+        self.feature_layers = feature_layers
+        self.avg_across_layers = avg_across_layers
+        self.reduction = reduction
+
+        ### feature extractor
+        self.incep_model = create_feature_extractor(
+            inception_v3(weights=Inception_V3_Weights.DEFAULT),
+            return_nodes=self.feature_layers,
+        ).to(self.device)
+        self.incep_model.eval().requires_grad_(False)
+
+        ### preprocessing transforms
+        self.preprocess = transforms.Compose([
+            transforms.Lambda(lambda x: x.repeat(1, 3, 1, 1) if x.shape[1] == 1 else x),
+            transforms.Resize((342, 342), interpolation=transforms.InterpolationMode.BILINEAR),
+        ])
+        if not self.inp_zscored:
+            self.preprocess.transforms.append(
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            )
+
+    @torch.no_grad()
+    def two_way_identification(self, all_recons, all_images, feature_layer=None, return_avg=True):
+        ### prepare data
+        preds = self.incep_model(self.preprocess(all_recons).to(self.device))
+        reals = self.incep_model(self.preprocess(all_images).to(self.device))
+        if feature_layer is None:
+            preds = preds.float().flatten(1).cpu().numpy()
+            reals = reals.float().flatten(1).cpu().numpy()
+        else:
+            preds = preds[feature_layer].float().flatten(1).cpu().numpy()
+            reals = reals[feature_layer].float().flatten(1).cpu().numpy()
+
+        ### calculate correlations and success rates
+        r = np.corrcoef(reals, preds)
+        r = r[:len(all_images), len(all_images):]
+        congruents = np.diag(r)
+
+        success = r < congruents
+        success_cnt = np.sum(success, 0)
+
+        if return_avg:
+            perf = np.mean(success_cnt) / (len(all_images) - 1)
+            return perf
+        else:
+            return (success_cnt / (len(all_images) - 1))
+
+    def forward(self, preds, targets):
+        results = dict()
+        for feature_layer in self.feature_layers:
+            results[feature_layer] = self.two_way_identification(
+                all_recons=preds,
+                all_images=targets,
+                feature_layer=feature_layer,
+                return_avg=self.reduction == "mean",
+            )
+        if self.reduction == "mean":
+            results = {k: v.mean() for k, v in results.items()}
+        elif self.reduction == "sum":
+            results = {k: v.sum() for k, v in results.items()}
+
+        if self.avg_across_layers:
+            return sum(results.values()) / len(results)
+
+        return results
+
+
+class TwoWayCLIP(torch.nn.Module):
+    """
+    Modified from https://github.com/MedARC-AI/MindEyeV2
+
+    Citation:
+      Scotti, Tripathy, Torrico, Kneeland, Chen, Narang, Santhirasegaran, Xu, Naselaris, Norman, & Abraham.
+      MindEye2: Shared-Subject Models Enable fMRI-To-Image With 1 Hour of Data. International Conference on
+      Machine Learning. (2024). arXiv:2403.11207
+    """
+    def __init__(
+        self,
+        inp_zscored: bool = False,
+        model_name: str = "ViT-L/14",
+        reduction="mean",
+        device: str = "cuda",
+    ):
+        assert reduction in ["mean", "sum", "none"], f"Invalid reduction: {reduction}"
+        super().__init__()
+
+        self.device = device
+        self.inp_zscored = inp_zscored
+        self.reduction = reduction
+
+        ### feature extractor
+        self.clip_model, self.clip_preprocess = clip.load(model_name, device=self.device)
+
+        ### preprocessing transforms
+        self.preprocess = transforms.Compose([
+            transforms.Lambda(lambda x: x.repeat(1, 3, 1, 1) if x.shape[1] == 1 else x),
+            transforms.Resize((224, 224), interpolation=transforms.InterpolationMode.BILINEAR),
+        ])
+        if not self.inp_zscored:
+            self.preprocess.transforms.append(
+                transforms.Normalize(
+                    mean=[0.48145466, 0.4578275, 0.40821073],
+                    std=[0.26862954, 0.26130258, 0.27577711]
+                )
+            )
+
+    @torch.no_grad()
+    def two_way_identification(self, all_recons, all_images, return_avg=True):
+        ### prepare data
+        preds = self.clip_model.encode_image(self.preprocess(all_recons).to(self.device))
+        reals = self.clip_model.encode_image(self.preprocess(all_images).to(self.device))
+        preds = preds.float().cpu().numpy()
+        reals = reals.float().cpu().numpy()
+
+        ### calculate correlations and success rates
+        r = np.corrcoef(reals, preds)
+        r = r[:len(all_images), len(all_images):]
+        congruents = np.diag(r)
+
+        success = r < congruents
+        success_cnt = np.sum(success, 0)
+
+        if return_avg:
+            perf = np.mean(success_cnt) / (len(all_images) - 1)
+            return perf
+        else:
+            return (success_cnt / (len(all_images) - 1))
+
+    def forward(self, preds, targets):
+        results = self.two_way_identification(
+            all_recons=preds,
+            all_images=targets,
+            return_avg=self.reduction == "mean",
+        )
+
+        if self.reduction == "sum":
+            results = results.sum()
 
         return results
 

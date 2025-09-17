@@ -28,24 +28,50 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 
 
 ### config
+# config = {
+#     "data_name": (data_name := "allen"),
+#     "encoder_path": os.path.join(DATA_PATH, "models", "encoder_allen_6l96ch.pt"), # pre-trained encoder path
+#     "data_key": "allen",
+#     "save_path": os.path.join({
+#         "cat_v1": DATA_PATH_CAT_V1,
+#         "mouse_v1": DATA_PATH_MOUSE_V1,
+#         "brainreader_mouse": DATA_PATH_BRAINREADER,
+#         "allen": DATA_PATH_CAE,
+#     }[data_name], "meis_0-05std_gauss2_encoder_allen_6l96ch"),
+#     "chunk_size": 30, # number of cells to process at once
+#     "mei": {
+#         "mean": 0,
+#         # "std": 0.15, # everything from 0.10 to 0.25 works here
+#         "std": 0.05, # everything from 0.10 to 0.25 works here
+#         "pixel_min": -1,
+#         "pixel_max": 1,
+#         # "img_res": (36, 64), # should be the size of the input image to the encoder
+#         "img_res": (256, 256), # should be the size of the input image to the encoder
+#         "step_size": 1,
+#         "num_iterations": 1000,
+#         "gradient_f": ops.GaussianBlur(2.), # blur the gradient to avoid artifacts
+#         "print_iters": 1e10,
+#     },
+#     "device": os.environ["DEVICE"],
+# }
 config = {
-    "data_name": (data_name := "allen"),
-    "encoder_path": os.path.join(DATA_PATH, "models", "encoder_allen.pt"), # pre-trained encoder path
-    "data_key": "allen",
+    "data_name": (data_name := "brainreader_mouse"),
+    "encoder_path": os.path.join(DATA_PATH, "models", (encoder_filename := "encoder_b6_8l128ch.pt")), # pre-trained encoder path
+    "data_key": "6",
     "save_path": os.path.join({
         "cat_v1": DATA_PATH_CAT_V1,
         "mouse_v1": DATA_PATH_MOUSE_V1,
         "brainreader_mouse": DATA_PATH_BRAINREADER,
-        "allen": DATA_PATH_CAE,
-    }[data_name], "meis"),
+    }[data_name], f"meis__36-64_{encoder_filename.split('.')[0]}"),
     "chunk_size": 500, # number of cells to process at once
     "mei": {
         "mean": 0,
         "std": 0.15, # everything from 0.10 to 0.25 works here
         "pixel_min": -1,
         "pixel_max": 1,
-        # "img_res": (36, 64), # should be the size of the input image to the encoder
-        "img_res": (256, 256), # should be the size of the input image to the encoder
+        "img_res": (36, 64), # should be the size of the input image to the encoder
+        # "img_res": (72, 128), # should be the size of the input image to the encoder
+        # "img_res": (144, 256), # should be the size of the input image to the encoder
         "step_size": 1,
         "num_iterations": 1000,
         "gradient_f": ops.GaussianBlur(1.), # blur the gradient to avoid artifacts

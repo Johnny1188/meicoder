@@ -40,7 +40,10 @@ config["data"]["brainreader_mouse"] = {
     "batch_size": 128,
     # "sessions": list(range(1, 23)),
     "sessions": [6],
+    # "resize_stim_to": None,
     "resize_stim_to": (36, 64),
+    # "resize_stim_to": (144, 256),
+    # "resize_stim_to": (72, 128),
     "normalize_stim": True,
     "normalize_resp": False,
     "div_resp_by_std": True,
@@ -60,6 +63,7 @@ config["model_config"] = {
     # "depth_separable": False,
     # "laplace_pyramid": True,
 
+    ### original
     "pad_input": False,
     "layers": 4,
     "input_kern": 9,
@@ -70,6 +74,18 @@ config["model_config"] = {
     "hidden_padding": 3,
     "depth_separable": True,
     "grid_mean_predictor": None, # neuron coords are not available
+    
+    # "pad_input": False,
+    # "layers": 3,
+    # "input_kern": 9,
+    # "gamma_input": 6.3831,
+    # "gamma_readout": 0.0076,
+    # "hidden_kern": 7,
+    # "hidden_channels": 48,
+    # "hidden_padding": 3,
+    # "depth_separable": True,
+    # "grid_mean_predictor": None, # neuron coords are not available
+
     # "grid_mean_predictor": {
     #     "type": "cortex",
     #     "input_dimensions": 2,
