@@ -41,16 +41,15 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 
 ##### global run config
 config = {
-    # "device": os.environ["DEVICE"],
-    "device": "cpu",
+    "device": os.environ["DEVICE"],
     "seed": 0,
-    "save_run": False,
-    # "save_run": True,
-    "wandb": None,
-    # "wandb": {
-    #     "project": os.environ["WANDB_PROJECT"],
-    #     "group": "gan_decoder",
-    # },
+    # "save_run": False,
+    "save_run": True,
+    # "wandb": None,
+    "wandb": {
+        "project": os.environ["WANDB_PROJECT"],
+        "group": "gan_decoder",
+    },
     "data": {
         "mixing_strategy": "parallel_min", # needed only with multiple base dataloaders
         "max_eval_batches": None,
@@ -242,7 +241,7 @@ config["decoder"] = {
                         ("deconv", 64, 3, 1, 1),
                         ("deconv", 1, 3, 1, 0),
                     ],
-                    "mei": [
+                    "mei": [ # 36x64
                         ("conv", 480, 7, 1, 3),
                         ("conv", 256, 5, 1, 2),
                         ("conv", 256, 5, 1, 2),
@@ -252,25 +251,22 @@ config["decoder"] = {
                     ],
                     # "mei": [
                     #     ("deconv", 480, 7, 2, 3),
-                    #     ("deconv", 256, 5, 2, 2),
+                    #     ("deconv", 256, 5, 1, 2),
                     #     ("deconv", 256, 5, 1, 1),
                     #     ("deconv", 128, 4, 1, 1),
                     #     ("deconv", 128, 3, 1, 1),
-                    #     # ("deconv", 128, 3, 1, 1),
                     #     ("deconv", 64, 3, 1, 1),
-                    #     # ("deconv", 64, 3, 1, 1),
                     #     ("deconv", 1, 3, 1, 1),
                     # ],
-                    # "mei": [
-                    #     ("conv", 480, 7, 1, 3),
-                    #     ("conv", 256, 5, 1, 2),
-                    #     ("conv", 256, 5, 1, 2),
-                    #     ("conv", 128, 5, 1, 2),
-                    #     ("conv", 128, 3, 1, 1),
-                    #     # ("conv", 128, 3, 1, 1),
-                    #     ("conv", 64, 3, 1, 1),
-                    #     ("conv", 64, 3, 1, 1),
-                    #     ("conv", 1, 3, 1, 1),
+                    # "mei": [ # 72x128
+                    #     ("deconv", 480, 7, 2, 3),
+                    #     ("deconv", 256, 5, 1, 2),
+                    #     ("deconv", 256, 5, 1, 1),
+                    #     ("deconv", 128, 4, 1, 1),
+                    #     ("deconv", 128, 3, 1, 1),
+                    #     ("deconv", 64, 3, 1, 1),
+                    #     ("deconv", 64, 3, 1, 1),
+                    #     ("deconv", 1, 3, 1, 1),
                     # ],
                 }[readin_type],
                 "act_fn": nn.ReLU,
@@ -339,9 +335,9 @@ config["decoder"] = {
     #     "load_opter_state": True,
     #     "load_history": True,
     #     "reset_best": False,
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-25_08-34-34", "decoder.pt"),
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-10-02_11-09-09", "decoder.pt"),
     #     "resume_checkpointing": True,
-    #     "resume_wandb_id": "2025-07-25_08-34-34",
+    #     "resume_wandb_id": "2025-10-02_11-09-09",
     # },
     ### for fine-tuning
     # "load_ckpt": {
@@ -448,7 +444,7 @@ if "brainreader_mouse" in config["data"]:
                         "use_neuron_coords": (_use_neuron_coords := False),
                         "neuron_emb_dim": (_neuron_emb_dim := 32),
                         "pointwise_conv_config": {
-                            "out_channels": 576,
+                            "out_channels": 480,
                             "bias": False,
                             "batch_norm": True,
                             "act_fn": nn.LeakyReLU,

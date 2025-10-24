@@ -37,7 +37,6 @@ DATA_PATH_BRAINREADER = os.path.join(DATA_PATH, "brainreader")
 ### global config
 config = {
     "device": os.environ["DEVICE"],
-    # "device": "cpu",
     "seed": 0,
     "data": {
         "mixing_strategy": "sequential", # needed only with multiple base dataloaders
@@ -53,12 +52,13 @@ config = {
 #     "max_batches": None,
 #     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
 #     # "batch_size": 4,
-#     "batch_size": 12,
-#     # "batch_size": 36,
+#     # "batch_size": 40,
+#     "batch_size": 36,
 #     # "sessions": list(range(1, 23)),
 #     "sessions": [6],
 #     "drop_last": True,
 #     "resize_stim_to": (36, 64),
+#     # "resize_stim_to": (72, 128),
 #     "normalize_stim": True,
 #     "normalize_resp": False,
 #     "div_resp_by_std": True,
@@ -154,12 +154,12 @@ config["comparison"] = {
     "eval_every_n_samples": None, # to prevent OOM but not accurate for some losses
     "max_n_reconstruction_samples": None,
     "z_score_wrt_target": False,
-    "save_all_preds_and_targets": False,
+    "save_all_preds_and_targets": True,
     "save_dir": None,
     "save_dir": os.path.join(
-        DATA_PATH,
+        # DATA_PATH,
         "results",
-        "semantic_catv1_meicoder",
+        "cae_c",
     ),
     "load_ckpt": None,
     # "load_ckpt": {
@@ -199,15 +199,51 @@ config["comparison"]["to_compare"] = {
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
+    # "CAE": { # B-6 (seed=1)
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "30-09-2025_18-29", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    # "CAE": { # B-6 (seed=2)
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "30-09-2025_18-31", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
     # "CAE": { # M-1
     #     "decoder": CAEDecoder(
     #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "27-07-2025_16-43", "best_model.pt"),
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
-    # "CAE": { # Cat V1
+    # "CAE": { # M-1 (seed=1)
     #     "decoder": CAEDecoder(
-    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "27-07-2025_17-53", "best_model.pt"),
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "30-09-2025_16-08", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    # "CAE": { # M-1 (seed=2)
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "30-09-2025_16-13", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    "CAE": { # Cat V1
+        "decoder": CAEDecoder(
+            ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "27-07-2025_17-53", "best_model.pt"),
+        ).to(config["device"]),
+        "run_name": None,
+    },
+    # "CAE": { # Cat V1 (seed=1)
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "30-09-2025_23-30", "best_model.pt"),
+    #     ).to(config["device"]),
+    #     "run_name": None,
+    # },
+    # "CAE": { # Cat V1 (seed=2);
+    #     "decoder": CAEDecoder(
+    #         ckpt_path=os.path.join(DATA_PATH_CAE, "runs", "01-10-2025_10-24", "best_model.pt"),
     #     ).to(config["device"]),
     #     "run_name": None,
     # },
@@ -708,6 +744,34 @@ config["comparison"]["to_compare"] = {
     # },
 
     ## High-res 72x128
+    # "2025-09-28_11-51-16": { # highres
+    #     "run_name": "2025-09-28_11-51-16",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-09-28_11-51-16", "decoder.pt"),
+    # },
+    # "2025-09-30_15-50-10": { # highres
+    #     "run_name": "2025-09-30_15-50-10",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-09-30_15-50-10", "ckpt", "decoder_600.pt"),
+    # },
+    # "2025-09-30_15-57-26": { # highres
+    #     "run_name": "2025-09-30_15-57-26",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-09-30_15-57-26", "decoder.pt"),
+    # },
+    # "2025-10-02_11-07-01": { # highres
+    #     "run_name": "2025-10-02_11-07-01",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-10-02_11-07-01", "decoder.pt"),
+    # },
+    # "2025-10-02_11-13-07": { # highres
+    #     "run_name": "2025-10-02_11-13-07",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-10-02_11-13-07", "decoder.pt"),
+    # },
+    # "2025-10-02_11-18-10": { # highres
+    #     "run_name": "2025-10-02_11-18-10",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-10-02_11-18-10", "decoder.pt"),
+    # },
+    # "2025-10-04_14-56-28": { # highres
+    #     "run_name": "2025-10-04_14-56-28",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-10-04_14-56-28", "decoder.pt"),
+    # },
     # "GAN best": { # highres
     #     "run_name": "2025-07-26_06-46-23",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-07-26_06-46-23", "decoder.pt"),
@@ -861,10 +925,10 @@ config["comparison"]["to_compare"] = {
     # }, # ---
 
     ## cat v1 ---
-    "GAN": {
-        "run_name": "2025-04-25_20-19-46",
-        "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-25_20-19-46", "ckpt", "decoder_195.pt"),
-    },
+    # "GAN": {
+    #     "run_name": "2025-04-25_20-19-46",
+    #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-04-25_20-19-46", "ckpt", "decoder_195.pt"),
+    # },
     # "GAN seed=1": {
     #     "run_name": "2025-05-10_15-32-21",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-05-10_15-32-21", "ckpt", "decoder_185.pt"),
