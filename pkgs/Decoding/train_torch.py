@@ -47,7 +47,6 @@ cfg = {
             "brainreader_mouse": lambda x: crop(x, (36, 64)),
             "mouse_v1": lambda x: crop(x, (22, 36)),
             "cat_v1": lambda x: crop(x, (20, 20)),
-            "allen": lambda x: x,
         },
     },
     # "wandb": None,
@@ -134,14 +133,8 @@ elif cfg["data"]["data_name"] == "cat_v1":
             # "neuron_idxs": np.random.default_rng(seed=cfg["seed"]).choice(46875, size=5000, replace=False),
         },
     }
-elif cfg["data"]["data_name"] == "allen":
-    cfg["data"]["allen"] = {
-        "device": cfg["device"],
-        "val_split_seed": cfg["seed"],
-        "mixing_strategy": "sequential",
-        "batch_size": 16,
-        "val_split_frac": 0.2,
-    }
+else:
+    raise ValueError(f"Unknown data_name: {cfg['data']['data_name']}")
 
 ### model config
 cfg["model"] = {
@@ -151,8 +144,8 @@ cfg["model"] = {
             1,
             cfg["data"]["img_transforms"][cfg["data"]["data_name"]](tmp_batch["stim"]).size(-2) // 2,
             cfg["data"]["img_transforms"][cfg["data"]["data_name"]](tmp_batch["stim"]).size(-1) // 2
-        ) if cfg["data"]["data_name"] != "allen" else (1, 64, 64),  # Shape after DenseDecoder output
-        "size": "small" if cfg["data"]["data_name"] != "allen" else "large",  # CAE size
+        ),  # Shape after DenseDecoder output
+        "size": "small",  # CAE size
     },
     "opter_kwargs": {
         "lr": 1e-3,
