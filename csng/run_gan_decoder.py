@@ -59,18 +59,6 @@ config = {
 }
 
 
-### allen
-# config["data"]["allen"] = {
-#     "device": config["device"],
-#     "val_split_seed": config["seed"],
-#     "mixing_strategy": "sequential",
-#     "batch_size": 2,
-#     "val_split_frac": 0.2,
-#     "zscore_images": True,
-#     "div_resp_by_std": True,
-#     "clamp_neg_resp": False,
-# }
-
 ### brainreader mouse data
 config["data"]["brainreader_mouse"] = {
     "device": config["device"],
@@ -799,67 +787,6 @@ if "syn_data" in config["data"]:
                 ],
             }[config["decoder"]["readin_type"]],
         })
-
-### finish config for allen data
-if "allen" in config["data"]:
-    _dls, _ = get_dataloaders(config=config)
-    for data_key, dset in zip(_dls["train"]["allen"].data_keys, _dls["train"]["allen"].datasets):
-        ### set crop wins and losses
-        config["crop_wins"][data_key] = tuple(dset[0].images.shape[-2:]) # no cropping
-        config["decoder"]["loss"]["loss_fn"][data_key] = SSIMLoss(window=config["crop_wins"][data_key], log_loss=True, inp_normalized=True, inp_standardized=False)
-
-        ### append discriminator's head
-        config["decoder"]["model"]["core_config"]["D_kwargs"]["layers"][-1][data_key] = {
-            "in_shape": [1, *config["crop_wins"][data_key]],
-            "layers_config": [("fc", 1)],
-            "act_fn": nn.Identity,
-            "out_act_fn": nn.Sigmoid,
-        }
-
-        ### append readin
-        n_neurons = dset[0].responses.shape[-1]
-        config["decoder"]["model"]["readins_config"].append({
-            "data_key": data_key,
-            "in_shape": n_neurons,
-            "decoding_objective_config": None,
-            "layers": {
-                "mei": [
-                    (MEIReadIn, {
-                        # "meis_path": os.path.join(DATA_PATH_CAE, "meis", data_key,  "meis.pt"),
-                        "meis_path": os.path.join(DATA_PATH_CAE, "meis_encoder_allen_6l96ch", data_key,  "meis.pt"),
-                        "n_neurons": n_neurons,
-                        "mei_resize_method": "resize",
-                        "mei_target_shape": (64, 64),
-                        "meis_trainable": False,
-                        "use_neuron_coords": (_use_neuron_coords := False),
-                        "neuron_emb_dim": (_neuron_emb_dim := 32),
-                        "pointwise_conv_config": {
-                            "out_channels": 480,
-                            "bias": False,
-                            "batch_norm": True,
-                            "act_fn": nn.LeakyReLU,
-                            "dropout": 0.2,
-                        },
-                        "ctx_net_config": {
-                            "in_channels": 1 + 2*int(_use_neuron_coords) + (_neuron_emb_dim or 0), # resp, x, y, neuron_emb
-                            "layers_config": [("fc", 128), ("fc", 64*64)],
-                            "act_fn": nn.LeakyReLU,
-                            "out_act_fn": nn.Identity,
-                            "dropout": 0.15,
-                            "batch_norm": True,
-                        },
-                        "l2_reg_mul": 0,
-                        "apply_resp_transform": False,
-                        "shift_coords": False,
-                        "neuron_idxs": None, # np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.5), replace=False),
-                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=int(n_neurons * 0.05), replace=False),
-                        # "neuron_idxs": np.random.default_rng(seed=config["seed"]).choice(n_neurons, size=500, replace=False),
-                        "device": config["device"],
-                    }),
-                ],
-            }[config["decoder"]["readin_type"]],
-        })
-
 
 
 ### main pipeline

@@ -8,7 +8,6 @@ from csng.utils.data import MixedBatchLoader, PerSampleStoredDataset, Normalize
 from csng.brainreader_mouse.data import get_brainreader_mouse_dataloaders
 from csng.mouse_v1.data import get_mouse_v1_dataloaders
 from csng.cat_v1.data import get_cat_v1_dataloaders
-from csng.allen.data import get_allen_dataloaders
 
 
 def get_sample_data(dls, config, sample_from_tier="val"):
@@ -29,11 +28,6 @@ def get_sample_data(dls, config, sample_from_tier="val"):
         m_dp = next(iter(dls[sample_from_tier][s["m_sample_dataset"]]))
         s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_pupil_center"] = m_dp[0]["stim"], m_dp[0]["resp"], m_dp[0]["data_key"], m_dp[0]["pupil_center"]
         s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["m_stim"], s["m_resp"], s["m_sample_data_key"], s["m_sample_dataset"]
-    if "allen" in config["data"]:
-        s["a_sample_dataset"] = "allen"
-        a_dp = next(iter(dls[sample_from_tier][s["a_sample_dataset"]]))
-        s["a_stim"], s["a_resp"], s["a_sample_data_key"] = a_dp[0]["stim"], a_dp[0]["resp"], a_dp[0]["data_key"]
-        s["stim"], s["resp"], s["sample_data_key"], s["sample_dataset"] = s["a_stim"], s["a_resp"], s["a_sample_data_key"], s["a_sample_dataset"]
 
     return s
 
@@ -91,26 +85,6 @@ def get_dataloaders(config):
                 return_data_key=True,
                 return_pupil_center=False, # no pupil center in cat_v1
                 return_neuron_coords=True,
-                device=config["device"],
-            )
-
-    ### Allen Visual Coding—Neuropixels dataset
-    if "allen" in config["data"]:
-        a_dls = get_allen_dataloaders(config=config["data"]["allen"])
-        neuron_coords["allen"] = None
-
-        ### add to data loaders
-        for tier in ("train", "val", "test"):
-            # dls[tier]["allen"] = a_dls["allen"][tier]
-            dls[tier]["allen"] = MixedBatchLoader(
-                dataloaders=[a_dls["allen"][tier]],
-                neuron_coords=neuron_coords["allen"],
-                mixing_strategy=config["data"]["allen"].get("mixing_strategy", "sequential"),
-                max_batches=config["data"]["allen"].get("max_training_batches"),
-                data_keys=["allen"],
-                return_data_key=True,
-                return_pupil_center=False, # no pupil center in allen
-                return_neuron_coords=False,
                 device=config["device"],
             )
 
