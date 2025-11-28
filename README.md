@@ -22,9 +22,9 @@ Install the main `csng` package:
 pip install -e .
 ```
 
-Install the modified packages [neuralpredictors](https://github.com/sinzlab/neuralpredictors), [nnfabrik](https://github.com/sinzlab/nnfabrik), [featurevis](https://github.com/ecobost/featurevis), [sensorium](https://github.com/sinzlab/sensorium) (modified for Python 3.10 compatibility and additional features), and the package for the CAE decoder ([YeChen, et al. 2024](https://doi.org/10.1371/journal.pcbi.1012297)) in the `pkgs` directory:
+Install the modified packages [neuralpredictors](https://github.com/sinzlab/neuralpredictors), [nnfabrik](https://github.com/sinzlab/nnfabrik), [featurevis](https://github.com/ecobost/featurevis), [sensorium](https://github.com/sinzlab/sensorium) (modified for Python 3.10 compatibility and additional features), and the packages for the [CAE decoder](https://doi.org/10.1371/journal.pcbi.1012297), [MonkeySee](https://openreview.net/forum?id=OWwdlxwnFN), and [Energy-Guided Diffusion (EGG)](https://openreview.net/forum?id=1moStpWGUj) in the `pkgs` directory:
 ```bash
-pip install -e pkgs/neuralpredictors pkgs/nnfabrik pkgs/featurevis pkgs/sensorium pkgs/CAE
+pip install -e pkgs/neuralpredictors pkgs/nnfabrik pkgs/featurevis pkgs/sensorium pkgs/CAE pkgs/MonkeySee pkgs/energy-guided-diffusion
 ```
 
 Create `.env` file in the root directory according to `.env.example` file and make sure to set the path to an existing directory where the data will reside (`DATA_PATH`). You might need to load the environment variable(s) from the `.env` file manually in the terminal: `export $(cat .env | xargs)`
@@ -36,7 +36,7 @@ Create `.env` file in the root directory according to `.env.example` file and ma
 - `environment.yaml` - Environment file with all the dependencies
 - `.env.example` - Example of the `.env` file. Important to setup your own .env file in the same directory to be able to run the scripts
 - `.gitignore` - Git ignore file
-- `pkgs` - Directory containing modified packages `neuralpredictors`, `nnfabrik`, `featurevis`, and `sensorium`. Directories `pkgs/MindEye2` and `pkgs/MonkeySee` contain code for the [MindEye2](https://arxiv.org/abs/2403.11207) and [MonkeySee](https://openreview.net/forum?id=OWwdlxwnFN) decoders.
+- `pkgs` - Directory containing modified packages `neuralpredictors`, `nnfabrik`, `featurevis`, `sensorium`. Directories `pkgs/CAE`, `pkgs/MindEye2`, `pkgs/MonkeySee`, and `pkgs/energy-guided-diffusion` contain code for the [CAE decoder](https://doi.org/10.1371/journal.pcbi.1012297), [MindEye2](https://arxiv.org/abs/2403.11207), [MonkeySee](https://openreview.net/forum?id=OWwdlxwnFN), and [Energy-Guided Diffusion (EGG)](https://openreview.net/forum?id=1moStpWGUj), respectively.
 - `csng` - Directory containing the main code for the project (see `csng/README.md` for details):
   - `cat_v1/` - Directory with code specific to the cat V1 data (**C**)
   - `mouse_v1/` - Directory with code specific to the SENSORIUM 2022 mouse V1 data (datasets **M-\<mouse id\>** and **M-All**)
