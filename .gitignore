@@ -3,6 +3,7 @@
 wandb
 .ipynb_checkpoints
 .conda/**
+.publication
 __git__
 
 *__pycache__*
