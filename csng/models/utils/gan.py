@@ -13,7 +13,6 @@ from collections import defaultdict
 import csng
 from csng.utils.mix import timeit
 from csng.utils.data import standardize, crop
-from csng.utils.models import TransparentDataParallel
 from csng.losses import Loss, FID
 from csng.models.readins import MultiReadIn
 
@@ -81,9 +80,6 @@ def init_decoder(config, merge_configs_fn=None):
         decoder.core.D_optim = config["decoder"]["D_opter_cls"](decoder.core.D.parameters(), **config["decoder"]["D_opter_kwargs"])
 
     loss_fn = Loss(model=decoder, config=config["decoder"].get("loss", ckpt_cfg.get("loss", None)))
-
-    ### data parallelism
-    # decoder = TransparentDataParallel(decoder).to(config["device"])
 
     return config, decoder, loss_fn, history, best, ckpt
 

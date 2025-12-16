@@ -54,25 +54,25 @@ config = {
 
 
 ### brainreader mouse data
-config["data"]["brainreader_mouse"] = {
-    "device": config["device"],
-    "mixing_strategy": config["data"]["mixing_strategy"],
-    "max_batches": None,
-    "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
-    "batch_size": 16,
-    # "sessions": list(range(1, 9)), # train on multiple mice
-    "sessions": [6],
-    # "resize_stim_to": None,
-    "resize_stim_to": (36, 64),
-    "normalize_stim": True,
-    "normalize_resp": False,
-    "div_resp_by_std": True,
-    "clamp_neg_resp": False,
-    "additional_keys": None,
-    "avg_test_resp": True,
-    "train_datapoint_idxs_to_use": None,
-    # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=int(4500 * 0.5), replace=False), # subset of training data
-}
+# config["data"]["brainreader_mouse"] = {
+#     "device": config["device"],
+#     "mixing_strategy": config["data"]["mixing_strategy"],
+#     "max_batches": None,
+#     "data_dir": os.path.join(DATA_PATH_BRAINREADER, "data"),
+#     "batch_size": 16,
+#     # "sessions": list(range(1, 9)), # train on multiple mice
+#     "sessions": [6],
+#     # "resize_stim_to": None,
+#     "resize_stim_to": (36, 64),
+#     "normalize_stim": True,
+#     "normalize_resp": False,
+#     "div_resp_by_std": True,
+#     "clamp_neg_resp": False,
+#     "additional_keys": None,
+#     "avg_test_resp": True,
+#     "train_datapoint_idxs_to_use": None,
+#     # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4500, size=int(4500 * 0.5), replace=False), # subset of training data
+# }
 
 
 ### cat v1 data
@@ -104,41 +104,41 @@ config["data"]["brainreader_mouse"] = {
 
 
 ### mouse v1 data
-# config["data"]["mouse_v1"] = {
-#     "dataset_fn": "sensorium.datasets.static_loaders",
-#     "dataset_config": {
-#         "paths": [ # select which sessions (mice) from https://gin.g-node.org/cajal/Sensorium2022/src/master to train on
-#             os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
-#             # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
-#             # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
-#             # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
-#             # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
-#         ],
-#         "normalize": True,
-#         "z_score_responses": False,
-#         "scale": 0.25, # 256x144 -> 64x36
-#         "include_behavior": False,
-#         "add_behavior_as_channels": False,
-#         "include_eye_position": True,
-#         "exclude": None,
-#         "file_tree": True,
-#         "cuda": "cuda" in config["device"],
-#         "batch_size": 32,
-#         "drop_last": True,
-#         "use_cache": False,
-#         "train_datapoint_idxs_to_use": None,
-#         # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=int(4473 * 0.5), replace=False), # subset of training data
-#     },
-#     "crop_win": (22, 36),
-#     "skip_train": False,
-#     "skip_val": False,
-#     "skip_test": False,
-#     "normalize_neuron_coords": True,
-#     "average_test_multitrial": True,
-#     "save_test_multitrial": True,
-#     "test_batch_size": 7,
-#     "device": config["device"],
-# }
+config["data"]["mouse_v1"] = {
+    "dataset_fn": "sensorium.datasets.static_loaders",
+    "dataset_config": {
+        "paths": [ # select which sessions (mice) from https://gin.g-node.org/cajal/Sensorium2022/src/master to train on
+            os.path.join(DATA_PATH_MOUSE_V1, "static21067-10-18-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-1
+            # os.path.join(DATA_PATH_MOUSE_V1, "static22846-10-16-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-2
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23343-5-17-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-3
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23656-14-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-4
+            # os.path.join(DATA_PATH_MOUSE_V1, "static23964-4-22-GrayImageNet-94c6ff995dac583098847cfecd43e7b6.zip"), # M-5
+        ],
+        "normalize": True,
+        "z_score_responses": False,
+        "scale": 0.25, # 256x144 -> 64x36
+        "include_behavior": False,
+        "add_behavior_as_channels": False,
+        "include_eye_position": True,
+        "exclude": None,
+        "file_tree": True,
+        "cuda": "cuda" in config["device"],
+        "batch_size": 32,
+        "drop_last": True,
+        "use_cache": False,
+        "train_datapoint_idxs_to_use": None,
+        # "train_datapoint_idxs_to_use": np.random.default_rng(seed=config["seed"]).choice(4473, size=int(4473 * 0.5), replace=False), # subset of training data
+    },
+    "crop_win": (22, 36),
+    "skip_train": False,
+    "skip_val": False,
+    "skip_test": False,
+    "normalize_neuron_coords": True,
+    "average_test_multitrial": True,
+    "save_test_multitrial": True,
+    "test_batch_size": 7,
+    "device": config["device"],
+}
 
 
 ### decoder
