@@ -64,6 +64,15 @@ The top-level `config` dictionary in `csng/run_gan_decoder.py` controls the full
 After edits, rerun `python csng/run_gan_decoder.py` to train with the updated configuration.
 
 
+## Final evaluation on test sets
+Use `csng/run_comparison.py` to evaluate MEIcoder (and baselines) on held-out test sets and plot metrics/reconstructions.
+
+1) Pick datasets: enable the needed `config["data"]["<dataset>"]` blocks (e.g., `brainreader_mouse`, `cat_v1`, `mouse_v1`) at the top of `csng/run_comparison.py`; crop windows are inferred there.
+2) Point to checkpoints: in `config["comparison"]["to_compare"]`, set each model’s `ckpt_path` (or provide a `decoder` object). `run_name` is used just for labeling on figures. `load_best=True` loads the best-val checkpoint; `eval_all_ckpts` or `find_best_ckpt_according_to` lets you sweep/auto-pick checkpoints.
+3) Configure evaluation: choose `eval_tier` (default `test`), metrics in `losses_to_plot`, and output directory via `save_dir`. Keep `save_all_preds_and_targets=True` if you need full tensors alongside plots. Optional `load_ckpt` lets you reload prior comparison results to re-plot without recompute.
+4) Run: `python csng/run_comparison.py`. Results are saved under to `config["comparison"]["save_dir"]`.
+
+
 ---
 ## Citing
 If you find our repository useful, please consider citing:
