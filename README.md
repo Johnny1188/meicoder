@@ -4,7 +4,7 @@
 
 ---
 
-This project focuses on decoding visual scenes from population neural activity recorded in the early visual system. The repository will be cleaned in the coming weeks, but the main code is fully functional and can be used to reproduce the results from our [NeurIPS 2025 paper](https://arxiv.org/abs/2510.20762) as well as to run your own experiments.
+This project focuses on decoding visual scenes from population neural activity recorded in the early visual system. For details about the approach and results, please refer to our [NeurIPS 2025 paper](https://openreview.net/forum?id=V3WQoshcZe).
 
 
 ## Data

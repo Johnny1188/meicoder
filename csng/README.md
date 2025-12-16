@@ -1,37 +1,17 @@
 ## In this folder
 
-`data.py`:
-Provides utilities for data loading and preprocessing.
-
-`losses.py`:
-Implements custom loss functions and evaluation metrics.
-
-`generate_meis.py`:
-Script for generating most exciting inputs (MEIs) using a pre-trained encoder model. Pre-generated MEIs for the `cat_v1` dataset are available [here](https://drive.google.com/file/d/1NXwTU-056WSwq7Qy6uCnf3J3XFPuWstB/view?usp=sharing).
-
-`run_gan_decoder.py`:
-Pipeline for training GAN-based decoders.
-
-`run_comparison.py`:
-Script for comparing decoding models.
-
-`utils/`:
-Contains utility functions for various tasks, such as data loading, model evaluation, plotting, etc.
-
-`models/`:
-Contains model definitions and training scripts.
-
-`<dataset-name>/train_encoder.py`:
-Script for training the encoder model (images -> responses).
-
-`<dataset-name>/encoder_inversion.py`:
-Script for performing hyperparameter search with the encoder inversion decoding method.
-
-`<dataset-name>/data.py`:
-Utility functions for loading and preprocessing the dataset.
-
-`<dataset-name>/encoder.py`:
-Utility function for loading the encoder model.
+- `run_gan_decoder.py`: Main MEIcoder training pipeline; config at the top selects dataset(s), MEI read-in, and GAN core, then runs the full training loop with checkpointing and optional Weights & Biases logging.
+- `models/readins.py`: Readin modules used by decoders; `MEIReadIn` contextually modulates stored MEIs.
+- `models/utils/gan.py`: Defines the GAN decoder core (generator/discriminator stacks), training utilities (`train`, `init_decoder`, `setup_run_dir`), and checkpoint helpers used by MEIcoder.
+- `generate_meis.py`: Generate MEIs for each neuron from a pretrained encoder; save `meis.pt` files consumed by `MEIReadIn` (cat V1 MEIs are linked [here](https://drive.google.com/file/d/1NXwTU-056WSwq7Qy6uCnf3J3XFPuWstB/view?usp=sharing)).
+- `data.py`: Dataset utilities and loader factories shared across decoders; handles normalization, cropping, mixing strategies, and neuron coordinate handling.
+- `losses.py`: Custom metrics/losses (e.g., SSIM variants, Alex/CLIP/SwAV scores) used during training and evaluation.
+- `run_comparison.py`: Final test-set evaluation/plotting script; loads checkpoints (MEIcoder or baselines), computes metrics, and saves reconstructions.
+- `utils/`: Misc utilities for seeding, plotting, model inspection, training helpers, etc.
+- `<dataset-name>/train_encoder.py`: Trains an encoder (images -> responses) for a specific dataset.
+- `<dataset-name>/encoder_inversion.py`: Hyperparameter search for encoder-inversion decoding on that dataset.
+- `<dataset-name>/data.py`: Dataset-specific loading/preprocessing code (paths, transforms, coordinates).
+- `<dataset-name>/encoder.py`: Helper to load the pretrained encoder for that dataset.
 
 ---
 
