@@ -44,6 +44,26 @@ Create `.env` file in the root directory according to `.env.example` file and ma
   - `<your-data>/` - Directory with code specific to your data (e.g., `cat_v1/`). This folder should include a dataloading utility that could be then combined with other datasets using the code in `csng/data.py`.
 - `notebooks/` - Directory with Jupyter notebooks for plotting, inspecting data and model performance, and for demonstration purposes. Notebook `notebooks/train.ipynb` is a minimal example of how to train a model using the `csng` package on one of the provided datasets, serving as a good starting point for your own experiments.
 
+
+## Running experiments
+The main training script is `csng/run_gan_decoder.py`. The script is highly configurable via the `config` dictionary defined at the top of the file. Below are the steps to run an experiment:
+
+1) Prepare data and MEIs: download/generate datasets as described in `csng/<dataset>/README.md` files and produce MEIs with `csng/generate_meis.py`. Place the resulting `meis.pt` under `DATA_PATH/.../meis/<data_key>/` so it matches the `meis_path` entries in the config (cat V1 MEIs are linked in `csng/README.md`).
+2) Activate the environment: `conda activate csng`.
+3) Choose the dataset block in `csng/run_gan_decoder.py`: uncomment and edit the relevant `config["data"]["<dataset>"]` entry (e.g., `brainreader_mouse`, `cat_v1`, or `mouse_v1`). Verify batch sizes, resize targets, and any neuron coordinate settings.
+4) Launch training: run `python csng/run_gan_decoder.py`. Checkpoints and logs are written to the run directory configured by `setup_run_dir` (defaults to `DATA_PATH/models/gan/<timestamp>`). Resume or fine-tune by filling the `config["decoder"]["load_ckpt"]` block.
+
+### Configuration essentials
+The top-level `config` dictionary in `csng/run_gan_decoder.py` controls the full experiment:
+- `config["device"]`, `["seed"]`, `["save_run"]`, and `["wandb"]` handle reproducibility, checkpointing, and logging.
+- `config["data"]` holds per-dataset dataloader settings (paths, batch sizes, normalization, cropping, optional neuron coords). Only keep blocks for the datasets you want to train on, and comment out or remove others.
+- `config["decoder"]["readin_type"]` should stay `mei` for MEIcoder. However, you can create your own readin modules by inheriting from `csng.models.readins.ReadIn` (see `csng.models.readins.MEIReadIn` for example) and then specifying the new class name here.
+- `config["decoder"]["model"]` defines the GAN core (generator/discriminator shapes) and appends a `readins_config` entry per dataset. Each MEI entry specifies `meis_path`, `mei_target_shape`, `mei_resize_method`, whether MEIs are trainable, contextual modulation (`ctx_net_config`), and pointwise convolution settings. Shapes must match the crop windows in `config["crop_wins"]`.
+- `config["decoder"]["loss"]`, optimizer settings (`G_opter_kwargs`/`D_opter_kwargs`), adversarial/Stim loss weights, and `n_epochs` control training dynamics. `eval_loss_name` selects the validation metric used for checkpointing.
+
+After edits, rerun `python csng/run_gan_decoder.py` to train with the updated configuration.
+
+
 ---
 ## Citing
 If you find our repository useful, please consider citing:
