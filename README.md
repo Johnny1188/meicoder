@@ -6,9 +6,13 @@
 
 This project focuses on decoding visual scenes from population neural activity recorded in the early visual system. For details about the approach and results, please refer to our [NeurIPS 2025 paper](https://openreview.net/forum?id=V3WQoshcZe).
 
+<div align="center">
+<img src="figures/architecture.png" style="width: 100%; height: auto;">
+</div>
+
 
 ## Data
-For instructions on getting the `cat_v1` and `mouse_v1` datasets, please refer to the README files in the respective directories `csng/cat_v1/` and `csng/mouse_v1/`.
+For instructions on getting the datasets, please refer to the README files in the respective directories `csng/cat_v1/` (Synthetic Cat V1), `csng/mouse_v1/` (SENSORIUM 2022), and `csng/brainreader_mouse/` (Brainreader).
 
 ## Environment setup
 Setup an environment from the `environment.yaml` file and activate it ([Miniconda](https://docs.anaconda.com/free/miniconda/index.html)):
@@ -38,6 +42,14 @@ Create `.env` file in the root directory according to `.env.example` file and ma
 - `.gitignore` - Git ignore file
 - `pkgs` - Directory containing modified packages `neuralpredictors`, `nnfabrik`, `featurevis`, `sensorium`. Directories `pkgs/CAE`, `pkgs/MindEye2`, `pkgs/MonkeySee`, and `pkgs/energy-guided-diffusion` contain code for the [CAE decoder](https://doi.org/10.1371/journal.pcbi.1012297), [MindEye2](https://arxiv.org/abs/2403.11207), [MonkeySee](https://openreview.net/forum?id=OWwdlxwnFN), and [Energy-Guided Diffusion (EGG)](https://openreview.net/forum?id=1moStpWGUj), respectively.
 - `csng` - Directory containing the main code for the project (see `csng/README.md` for details):
+  - `run_gan_decoder.py` - MEIcoder training pipeline.
+  - `run_comparison.py` - Final test-set evaluation and plotting for MEIcoder and baselines.
+  - `data.py` - Shared dataset utilities (loading, normalization, cropping, mixing).
+  - `losses.py` - Custom losses/metrics (SSIM variants, Alex/CLIP/SwAV, etc.).
+  - `generate_meis.py` - Generate neuron-wise MEIs from a pretrained encoder for downstream decoding.
+  - `models/readins.py` - MEI readin implementation (possible to extend with custom readins).
+  - `models/utils/gan.py` - GAN decoder core and training utilities used by MEIcoder.
+  - `utils/` - Helpers for seeding, plotting, model inspection, and training support.
   - `cat_v1/` - Directory with code specific to the cat V1 data (**C**)
   - `mouse_v1/` - Directory with code specific to the SENSORIUM 2022 mouse V1 data (datasets **M-\<mouse id\>** and **M-All**)
   - `brainreader_mouse/` - Directory with code specific to the mouse V1 data from [Cobos E. et al. 2022](https://doi.org/10.1101/2022.12.09.519708) (datasets **B-\<mouse id\>** and **B-All**)
