@@ -11,7 +11,6 @@ lt.monkey_patch()
 import csng
 from csng.models.inverted_encoder import InvertedEncoder, InvertedEncoderBrainreader
 from csng.models.ensemble import EnsembleInvEnc
-from csng.models.inverted_encoder_decoder import InvertedEncoderDecoder
 from csng.models.utils.energy_guided_diffusion import EGGDecoder, do_run, energy_fn, plot_diffusion
 from csng.utils.mix import seed_all, check_if_data_zscored, update_config_paths, update_config
 from csng.utils.data import standardize, normalize, crop
@@ -1242,33 +1241,6 @@ config["comparison"]["to_compare"] = {
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-03-24_10-06-33", "decoder.pt"),
     # },
 
-
-
-    ### --- Inverted Encoder Decoder ---
-    # "Inverted Encoder-Decoder": { # sensorium mouse v1
-    #     "decoder": InvertedEncoderDecoder(
-    #         encoder=get_encoder_sensorium_mouse_v1(
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "encoders", "encoder_m1.pt"),
-    #             eval_mode=True,
-    #             device=config["device"],
-    #         ),
-    #         decoder=load_decoder_from_ckpt(
-    #             ckpt_path=os.path.join(DATA_PATH, "models", "gan", "2025-03-22_15-57-43", "decoder.pt"),
-    #             load_best=True,
-    #             load_only_core=False,
-    #             strict=True,
-    #             device=config["device"],
-    #         )[0],
-    #         img_dims=(1, 36, 64),
-    #         stim_pred_init="decoder",
-    #         opter_config={"lr": 50},
-    #         n_steps=1000,
-    #         img_grad_gauss_blur_config={"kernel_size": 13, "sigma": 1.5},
-    #         device=config["device"],
-    #     ),
-    #     "run_name": None,
-    # },
-
     ## multiple ---
     # "GAN (B-1-8 + M-All + C)": {
     #     "run_name": "2025-02-26_00-24-36",
@@ -1277,12 +1249,6 @@ config["comparison"]["to_compare"] = {
     # "GAN (B-All + M-All + C)": {
     #     "run_name": "2025-02-26_00-20-14",
     #     "ckpt_path": os.path.join(DATA_PATH, "models", "gan", "2025-02-26_00-20-14", "ckpt", "decoder_60.pt"),
-    # },
-
-    ### --- CNN MSE ---
-    # "CNN": {
-    #     "run_name": "2024-12-17_03-20-48",
-    #     "ckpt_path": os.path.join(DATA_PATH, "models", "cnn", "2024-12-17_03-20-48", "decoder.pt"),
     # },
 
     ### --- Varying number of neurons ---
